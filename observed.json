@@ -3172,6 +3172,137 @@
    "latest": true
   },
   {
+   "id": "ember-2026-11-10/E2",
+   "route": "meta-subscription",
+   "client": "pi+cliproxyapi",
+   "model": "muse-ember-1.0",
+   "models_dev": null,
+   "base_model": "meta/muse-ember-1.0",
+   "options": {
+    "prompt_cache_retention": "24h",
+    "reasoning": "low"
+   },
+   "date": "2026-11-10",
+   "source": "results/ember-2026-11-10/E2.jsonl",
+   "control": {
+    "warm": 1,
+    "total": 1
+   },
+   "checks": [
+    {
+     "age": "5m",
+     "age_s": 300,
+     "warm": 3,
+     "total": 3
+    },
+    {
+     "age": "30m",
+     "age_s": 1800,
+     "warm": 3,
+     "total": 3
+    },
+    {
+     "age": "1h",
+     "age_s": 3600,
+     "warm": 3,
+     "total": 3
+    },
+    {
+     "age": "2h",
+     "age_s": 7200,
+     "warm": 3,
+     "total": 3
+    },
+    {
+     "age": "4h",
+     "age_s": 14400,
+     "warm": 3,
+     "total": 3
+    }
+   ],
+   "late_excluded": 0,
+   "all_warm_through_s": 14400,
+   "last_warm_s": 14400,
+   "first_all_cold_s": null,
+   "note": "prompt_cache_retention \"24h\" added to every request by a CLIProxyAPI configuration rule, not by the coding agent; Meta's prompt caching page documents this setting for the Responses API of its Model API, and its Muse Code subscription page does not mention it",
+   "latest": false
+  },
+  {
+   "id": "meta-24h-2026-11-10/M1",
+   "route": "meta-subscription",
+   "client": "pi+cliproxyapi",
+   "model": "muse-ember-1.0",
+   "models_dev": null,
+   "base_model": "meta/muse-ember-1.0",
+   "options": {
+    "prompt_cache_retention": "24h",
+    "reasoning": "low"
+   },
+   "date": "2026-11-10",
+   "source": "results/meta-24h-2026-11-10/M1.jsonl",
+   "control": {
+    "warm": 1,
+    "total": 1
+   },
+   "checks": [
+    {
+     "age": "5m",
+     "age_s": 300,
+     "warm": 3,
+     "total": 3
+    },
+    {
+     "age": "30m",
+     "age_s": 1800,
+     "warm": 3,
+     "total": 3
+    },
+    {
+     "age": "1h",
+     "age_s": 3600,
+     "warm": 3,
+     "total": 3
+    },
+    {
+     "age": "2h",
+     "age_s": 7200,
+     "warm": 3,
+     "total": 3
+    },
+    {
+     "age": "4h",
+     "age_s": 14400,
+     "warm": 3,
+     "total": 3
+    },
+    {
+     "age": "8h",
+     "age_s": 28800,
+     "warm": 0,
+     "total": 3
+    },
+    {
+     "age": "12h",
+     "age_s": 43200,
+     "warm": 0,
+     "total": 3
+    },
+    {
+     "age": "24h",
+     "age_s": 86400,
+     "warm": 0,
+     "total": 3
+    }
+   ],
+   "late_excluded": 0,
+   "all_warm_through_s": 14400,
+   "last_warm_s": 14400,
+   "first_all_cold_s": 28800,
+   "note": "prompt_cache_retention \"24h\" added to every request by a CLIProxyAPI configuration rule, not by the coding agent; Meta's prompt caching page documents this setting for the Responses API of its Model API, and its Muse Code subscription page does not mention it",
+   "continues": "ember-2026-11-10/E2",
+   "latest": true
+  },
+  {
    "id": "cpa-8.0.53/M3",
    "route": "meta-subscription",
    "client": "cliproxyapi",
@@ -3251,6 +3382,56 @@
    "all_warm_through_s": 450,
    "last_warm_s": 1800,
    "first_all_cold_s": 2400,
+   "latest": true
+  },
+  {
+   "id": "meta-24h-2026-11-10/M3",
+   "route": "meta-subscription",
+   "client": "pi+cliproxyapi",
+   "model": "muse-spark-1.3",
+   "models_dev": null,
+   "base_model": "meta/muse-spark-1.3",
+   "options": {
+    "prompt_cache_retention": "24h",
+    "reasoning": "low"
+   },
+   "date": "2026-11-10",
+   "source": "results/meta-24h-2026-11-10/M3.jsonl",
+   "control": {
+    "warm": 1,
+    "total": 1
+   },
+   "checks": [
+    {
+     "age": "5m",
+     "age_s": 300,
+     "warm": 3,
+     "total": 3
+    },
+    {
+     "age": "1h",
+     "age_s": 3600,
+     "warm": 0,
+     "total": 3
+    },
+    {
+     "age": "4h",
+     "age_s": 14400,
+     "warm": 0,
+     "total": 3
+    },
+    {
+     "age": "24h",
+     "age_s": 86400,
+     "warm": 0,
+     "total": 3
+    }
+   ],
+   "late_excluded": 0,
+   "all_warm_through_s": 300,
+   "last_warm_s": 300,
+   "first_all_cold_s": 3600,
+   "note": "prompt_cache_retention \"24h\" added to every request by a CLIProxyAPI configuration rule, not by the coding agent; Meta's prompt caching page documents this setting for the Responses API of its Model API, and its Muse Code subscription page does not mention it",
    "latest": true
   },
   {
@@ -3554,6 +3735,50 @@
    "all_warm_through_s": 7200,
    "last_warm_s": 7200,
    "first_all_cold_s": null,
+   "latest": true
+  },
+  {
+   "id": "meta-24h-2026-11-10/M2",
+   "route": "meta-subscription",
+   "client": "pi+cliproxyapi",
+   "model": "muse-wonder-1.0",
+   "models_dev": null,
+   "base_model": "meta/muse-wonder-1.0",
+   "options": {
+    "prompt_cache_retention": "24h",
+    "reasoning": "low"
+   },
+   "date": "2026-11-10",
+   "source": "results/meta-24h-2026-11-10/M2.jsonl",
+   "control": {
+    "warm": 1,
+    "total": 1
+   },
+   "checks": [
+    {
+     "age": "4h",
+     "age_s": 14400,
+     "warm": 3,
+     "total": 3
+    },
+    {
+     "age": "12h",
+     "age_s": 43200,
+     "warm": 0,
+     "total": 3
+    },
+    {
+     "age": "24h",
+     "age_s": 86400,
+     "warm": 0,
+     "total": 3
+    }
+   ],
+   "late_excluded": 0,
+   "all_warm_through_s": 14400,
+   "last_warm_s": 14400,
+   "first_all_cold_s": 43200,
+   "note": "No age under 4 h was tested in this run; prompt_cache_retention \"24h\" added to every request by a CLIProxyAPI configuration rule, not by the coding agent; Meta's prompt caching page documents this setting for the Responses API of its Model API, and its Muse Code subscription page does not mention it",
    "latest": true
   },
   {
@@ -6268,22 +6493,6 @@
   {
    "id": "limits-2026-11-08/limits.jsonl:probe-codex-gpt-6.1-terra",
    "reason": "owner chose to keep the documented 922,000 input limit: 920,870 prompt tokens accepted, request size 921,875 refused just below it"
-  },
-  {
-   "id": "ember-2026-11-10/E2",
-   "reason": "sent prompt_cache_retention=24h with the Muse Code subscription key; Meta documents that setting for the Model API only, so the owner left it out"
-  },
-  {
-   "id": "meta-24h-2026-11-10/M1",
-   "reason": "sent prompt_cache_retention=24h with the Muse Code subscription key; Meta documents that setting for the Model API only, so the owner left it out"
-  },
-  {
-   "id": "meta-24h-2026-11-10/M2",
-   "reason": "sent prompt_cache_retention=24h with the Muse Code subscription key; Meta documents that setting for the Model API only, so the owner left it out"
-  },
-  {
-   "id": "meta-24h-2026-11-10/M3",
-   "reason": "sent prompt_cache_retention=24h with the Muse Code subscription key; Meta documents that setting for the Model API only, so the owner left it out"
   }
  ]
 }
