@@ -748,16 +748,6 @@
    "base_model": "meta/muse-ember-1.0"
   },
   {
-   "id": "ember-2026-11-10/E2",
-   "file": "results/ember-2026-11-10/E2.jsonl",
-   "route": "meta-subscription",
-   "model": "muse-ember-1.0",
-   "base_model": "meta/muse-ember-1.0",
-   "options": {
-    "prompt_cache_retention": "24h"
-   }
-  },
-  {
    "id": "gpt6-2026-11-11/G1",
    "file": "results/gpt6-2026-11-11/G1.jsonl",
    "route": "codex-subscription",
@@ -833,38 +823,6 @@
    "base_model": "openai/gpt-6-luna",
    "requires": "router-for-me/CLIProxyAPI#7284",
    "note": "CLIProxyAPI 8.0.64 with router-for-me/CLIProxyAPI#7284 (cache markers and session id for OpenRouter)"
-  },
-  {
-   "id": "meta-24h-2026-11-10/M1",
-   "file": "results/meta-24h-2026-11-10/M1.jsonl",
-   "route": "meta-subscription",
-   "model": "muse-ember-1.0",
-   "base_model": "meta/muse-ember-1.0",
-   "options": {
-    "prompt_cache_retention": "24h"
-   },
-   "continues": "ember-2026-11-10/E2"
-  },
-  {
-   "id": "meta-24h-2026-11-10/M2",
-   "file": "results/meta-24h-2026-11-10/M2.jsonl",
-   "route": "meta-subscription",
-   "model": "muse-wonder-1.0",
-   "base_model": "meta/muse-wonder-1.0",
-   "options": {
-    "prompt_cache_retention": "24h"
-   },
-   "note": "No age under 4 h was tested in this run"
-  },
-  {
-   "id": "meta-24h-2026-11-10/M3",
-   "file": "results/meta-24h-2026-11-10/M3.jsonl",
-   "route": "meta-subscription",
-   "model": "muse-spark-1.3",
-   "base_model": "meta/muse-spark-1.3",
-   "options": {
-    "prompt_cache_retention": "24h"
-   }
   },
   {
    "id": "muse-spark-openrouter-2026-11-12/S1",
@@ -976,6 +934,22 @@
   {
    "id": "limits-2026-11-08/limits.jsonl:probe-codex-gpt-6.1-terra",
    "reason": "owner chose to keep the documented 922,000 input limit: 920,870 prompt tokens accepted, request size 921,875 refused just below it"
+  },
+  {
+   "id": "ember-2026-11-10/E2",
+   "reason": "sent prompt_cache_retention=24h with the Muse Code subscription key; Meta documents that setting for the Model API only, so the owner left it out"
+  },
+  {
+   "id": "meta-24h-2026-11-10/M1",
+   "reason": "sent prompt_cache_retention=24h with the Muse Code subscription key; Meta documents that setting for the Model API only, so the owner left it out"
+  },
+  {
+   "id": "meta-24h-2026-11-10/M2",
+   "reason": "sent prompt_cache_retention=24h with the Muse Code subscription key; Meta documents that setting for the Model API only, so the owner left it out"
+  },
+  {
+   "id": "meta-24h-2026-11-10/M3",
+   "reason": "sent prompt_cache_retention=24h with the Muse Code subscription key; Meta documents that setting for the Model API only, so the owner left it out"
   }
  ],
  "limits": [
