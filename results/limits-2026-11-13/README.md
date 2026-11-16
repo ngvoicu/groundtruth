@@ -11,7 +11,7 @@ Pinned to the Codex login with a temporary single-member pool (`harness/pool.py`
 |---|---|
 | 930,000 | refused: "Your input exceeds the context window of this model." |
 | 915,011 | accepted |
-| 922,500 | refused |
+| 922,500 | refused (no count given; about 922,511 tokens at the 11 tokens over N of the accepted request) |
 
 The same bounds as GPT-6 Astra, GPT-6 Luna (`../gpt6-2026-11-11`) and GPT-6.1 Terra (`../limits-2026-11-08`) on this
 login. Codex's own model list gives this model a 500K default window and an 872K maximum: those are settings of the
@@ -35,6 +35,10 @@ and one after it and asked for both:
 | 915,000 | no answer in 3 and in 10 minutes |
 
 So a request whose answer does not depend on the whole input is accepted at any size tried, and a request that needs
-both ends gets no answer even below the listed window. Nothing here says how much of an input `swe-2` uses. It is
-kept as a record and is **not** in `observed.json`. Rows: `swe-2-inconclusive.jsonl` (a row with status `null` is a
-request with no answer inside the time limit).
+both ends gets no answer even below the listed window. Nothing here says how much of an input `swe-2` uses, so this
+walk gives no number to `observed.json`. Rows: `swe-2-inconclusive.jsonl` (a row with status `null` is a request
+with no answer inside the time limit).
+
+The same both-ends request with room for the reply was sent again on 2026-11-16 (`../limits-2026-11-16`): both words
+came back at 300,499 tokens. That is the `swe-2` row of `observed.json` (`input_read` 300,499, no refusal); the 930K
+accepted here is in its note only, as a size accepted with no check that it was read.

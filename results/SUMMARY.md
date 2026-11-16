@@ -87,9 +87,9 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
 - `gpt6-2026-11-11/`: GPT-6 Astra and Luna on a ChatGPT plan, Devin, OpenRouter and an OpenAI API key (plus GPT-6.1 Sol
   on the key), 3 samples per age. OpenAI key and OpenRouter: warm at 30 min, cold at 40. Devin: warm at 30 min, cold at
   1 h. ChatGPT plan: Astra warm through 2 h; Luna misses from 15 min. Both accept ~915K input there. See its README.
-- `limits-2026-11-13/`: the input limit of GPT-6.1 Sol on a ChatGPT plan: 915,011 accepted, 922,500 refused, the same
-  as the other GPT-6 models there. A walk on Devin's `swe-2` found no refusal up to 930K but could not show that the
-  model reads such an input: kept as a record, not in `observed.json`. See its README.
+- `limits-2026-11-13/`: the input limit of GPT-6.1 Sol on a ChatGPT plan: 915,011 accepted, 922,500 refused (about
+  922,511 tokens), the same as the other GPT-6 models there. A walk on Devin's `swe-2` found no refusal up to 930K but
+  could not show that the model reads such an input; the walk of 2026-11-16 did, to 300K. See its README.
 - `meta-24h-2026-11-10/`: Meta's `prompt_cache_retention: "24h"` measured out to 24 hours, 3 samples per age. Nothing
   is warm at 12 or 24 hours. Muse Ember 1.0 lasts between 4 and 8 hours, Muse Wonder 1.0 between 4 and 12, and
   Muse Spark 1.3 under an hour even with the setting. See its README.
@@ -104,7 +104,7 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   DeepSeek V4 Pro and Gemini 4 Argon accept their listed 1,048,576 (about 1,047,500 accepted, refused about 4K more);
   Claude Haiku, Sonnet and Opus 5.5 accept 999,072 and refuse about 1,004,000; GPT-6.1 Terra, GPT-6 Astra and GPT-6
   Luna accept 911,390 and refuse 923,500 although Devin lists 1,000,000. `swe-2` read both ends of a 300K input (above
-  its listed 262K), no edge: kept as a record, not in `observed.json`. See its README.
+  its listed 262K), no edge: in `observed.json` as read to 300,499 tokens, with no refusal. See its README.
 - `claude-login-2026-11-16/`: Claude Opus 5.5 and Sonnet 5.5 on one Claude login, plain probe through CLIProxyAPI,
   Messages format, 3 samples per age (CS1 – CS4). With no ttl and with `ttl: "1h"` alike: 3/3 warm at every age from
   2.5 minutes to 1 hour, 0/3 at 65 and 75 minutes. This is the 1-hour cache that CLIProxyAPI asks for on Claude logins,
@@ -117,6 +117,22 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   12 hours, cold at 24. The run file does not record the request body: the 12-hour setting is known from the owner's
   note on the run and its label, and the result agrees with it (the default run, started the same minute, was cold at
   40 minutes). See its README.
+
+## The limits rows of observed.json (2026-11-17)
+
+Every `limits` row now gives the refused input in tokens, counted like the accepted one, and the day of its requests.
+Where the refusal states no count (Codex, Devin), the refused size in filler words is converted with the tokens per
+word and the overhead of the accepted requests of the same walk; each row's note says how. Codex login: 922,500 words
+is 922,511 tokens (Sol, Astra, Luna). Devin: GPT-6.1 Sol 925,390; GPT-6.1 Terra, GPT-6 Astra and Luna 923,890; GLM-5.3
+1,052,845; DeepSeek V4.1 Flash 1,052,864; DeepSeek V4 Pro 1,052,917; Gemini 4 Argon 1,052,865; Claude 1,004,446.
+
+- The three Claude-login rows carry the request accepted just under the named window: 998,953 tokens.
+- GPT-6.1 Terra on the Codex login is back (`limits-2026-11-08`): 920,870 accepted, a request of 921,875 words (921,886
+  tokens) refused. It was left out on 2026-11-15 to keep the documented 922,000; providers.dev now applies a 1 % margin
+  before a measurement contradicts documentation, so the row is shown beside 922,000 and does not replace it.
+- Devin's `swe-2` has a row: 300,499 tokens accepted and read to the end, no refusal (`limits-2026-11-16`).
+- The Devin GPT-6.1 Sol rows carry no time. They were added to the `limits-2026-11-08` file on 9 November, so the
+  row is dated 2026-11-09. The OpenRouter rows of that file, which carry no time either, are dated 2026-11-08.
 
 ## What this means
 

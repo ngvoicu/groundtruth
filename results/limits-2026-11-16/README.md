@@ -46,14 +46,16 @@ limit. Claude's tokenizer counts two tokens per " hello", so Claude requests use
 accepted requests of the same model: every one of them fits `tokens = ratio × N + overhead` exactly. Where the walk had
 only one accepted request, one small request (kind `calibrate`, N = 100,000, or 50,000 on Claude, sent at
 00:27–00:28 on 17 November) gives the second point. Every refusal in the file has an accepted request of the same model
-below it, and each row's `at` is when it was sent. The Meta refusals state their own count.
+below it, and each row's `at` is when it was sent. The Meta refusals state their own count. The `limits` rows of
+`observed.json` carry the refused size in tokens (the right-hand figure); `scripts/build_observed.py` checks that
+every accepted request of the model fits the conversion.
 
 GLM-5.3, both DeepSeek models and Gemini 4 Argon accept their listed 1,048,576 and refuse about 5,300 tokens more.
 The three Claude models accept 999,072 and refuse 1,004,446. GPT-6.1 Terra, GPT-6 Astra and GPT-6 Luna accept 911,390 and
 refuse 923,500 although Devin lists 1,000,000: the same ~922K input limit as GPT-6.1 Sol on Devin (915,390 accepted,
-925,000 refused, `../limits-2026-11-08`) and as these models on the ChatGPT plan.
+925,000 refused, about 925,390 tokens, `../limits-2026-11-08`) and as these models on the ChatGPT plan.
 
-## swe-2 on Devin: no edge, not published
+## swe-2 on Devin: no edge, read to the end at 300,499 tokens
 
 Devin lists a 262,000-token window. The walk of `../limits-2026-11-13` found no refusal up to 930K, and a request
 that needs both ends of its input (a code word before the filler and one after it; the answer must name both) got no
@@ -73,9 +75,10 @@ effort, five minutes each):
 
 The first five asked for 16 output tokens, which the model's reasoning used up, so they show nothing. With 256 it
 named both words at every size tried, 300,499 tokens included, which is above its listed window and a size that got
-no answer three days earlier. That was the eighth and last request allowed, so there is still no edge: kept as a
-record, **not** in `observed.json`. For a model that shows no refusal and names no window, the size that counts is
-the largest input whose reply shows both ends were read: here **300,499 tokens** (row of 2026-11-16 21:56), against
-930,487 tokens accepted without that proof on 2026-11-13. A both-ends request at 930K was not sent: the eight requests
+no answer three days earlier. That was the eighth and last request allowed, so there is still no edge. For a model
+that shows no refusal and names no window, the size that counts is the largest input whose reply shows both ends were
+read: here **300,499 tokens** (row of 2026-11-16 21:56), against 930,487 tokens accepted without that proof on
+2026-11-13. It is in `observed.json` as that: `input_accepted` and `input_read` 300,499, no `input_refused`, the note
+saying that no edge was found and that Devin lists 262,000. A both-ends request at 930K was not sent: the eight requests
 allowed for `swe-2` were used. Rows: `swe-2-recall.jsonl` (the `maxOutput` rows also record the response's
 status and output token count).

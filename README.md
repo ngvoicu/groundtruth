@@ -110,8 +110,25 @@ subscription routes that have no public API (a ChatGPT plan through Codex, Devin
   and session id of router-for-me/CLIProxyAPI#7284). A reader on a build with that change should skip `lacks` runs.
 - `models_dev` is the matching entry in models.dev (`provider/model`) when that route exists there, and
   `base_model` is the model's id in its `models/` folder; either can be `null`.
-- **`limits`**: context and output limits found by sending requests of growing size, each backed by a row of the raw
-  file named in `source`.
+- **`limits`**: context and output limits found by sending requests of growing size. One row per route, client and
+  model; a new walk replaces the row. Every number is in tokens and is backed by a row of the raw file named in
+  `source`:
+  - `context`: the window, only where the route's own answer names it (an error message). A window from a vendor's
+    model list stays in `note`. `output`: the output cap, likewise.
+  - `input_accepted`: the provider's count of the largest request it answered.
+  - `input_refused`: the smallest refused request, counted the same way. Where the refusal states a count, that
+    count; otherwise the probe's size converted with the tokens per word and the overhead of the accepted requests of
+    the same walk (the note says which). A row with `input_refused` always has `input_accepted`, below it.
+  - `input_read`: the largest input for which the reply showed it was read to the end (a word before the filler and
+    one after it, both returned). Never above `input_accepted`. It gives a value to an accepted size with no
+    refusal and no named window.
+  - `output_accepted`: the largest output cap a request was answered with.
+  - `date`: the day the requests were sent (`YYYY-MM-DD`). `note`: what the numbers do not say.
+
+  `scripts/build_observed.py` refuses a row that providers.dev would refuse: two rows for one route, client and
+  model, a refusal without an accepted size, an accepted size not below the refused one or above the named window,
+  `input_read` above `input_accepted`, a count that is not a whole number of 0 or more, a number its raw rows don't
+  show, or a conversion that the accepted requests don't fit.
 - **`known`**: lifetimes that were **not measured** but follow from how a client or proxy builds its requests
   (for example CLIProxyAPI asking Anthropic for the 1-hour cache on Claude logins). Each has `ttl_s`, a `basis` in
   words and a `source`; `model` is `*` when it holds for every model of the route, and `when` narrows it to a
