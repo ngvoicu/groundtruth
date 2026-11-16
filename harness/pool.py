@@ -17,6 +17,10 @@ through CLIProxyAPI's management API:
 `remove` undoes both. Without --login and --model only step 2 runs: enough when a login already serves the
 pool id as is (Devin's `devin/...` ids, Meta's `muse-...`).
 
+Without the plugin (CLIProxyAPI lists every model under its own name) only step 1 exists: the alias alone makes
+the pool id a model that this one login serves, and no API key does, since keys serve only the names they list.
+The script finds out by itself (the plugin's config is missing) and then needs --login and --model.
+
 CLIProxyAPI rewrites the pool list when it saves it, so a YAML comment written inside that list is lost.
 
 The management key comes from CPA_MGMT_KEY, or from the MGMT_KEY line of ~/.cli-proxy-api/keys.txt. It is never
@@ -71,6 +75,9 @@ class Api:
         self.call("PATCH", "/credentials/fields", {"name": login, "model_aliases": aliases})
 
     def pools(self):
+        """The plugin's pool list, or None when the plugin is not configured."""
+        if PLUGIN not in (self.call("GET", "/config/plugins/configs") or {}):
+            return None
         config = self.call("GET", f"/config/plugins/configs/{PLUGIN}") or {}
         config = config.get("value", config) if isinstance(config, dict) else {}
         return list(config.get("pools") or [])
@@ -85,7 +92,9 @@ def add(api, pool, login, model):
     if bool(login) != bool(model):
         sys.exit("give --login and --model together, or neither")
     pools = api.pools()
-    if pool in pools:
+    if pools is None and not login:
+        sys.exit("no pools plugin: give --login and --model")
+    if pools and pool in pools:
         sys.exit(f"pool {pool} already exists")
     if not login:
         api.set_pools(pools + [pool])
@@ -98,12 +107,13 @@ def add(api, pool, login, model):
         sys.exit(f"{login} already has an alias {pool}")
     # Alias first, pool list last: a failed alias write must not leave a pool nothing serves.
     api.set_aliases(login, aliases + [{"alias": pool, "name": model, "fork": True}])
-    api.set_pools(pools + [pool])
+    if pools is not None:
+        api.set_pools(pools + [pool])
     print(f"added {pool}: {model} on {login}")
 
 
 def remove(api, pool):
-    pools = api.pools()
+    pools = api.pools() or []
     if pool in pools:
         api.set_pools([p for p in pools if p != pool])
     touched = []
@@ -124,7 +134,7 @@ def show(api):
     for login in api.logins():
         for a in api.aliases(login):
             by_pool.setdefault(a.get("alias"), []).append(f"{login}: {a.get('name')}")
-    for pool in pools:
+    for pool in pools if pools is not None else sorted(by_pool):
         members = by_pool.get(pool) or ["(no login alias: served as is, or by API keys)"]
         print(pool)
         for member in members:
