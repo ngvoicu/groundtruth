@@ -150,3 +150,55 @@ test("a check that still runs late is left out of the result", async () => {
   assert.equal(summarize(r).rows.length, 0);
   assert.match(renderMarkdown(r), /Left out, ran late: 1m at /);
 });
+
+test("the run file records what was sent, never a key", async () => {
+  // Two runs that differ only in a caching setting must differ in the file, not only in their label
+  // (results/openai-direct-2026-11-15: the 12-hour setting had to be taken from the owner's notes).
+  const { deps } = fakeUpstream(60 * MIN);
+  const key = "fake-key-for-this-test";
+  const sent: string[] = [];
+  const send = deps.send;
+  deps.send = async (u, h, b) => {
+    sent.push(b);
+    return send(u, h, b);
+  };
+  const bodyExtra = { prompt_cache_options: { ttl: "12h" } };
+  const r = await runProbe({
+    ...opts([5 * MIN], 1),
+    bodyExtra,
+    filler: "list",
+    headers: { authorization: `Bearer ${key}`, "x-api-key": key, "X-Custom-Token": key, "anthropic-beta": "extended-cache-ttl-2025-04-11" },
+  }, deps);
+  const q = r.request;
+  assert.ok(q, "every new run file has a request record");
+  assert.deepEqual(q.bodyExtra, bodyExtra);
+  assert.equal(q.path, "/responses");
+  assert.equal(q.cacheKey, "per-sample");
+  assert.equal(q.prefixTokens, 50);
+  assert.equal(r.filler, "list");
+  // The recorded body is the body sent, with the prefix and the per-sample key as placeholders.
+  const real = JSON.parse(sent[0]);
+  assert.deepEqual(Object.keys(q.body).sort(), Object.keys(real).sort());
+  assert.deepEqual(q.body.prompt_cache_options, { ttl: "12h" });
+  assert.equal(q.body.prompt_cache_key, "groundtruth-t-<sample>");
+  // Headers: named; a value only where it can't carry a credential.
+  assert.equal(q.headers["anthropic-beta"], "extended-cache-ttl-2025-04-11");
+  assert.equal(q.headers.authorization, "(not recorded)");
+  assert.equal(q.headers["X-Custom-Token"], "(not recorded)");
+  const file = JSON.stringify(r) + renderMarkdown(r);
+  assert.ok(!file.includes(key), "the key is in neither the run file nor the summary");
+  const md = renderMarkdown(r);
+  assert.match(md, /body extra `\{"prompt_cache_options":\{"ttl":"12h"\}\}`/);
+  assert.match(md, /filler `list`/);
+  assert.match(md, /authorization \(value not recorded\)/);
+
+  const plain = await runProbe({ ...opts([5 * MIN], 1), runSalt: "t3" }, deps);
+  assert.equal(plain.request?.bodyExtra, null);
+  assert.equal(plain.filler, undefined, "the default filler is not named");
+  assert.match(renderMarkdown(plain), /body extra none/);
+});
+
+test("an old run file without a request record still renders", () => {
+  const old = { probeVersion: "0.2.0", label: "old", baseUrl: "http://x/v1", format: "responses" as const, model: "m", runSalt: "s", replicas: 1, cacheKey: true, plannedAges: [], startedAt: "2026-11-15T00:00:00Z", status: "completed" as const, checks: [] };
+  assert.doesNotMatch(renderMarkdown(old), /Request/);
+});

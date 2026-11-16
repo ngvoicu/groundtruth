@@ -55,6 +55,15 @@ export function renderMarkdown(result: RunResult): string {
     `- Started ${result.startedAt}${result.finishedAt ? `, finished ${result.finishedAt}` : ""} · status **${result.status}**${result.error ? ` (${result.error})` : ""}`,
     `- Probe ${result.probeVersion} · run salt \`${result.runSalt}\` · ${result.replicas} replicas per age · prompt_cache_key ${result.cacheKey === false ? "off" : "per sample"}`,
   ];
+  const q = result.request;
+  if (q) {
+    lines.push(
+      `- Request: \`${q.method} ${q.path}\` · body extra ${q.bodyExtra ? `\`${JSON.stringify(q.bodyExtra)}\`` : "none"} · ` +
+        `prefix ~${q.prefixTokens} tokens · max output ${q.maxOutput} · stream ${q.stream ? "on" : "off"} · ` +
+        `session_id ${q.sessionId} · warm at ${q.warmFraction} of the prompt cached`,
+      `- Headers: ${Object.entries(q.headers).map(([k, v]) => (v === "(not recorded)" ? `${k} (value not recorded)` : `${k} \`${v}\``)).join(", ")}`,
+    );
+  }
   if (result.control) {
     lines.push(
       `- Control: prime ${result.control.prime.cachedTokens}/${result.control.prime.promptTokens} cached, ` +
@@ -67,5 +76,6 @@ export function renderMarkdown(result: RunResult): string {
   if (late.length) {
     lines.push("", `Left out, ran late: ${late.map((c) => `${formatDuration(c.targetAgeMs)} at ${formatDuration(c.actualAgeMs)} ${c.warm ? "warm" : "cold"}`).join(", ")}.`);
   }
+  if (q) lines.push("", "Request body (one sample):", "", "```json", JSON.stringify(q.body, null, 2), "```");
   return lines.join("\n") + "\n";
 }

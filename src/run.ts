@@ -57,6 +57,70 @@ export interface Check {
   warm: boolean;
 }
 
+/**
+ * What was sent, as far as it can change caching: written into every run file (from 0.3.0), so two runs that differ
+ * only in a setting differ in the file, not only in their label. Never a key: a header's value is recorded only for
+ * the headers in RECORDED_HEADERS; every other header is named, its value not recorded.
+ */
+export interface RequestRecord {
+  method: "POST";
+  /** Path after the base URL, e.g. /responses. */
+  path: string;
+  /** `--body-extra` as given, merged last into every request body. Null = none. */
+  bodyExtra: Record<string, unknown> | null;
+  /** Approximate size of each prefix, in tokens (`--prefix-tokens`). */
+  prefixTokens: number;
+  /** `--max-output`, as asked (the Responses format sends at least 16). */
+  maxOutput: number;
+  stream: boolean;
+  /** `prompt_cache_key`: one per sample, or none. */
+  cacheKey: "per-sample" | "none";
+  /** `session_id`: one per sample, or none. */
+  sessionId: "per-sample" | "none";
+  /** Share of the prompt that must be cached for a warm check. */
+  warmFraction: number;
+  /** Every header sent, by name: its value where it can't carry a credential, otherwise "(not recorded)". */
+  headers: Record<string, string>;
+  /** The body of one request, the prefix and the per-sample ids written as placeholders. */
+  body: Record<string, unknown>;
+}
+
+/** Headers whose value goes into a run file. Any other header may carry a key and is named only. */
+export const RECORDED_HEADERS: readonly string[] = ["content-type", "anthropic-version", "anthropic-beta"];
+const NOT_RECORDED = "(not recorded)";
+
+/** The record of what every request of a run sends (see RequestRecord). */
+export function describeRequest(o: RunOptions): RequestRecord {
+  const sample = `groundtruth-${o.runSalt}-<sample>`;
+  const req = buildRequest(o.format, {
+    model: o.model,
+    prefix: `<prefix: about ${o.prefixTokens} tokens of ${o.filler ?? "words"} filler, one per sample>`,
+    ttl: o.ttl,
+    maxOutput: o.maxOutput,
+    stream: o.stream,
+    bodyExtra: o.bodyExtra,
+    cacheKey: o.cacheKey === false ? undefined : sample,
+    sessionId: o.sessionId ? sample : undefined,
+  });
+  const headers: Record<string, string> = {};
+  for (const [name, value] of Object.entries({ "content-type": "application/json", ...req.headers, ...o.headers })) {
+    headers[name] = RECORDED_HEADERS.includes(name.toLowerCase()) ? value : NOT_RECORDED;
+  }
+  return {
+    method: "POST",
+    path: req.path,
+    bodyExtra: o.bodyExtra ?? null,
+    prefixTokens: o.prefixTokens,
+    maxOutput: o.maxOutput,
+    stream: o.stream,
+    cacheKey: o.cacheKey === false ? "none" : "per-sample",
+    sessionId: o.sessionId ? "per-sample" : "none",
+    warmFraction: o.warmFraction ?? 0.5,
+    headers,
+    body: req.body,
+  };
+}
+
 export interface RunResult {
   probeVersion: string;
   label: string;
@@ -66,6 +130,8 @@ export interface RunResult {
   ttl?: string;
   /** Set only when a filler other than the default was used. */
   filler?: Filler;
+  /** What every request sent (from 0.3.0; absent in older files). */
+  request?: RequestRecord;
   runSalt: string;
   replicas: number;
   cacheKey: boolean;
@@ -78,7 +144,7 @@ export interface RunResult {
   checks: Check[];
 }
 
-export const PROBE_VERSION = "0.2.0";
+export const PROBE_VERSION = "0.3.0";
 
 /** How long after its planned age a check may still run: 30 s, or 10 % of the age when longer. */
 export function lateAfterMs(ageMs: number): number {
@@ -159,6 +225,7 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
     model: o.model,
     ttl: o.ttl,
     ...(o.filler && o.filler !== "words" ? { filler: o.filler } : {}),
+    request: describeRequest(o),
     runSalt: o.runSalt,
     replicas: o.replicas,
     cacheKey: o.cacheKey !== false,

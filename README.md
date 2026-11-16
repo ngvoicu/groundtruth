@@ -35,6 +35,14 @@ npx github:ngvoicu/groundtruth --base-url http://127.0.0.1:8317/v1 --model m --d
 Each run writes `results/<label>-<timestamp>.json` (every check) and `.md` (survival table), and keeps a
 `.partial.json` up to date while it runs.
 
+From version 0.3.0 both files also say what was sent (`request` in the `.json`): the path, `--body-extra` as given,
+the prefix size, max output, streaming, the cache key and session id settings, every header by name, and the body of
+one request with the prefix as a placeholder. The format and ttl are at the top of the file, and the filler when it
+is not the default. A header's value is written only for `content-type`, `anthropic-version` and `anthropic-beta`;
+the key and any other header are named, never written. `--dry-run` prints the same record.
+`scripts/build_observed.py` refuses a run whose recorded extra body fields are not in its options in the manifest.
+Older files have no `request`.
+
 ```
 **Lifetime: 5m – 10m**
 

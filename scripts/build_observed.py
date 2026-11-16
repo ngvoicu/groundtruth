@@ -101,6 +101,8 @@ def read_plain(path):
         "checks": checks,
         "late": late,
         "probe_version": j.get("probeVersion"),
+        # From probe 0.3.0 the run file records what was sent; --body-extra as given, or None.
+        "body_extra": (j.get("request") or {}).get("bodyExtra"),
     }
 
 
@@ -135,6 +137,11 @@ def build_cache(manifest):
         if client not in CLIENTS or run["route"] not in ROUTES:
             raise SystemExit(f"{run['id']}: unknown client or route")
         options = dict(run.get("options") or {})
+        # A run file that records its extra body fields: each must be in the manifest's options, as sent.
+        for field, value in (data.get("body_extra") or {}).items():
+            if options.get(field) != value:
+                raise SystemExit(f"{run['id']}: the run file sent {field} = {json.dumps(value)}; its options in "
+                                 f"{MANIFEST} must say so")
         if data.get("effort") and "reasoning" not in options:
             options["reasoning"] = data["effort"]
         entry = {

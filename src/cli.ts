@@ -7,7 +7,7 @@ import { parseArgs } from "node:util";
 import { buildRequest, type Format, FORMATS } from "./formats.ts";
 import { FILLERS, type Filler, makePrefix, newRunSalt } from "./prefix.ts";
 import { renderMarkdown } from "./report.ts";
-import { type Deps, PROBE_VERSION, type RunOptions, runProbe } from "./run.ts";
+import { type Deps, describeRequest, PROBE_VERSION, type RunOptions, runProbe } from "./run.ts";
 import { agesFor, formatDuration, planSamples } from "./schedule.ts";
 
 const HELP = `groundtruth ${PROBE_VERSION}
@@ -27,7 +27,7 @@ Options:
   --ttl <5m|1h>           explicit Anthropic-style cache_control ttl (messages; responses part-level marker)
   --beta <value>          anthropic-beta header (e.g. extended-cache-ttl-2025-04-11)
   --header <k:v>          extra header, repeatable
-  --body-extra <json>     extra top-level body fields (e.g. '{"prompt_cache_options":{"ttl":"12h"}}')
+  --body-extra <json>     extra top-level body fields (e.g. '{"prompt_cache_options":{"ttl":"12h"}}'); recorded in the run file
   --schedule <name>       std (2.5m..2h) | long (std + 4h, 8h, 12h) | quick (2.5m, 5m, 7.5m, 10m) (default: std)
   --ages <list>           more ages, comma-separated (e.g. 30m,65m), instead of --schedule. Every run checks at once,
                           then at 2.5m, 5m and 7.5m: those are always added
@@ -155,7 +155,10 @@ if (values["dry-run"]) {
   process.stdout.write(
     `${label}: ${samples.length} samples + control, ages ${opts.ages.map(formatDuration).join(", ")}\n` +
       `POST ${baseUrl.replace(/\/+$/, "")}${req.path}\nheaders: ${Object.keys({ ...req.headers, ...extraHeaders }).join(", ") || "(none extra)"}\n` +
-      `${JSON.stringify(req.body, null, 2)}\n`,
+      `${JSON.stringify(req.body, null, 2)}\n` +
+      `recorded in the run file as "request":\n` +
+      // The key headers are added only when a run starts: named here as they will be, never with a value.
+      `${JSON.stringify(describeRequest({ ...opts, headers: { authorization: "", "x-api-key": "", ...opts.headers } }), null, 2)}\n`,
   );
   process.exit(0);
 }
