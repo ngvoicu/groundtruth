@@ -1,0 +1,58 @@
+[18:23:51] control: openai-sol-default
+[18:23:58]   control warm (cached 2417/2420)
+[18:23:58] priming 54 samples
+[18:26:30]   2.5m r1: warm (2391/2394)
+[18:26:31]   2.5m r2: warm (2406/2409)
+[18:26:32]   2.5m r3: warm (2413/2416)
+[18:28:59]   5m r1: warm (2391/2394)
+[18:29:01]   5m r2: warm (2386/2389)
+[18:29:03]   5m r3: warm (2353/2356)
+[18:31:30]   7.5m r1: warm (2374/2377)
+[18:31:31]   7.5m r2: warm (2372/2375)
+[18:31:33]   7.5m r3: warm (2399/2402)
+[18:34:01]   10m r1: warm (2383/2386)
+[18:34:03]   10m r2: warm (2390/2393)
+[18:34:04]   10m r3: warm (2403/2406)
+[18:39:03]   15m r1: warm (2389/2392)
+[18:39:04]   15m r2: warm (2414/2417)
+[18:39:05]   15m r3: warm (2385/2388)
+[18:44:04]   20m r1: warm (2383/2386)
+[18:44:05]   20m r2: warm (2408/2411)
+[18:44:07]   20m r3: warm (2360/2363)
+[18:49:05]   25m r1: warm (2396/2399)
+[18:49:07]   25m r2: warm (2346/2349)
+[18:49:09]   25m r3: warm (2383/2386)
+[18:54:07]   30m r1: warm (2388/2391)
+[18:54:08]   30m r2: warm (2388/2391)
+[18:54:09]   30m r3: warm (2429/2432)
+[19:04:07]   40m r1: cold (0/2397)
+[19:04:09]   40m r2: cold (0/2397)
+[19:04:10]   40m r3: cold (0/2364)
+[19:14:09]   50m r1: cold (0/2401)
+[19:14:15]   50m r2: cold (0/2340)
+[19:14:17]   50m r3: cold (0/2400)
+[19:14:17] two consecutive ages fully cold: stopping
+
+# openai-sol-default
+
+- Endpoint: `https://api.openai.com/v1` · format `responses` · model `gpt-6.1-sol`
+- Started 2026-11-15T18:23:51.243Z, finished 2026-11-15T19:14:17.674Z · status **stopped-early**
+- Probe 0.2.0 · run salt `y9axevnk` · 3 replicas per age · prompt_cache_key per sample
+- Control: prime 0/2420 cached, re-send 2417/2420 → warm
+
+**Lifetime: 30m – 40m**
+
+| Age | Warm | Checks |
+|---|---|---|
+| 2.5m | 3 | 3 |
+| 5m | 3 | 3 |
+| 7.5m | 3 | 3 |
+| 10m | 3 | 3 |
+| 15m | 3 | 3 |
+| 20m | 3 | 3 |
+| 25m | 3 | 3 |
+| 30m | 3 | 3 |
+| 40m | 0 | 3 |
+| 50m | 0 | 3 |
+
+wrote results/openai-direct-2026-11-15/openai-sol-default-2026-11-15T18-23-51.json and results/openai-direct-2026-11-15/openai-sol-default-2026-11-15T18-23-51.md

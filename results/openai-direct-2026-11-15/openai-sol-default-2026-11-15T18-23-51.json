@@ -1,0 +1,286 @@
+{
+  "probeVersion": "0.2.0",
+  "label": "openai-sol-default",
+  "baseUrl": "https://api.openai.com/v1",
+  "format": "responses",
+  "model": "gpt-6.1-sol",
+  "runSalt": "y9axevnk",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000,
+    1200000,
+    1500000,
+    1800000,
+    2400000,
+    3000000,
+    3600000,
+    4500000,
+    5400000,
+    7200000,
+    14400000,
+    28800000,
+    43200000,
+    86400000
+  ],
+  "startedAt": "2026-11-15T18:23:51.243Z",
+  "status": "stopped-early",
+  "checks": [
+    {
+      "sampleId": "2.5m-r1",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 150006,
+      "promptTokens": 2394,
+      "cachedTokens": 2391,
+      "warm": true
+    },
+    {
+      "sampleId": "2.5m-r2",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 151877,
+      "promptTokens": 2409,
+      "cachedTokens": 2406,
+      "warm": true
+    },
+    {
+      "sampleId": "2.5m-r3",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 153560,
+      "promptTokens": 2416,
+      "cachedTokens": 2413,
+      "warm": true
+    },
+    {
+      "sampleId": "5m-r1",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300001,
+      "promptTokens": 2394,
+      "cachedTokens": 2391,
+      "warm": true
+    },
+    {
+      "sampleId": "5m-r2",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300630,
+      "promptTokens": 2389,
+      "cachedTokens": 2386,
+      "warm": true
+    },
+    {
+      "sampleId": "5m-r3",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 301728,
+      "promptTokens": 2356,
+      "cachedTokens": 2353,
+      "warm": true
+    },
+    {
+      "sampleId": "7.5m-r1",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450001,
+      "promptTokens": 2377,
+      "cachedTokens": 2374,
+      "warm": true
+    },
+    {
+      "sampleId": "7.5m-r2",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 451148,
+      "promptTokens": 2375,
+      "cachedTokens": 2372,
+      "warm": true
+    },
+    {
+      "sampleId": "7.5m-r3",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 451356,
+      "promptTokens": 2402,
+      "cachedTokens": 2399,
+      "warm": true
+    },
+    {
+      "sampleId": "10m-r1",
+      "targetAgeMs": 600000,
+      "actualAgeMs": 600002,
+      "promptTokens": 2386,
+      "cachedTokens": 2383,
+      "warm": true
+    },
+    {
+      "sampleId": "10m-r2",
+      "targetAgeMs": 600000,
+      "actualAgeMs": 600974,
+      "promptTokens": 2393,
+      "cachedTokens": 2390,
+      "warm": true
+    },
+    {
+      "sampleId": "10m-r3",
+      "targetAgeMs": 600000,
+      "actualAgeMs": 601985,
+      "promptTokens": 2406,
+      "cachedTokens": 2403,
+      "warm": true
+    },
+    {
+      "sampleId": "15m-r1",
+      "targetAgeMs": 900000,
+      "actualAgeMs": 900002,
+      "promptTokens": 2392,
+      "cachedTokens": 2389,
+      "warm": true
+    },
+    {
+      "sampleId": "15m-r2",
+      "targetAgeMs": 900000,
+      "actualAgeMs": 901154,
+      "promptTokens": 2417,
+      "cachedTokens": 2414,
+      "warm": true
+    },
+    {
+      "sampleId": "15m-r3",
+      "targetAgeMs": 900000,
+      "actualAgeMs": 902176,
+      "promptTokens": 2388,
+      "cachedTokens": 2385,
+      "warm": true
+    },
+    {
+      "sampleId": "20m-r1",
+      "targetAgeMs": 1200000,
+      "actualAgeMs": 1200002,
+      "promptTokens": 2386,
+      "cachedTokens": 2383,
+      "warm": true
+    },
+    {
+      "sampleId": "20m-r2",
+      "targetAgeMs": 1200000,
+      "actualAgeMs": 1200735,
+      "promptTokens": 2411,
+      "cachedTokens": 2408,
+      "warm": true
+    },
+    {
+      "sampleId": "20m-r3",
+      "targetAgeMs": 1200000,
+      "actualAgeMs": 1201986,
+      "promptTokens": 2363,
+      "cachedTokens": 2360,
+      "warm": true
+    },
+    {
+      "sampleId": "25m-r1",
+      "targetAgeMs": 1500000,
+      "actualAgeMs": 1500003,
+      "promptTokens": 2399,
+      "cachedTokens": 2396,
+      "warm": true
+    },
+    {
+      "sampleId": "25m-r2",
+      "targetAgeMs": 1500000,
+      "actualAgeMs": 1500754,
+      "promptTokens": 2349,
+      "cachedTokens": 2346,
+      "warm": true
+    },
+    {
+      "sampleId": "25m-r3",
+      "targetAgeMs": 1500000,
+      "actualAgeMs": 1502458,
+      "promptTokens": 2386,
+      "cachedTokens": 2383,
+      "warm": true
+    },
+    {
+      "sampleId": "30m-r1",
+      "targetAgeMs": 1800000,
+      "actualAgeMs": 1800005,
+      "promptTokens": 2391,
+      "cachedTokens": 2388,
+      "warm": true
+    },
+    {
+      "sampleId": "30m-r2",
+      "targetAgeMs": 1800000,
+      "actualAgeMs": 1801302,
+      "promptTokens": 2391,
+      "cachedTokens": 2388,
+      "warm": true
+    },
+    {
+      "sampleId": "30m-r3",
+      "targetAgeMs": 1800000,
+      "actualAgeMs": 1802583,
+      "promptTokens": 2432,
+      "cachedTokens": 2429,
+      "warm": true
+    },
+    {
+      "sampleId": "40m-r1",
+      "targetAgeMs": 2400000,
+      "actualAgeMs": 2400010,
+      "promptTokens": 2397,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "40m-r2",
+      "targetAgeMs": 2400000,
+      "actualAgeMs": 2401817,
+      "promptTokens": 2397,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "40m-r3",
+      "targetAgeMs": 2400000,
+      "actualAgeMs": 2402370,
+      "promptTokens": 2364,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "50m-r1",
+      "targetAgeMs": 3000000,
+      "actualAgeMs": 3000015,
+      "promptTokens": 2401,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "50m-r2",
+      "targetAgeMs": 3000000,
+      "actualAgeMs": 3002857,
+      "promptTokens": 2340,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "50m-r3",
+      "targetAgeMs": 3000000,
+      "actualAgeMs": 3008024,
+      "promptTokens": 2400,
+      "cachedTokens": 0,
+      "warm": false
+    }
+  ],
+  "control": {
+    "prime": {
+      "promptTokens": 2420,
+      "cachedTokens": 0
+    },
+    "check": {
+      "promptTokens": 2420,
+      "cachedTokens": 2417
+    },
+    "warm": true
+  },
+  "finishedAt": "2026-11-15T19:14:17.674Z"
+}

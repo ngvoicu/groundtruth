@@ -112,6 +112,11 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   (CS7, CS8) gives the same, measured with the probe's `--filler list`: Anthropic refused the default filler of random
   words on this model (category "bio"; CS5 and CS6 kept as records, not in `observed.json`). The filler does not change
   caching. See its README.
+- `openai-direct-2026-11-15/`: GPT-6.1 Sol straight to the OpenAI API with an API key, no proxy, 3 samples per age.
+  Default: warm through 30 minutes, cold at 40 and 50. With `prompt_cache_options.ttl: "12h"`: warm at every age to
+  12 hours, cold at 24. The run file does not record the request body: the 12-hour setting is known from the owner's
+  note on the run and its label, and the result agrees with it (the default run, started the same minute, was cold at
+  40 minutes). See its README.
 
 ## What this means
 

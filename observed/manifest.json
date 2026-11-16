@@ -1018,6 +1018,30 @@
     "ttl": "1h"
    },
    "note": "one Claude login (login A of two), pinned by a temporary alias that no other login or API key serves; the probe's `list` filler (plain numbered sentences): Anthropic refused the default filler of random words on this model (category \"bio\", CS5 and CS6)"
+  },
+  {
+   "id": "openai-direct-2026-11-15/openai-sol-default",
+   "file": "results/openai-direct-2026-11-15/openai-sol-default-2026-11-15T18-23-51.json",
+   "route": "openai-api",
+   "model": "gpt-6.1-sol",
+   "client": "direct",
+   "models_dev": "openai/gpt-6.1-sol",
+   "base_model": "openai/gpt-6.1-sol"
+  },
+  {
+   "id": "openai-direct-2026-11-15/openai-sol-12h",
+   "file": "results/openai-direct-2026-11-15/openai-sol-12h-2026-11-15T18-23-51.json",
+   "route": "openai-api",
+   "model": "gpt-6.1-sol",
+   "client": "direct",
+   "models_dev": "openai/gpt-6.1-sol",
+   "base_model": "openai/gpt-6.1-sol",
+   "options": {
+    "prompt_cache_options": {
+     "ttl": "12h"
+    }
+   },
+   "note": "the run file does not record the request body: the setting is known from the owner's note on this run and its label, and the result agrees (the default run, started the same minute, was cold at 40 minutes)"
   }
  ],
  "excluded": [
