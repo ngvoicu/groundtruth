@@ -152,6 +152,26 @@ To add a run: publish its files under `results/`, add it to [`observed/manifest.
 (route, model, options: nothing that is a result), then run `python3 scripts/build_observed.py`. CI fails when
 `observed.json` doesn't match the raw files.
 
+## Contributing a measurement
+
+Anyone can contribute a measurement, providers included. providers.dev takes no payment for listing, correcting or
+measuring: a result is published whatever it shows. An accepted run appears on providers.dev on the entry it was
+taken on. [CONTRIBUTING.md](CONTRIBUTING.md) has the commands and the checklist.
+
+- **Measure with your own key**, straight against the provider. No proxy is needed. Run `--dry-run` first: it shows
+  the plan and the request and sends nothing. Then run without it, with `--out results/<folder>`. For input limits,
+  `python3 harness/limits.py --base-url <url> --model <id> --format <f> --lo <N> --hi <N> --out <file> --dry-run`.
+- **A pull request contains** the raw result files under `results/<folder>/` with a short README, the run in
+  `observed/manifest.json` (route, client, model and options, nothing that is a result), and `observed.json`
+  rebuilt by `python3 scripts/build_observed.py`.
+- **What is checked**: the pre-commit scan (no credential, e-mail address, home-folder path or session file), and CI,
+  which runs the same scan and rebuilds `observed.json` from the raw files and compares.
+- **A run is acceptable** when its control hit, it has the usual samples per age (three, from 2.5 minutes), and
+  nothing was left out silently: a run you leave out goes in `excluded` with its reason.
+- **A measurement has limits**: small samples, one account, one day.
+
+One maintainer, no promised response time. For anything that does not fit an issue: office@providers.dev.
+
 ## Pitfalls
 
 - **Minimum cacheable length.** Below it, nothing is ever cached (OpenAI 1,024 tokens; Anthropic 512–4,096 depending on
