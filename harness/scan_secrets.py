@@ -4,8 +4,9 @@
     python3 harness/scan_secrets.py results/<run folder> && git add results/<run folder>
 
 It collects every secret-looking value this machine uses for the measurements (the client's key file, the
-management key file, key and token fields of the CLIProxyAPI config, every string in the login files) and looks
-for them in the folder, plus the usual token shapes, e-mail addresses, home folder paths and pi session files
+management key file, key and token fields of the CLIProxyAPI config, every string in the login files, and the value
+of CACHE_PROBE_KEY when it is set: a contributor's own key) and looks for them in the folder, plus the usual token
+shapes, any e-mail address but office@providers.dev, home folder paths and pi session files
 (a session file stores pi's whole system prompt, with the names and paths of the owner's skills; they stay local). Values are never printed: a finding names
 the file and the field the value came from, so it can be judged.
 
@@ -27,7 +28,11 @@ LOGINS = os.environ.get("SCAN_LOGINS", HOME + "/.cli-proxy-api/*.json")
 # files) doesn't count.
 TOKEN_SHAPES = re.compile(r"(?<![A-Za-z0-9_+/=-])(sk-[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9._-]{20,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,})")
 HOME_PATH = re.compile(r"/(Users|home)/[A-Za-z0-9._-]+/")  # a personal folder path names the account and the folder layout
-EMAIL = re.compile(r"[\w.+-]+@(gmail|outlook|hotmail|yahoo|icloud|proton)\.[a-z.]+", re.I)
+# Any e-mail address, except the project's own public one.
+EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
+PUBLIC_EMAILS = {"office@providers.dev"}
+# A contributor's own key, read from the environment variable the probe reads it from (never printed).
+KEY_ENVS = ("CACHE_PROBE_KEY",)
 
 
 def collect():
@@ -64,6 +69,9 @@ def collect():
         where[0] = "config"
         for m in re.finditer(r"^\s*-?\s*([\w-]*(?:key|token|secret|password)[\w-]*):\s*[\"']?([^\"'\s#]+)", open(CONFIG).read(), re.I | re.M):
             add(m.group(2), " " + m.group(1))
+    for name in KEY_ENVS:
+        where[0] = f"environment variable {name}"
+        add(os.environ.get(name))
     for path in glob.glob(LOGINS):
         try:
             where[0] = "login file (" + os.path.basename(path).split("-")[0] + ")"
@@ -95,7 +103,7 @@ def main():
                     found.append("a value from " + "; ".join(origins[:4]))
                 if TOKEN_SHAPES.search(text):
                     found.append("something shaped like a token")
-                if EMAIL.search(text):
+                if any(m.group(0).lower() not in PUBLIC_EMAILS for m in EMAIL.finditer(text)):
                     found.append("an e-mail address")
                 if HOME_PATH.search(text):
                     found.append("a home folder path")
