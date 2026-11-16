@@ -109,7 +109,9 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   Messages format, 3 samples per age (CS1 – CS4). With no ttl and with `ttl: "1h"` alike: 3/3 warm at every age from
   2.5 minutes to 1 hour, 0/3 at 65 and 75 minutes. This is the 1-hour cache that CLIProxyAPI asks for on Claude logins,
   now measured; the usage of single writes (`tier.jsonl`) puts every cached token in the 1-hour tier. Claude Haiku 5.5
-  refuses the probe's filler text on this login (CS5, CS6): no result. See its README.
+  (CS7, CS8) gives the same, measured with the probe's `--filler list`: Anthropic refused the default filler of random
+  words on this model (category "bio"; CS5 and CS6 kept as records, not in `observed.json`). The filler does not change
+  caching. See its README.
 
 ## What this means
 

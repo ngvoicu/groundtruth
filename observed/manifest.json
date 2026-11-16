@@ -991,6 +991,33 @@
     "ttl": "1h"
    },
    "note": "one Claude login (login A of two), pinned by a temporary alias that no other login or API key serves"
+  },
+  {
+   "id": "claude-login-2026-11-16/CS7",
+   "file": "results/claude-login-2026-11-16/CS7-2026-11-16T21-07-43.json",
+   "route": "claude-subscription",
+   "model": "claude-haiku-5-5",
+   "client": "cliproxyapi",
+   "models_dev": null,
+   "base_model": "anthropic/claude-haiku-5-5",
+   "options": {
+    "format": "messages"
+   },
+   "note": "one Claude login (login A of two), pinned by a temporary alias that no other login or API key serves; the probe's `list` filler (plain numbered sentences): Anthropic refused the default filler of random words on this model (category \"bio\", CS5 and CS6); no ttl asked: CLIProxyAPI wrote the 1-hour cache tier itself (tier.jsonl)"
+  },
+  {
+   "id": "claude-login-2026-11-16/CS8",
+   "file": "results/claude-login-2026-11-16/CS8-2026-11-16T21-08-03.json",
+   "route": "claude-subscription",
+   "model": "claude-haiku-5-5",
+   "client": "cliproxyapi",
+   "models_dev": null,
+   "base_model": "anthropic/claude-haiku-5-5",
+   "options": {
+    "format": "messages",
+    "ttl": "1h"
+   },
+   "note": "one Claude login (login A of two), pinned by a temporary alias that no other login or API key serves; the probe's `list` filler (plain numbered sentences): Anthropic refused the default filler of random words on this model (category \"bio\", CS5 and CS6)"
   }
  ],
  "excluded": [
