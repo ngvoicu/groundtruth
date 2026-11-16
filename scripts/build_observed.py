@@ -203,42 +203,151 @@ def build_cache(manifest):
     return entries
 
 
-def check_evidence(rows, item):
-    """Every number in a limits entry must be backed by a row of the raw limits file."""
+# The fields of a limits row that count tokens, as providers.dev reads them (site/src/core/schema.ts, ObservedLimit).
+LIMIT_TOKEN_FIELDS = ("context", "output", "input_accepted", "input_refused", "input_read", "output_accepted")
+LIMIT_KEYS = ("route", "client", "model", "models_dev", "base_model", *LIMIT_TOKEN_FIELDS, "note", "date")
+DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def raw_n(row):
+    """The size of a request in filler words. The 2026-11-08 Devin rows carry it only in their kind (devin-gpt-925000)."""
+    if isinstance(row.get("n"), int):
+        return row["n"]
+    m = re.search(r"-(\d+)$", row.get("kind") or "")
+    return int(m.group(1)) if m else None
+
+
+def refused(row):
+    return row.get("status") is not None and row.get("status") != 200
+
+
+def check_evidence(rows, item, name):
+    """Every number in a limits entry must be backed by a row of the raw limits file. Returns the rows that back it
+    and the values each piece of evidence proves ({field: value})."""
+    used, proves = [], {}
+
+    def prove(field, value):
+        proves.setdefault(field, set()).add(value)
+
     for ev in item["evidence"]:
         model = ev["row_model"]
         mine = [r for r in rows if r.get("model") == model]
         if "accepted" in ev:
-            ok = any(r.get("status") == 200 and r.get("promptTokens") == ev["accepted"] for r in mine)
+            hits = [r for r in mine if r.get("status") == 200 and r.get("promptTokens") == ev["accepted"]]
+            prove("input_accepted", ev["accepted"])
+        elif "read" in ev:
+            # A request with a code word before the filler and one after it, both returned: the input was read to the end.
+            words = ev.get("words") or []
+            hits = [r for r in mine if r.get("kind") == "recall" and r.get("status") == 200
+                    and r.get("promptTokens") == ev["read"] and words and all(w in (r.get("reply") or "") for w in words)]
+            prove("input_read", ev["read"])
+        elif "refused_tokens" in ev:
+            # A refusal that states no count: its size in filler words, converted with tokens = per_n × N + overhead,
+            # which every accepted request of the same model in the file must fit exactly.
+            per, over, size = ev["per_n"], ev["overhead"], ev["refused_n"]
+            if per * size + over != ev["refused_tokens"]:
+                raise SystemExit(f"{name}: {per} × {size} + {over} is not {ev['refused_tokens']}")
+            hits = [r for r in mine if refused(r) and raw_n(r) == size]
+            fits = [r for r in mine if r.get("status") == 200 and isinstance(r.get("promptTokens"), int) and r["promptTokens"] > 0
+                    and raw_n(r) is not None and r.get("kind") not in ("output", "output-step")]
+            if not fits or any(per * raw_n(r) + over != r["promptTokens"] for r in fits):
+                raise SystemExit(f"{name}: the accepted requests of {model} do not fit tokens = {per} × N + {over}")
+            prove("input_refused", ev["refused_tokens"])
+        elif "refused_stated" in ev:
+            # A refusal that states its own count ("The input (1050182 tokens) exceeds ...").
+            hits = [r for r in mine if refused(r) and re.search(rf"\b{ev['refused_stated']} tokens", r.get("message") or "")]
+            prove("input_refused", ev["refused_stated"])
         elif "refused_n" in ev:
-            ok = any(r.get("status") != 200 and r.get("n") == ev["refused_n"] for r in mine)
+            hits = [r for r in mine if refused(r) and r.get("n") == ev["refused_n"]]
         elif "refused_kind" in ev:
-            ok = any(r.get("status") != 200 and r.get("kind") == ev["refused_kind"] for r in mine)
+            hits = [r for r in mine if refused(r) and r.get("kind") == ev["refused_kind"]]
         elif "output_step" in ev:
-            ok = any(r.get("status") == 200 and r.get("maxTokens") == ev["output_step"] for r in mine)
+            hits = [r for r in mine if r.get("status") == 200 and r.get("maxTokens") == ev["output_step"]]
+            prove("output_accepted", ev["output_step"])
         elif "message_has" in ev:
-            ok = any(ev["message_has"] in (r.get("message") or "") for r in mine)
+            hits = [r for r in mine if ev["message_has"] in (r.get("message") or "")]
+            for n in re.findall(r"\d+", ev["message_has"]):
+                prove("named", int(n))
         elif "ctx_message_has" in ev:
-            ok = any(ev["ctx_message_has"] in str((r.get("ctx") or ["", ""])[1]) for r in mine)
+            hits = [r for r in mine if ev["ctx_message_has"] in str((r.get("ctx") or ["", ""])[1])]
+            for n in re.findall(r"\d+", ev["ctx_message_has"]):
+                prove("named", int(n))
         else:
-            ok = False
-        if not ok:
-            raise SystemExit(f"limits {item['route']} {item['model']}: no raw row backs {ev}")
+            hits = []
+        if not hits:
+            raise SystemExit(f"{name}: no raw row backs {ev}")
+        used.extend(hits)
+    return used, proves
+
+
+def check_limit(entry, name):
+    """What providers.dev refuses in a limits row (site/design/usable-input-window.md, sections 6 and 9)."""
+    if entry["route"] not in ROUTES or entry["client"] not in CLIENTS:
+        raise SystemExit(f"{name}: unknown route or client")
+    for field in LIMIT_TOKEN_FIELDS:
+        value = entry.get(field)
+        if value is not None and not (isinstance(value, int) and not isinstance(value, bool) and value >= 0):
+            raise SystemExit(f"{name}: {field} {value!r} is not a token count (a whole number, 0 or more)")
+    accepted, refused_, named, read = (entry.get(k) for k in ("input_accepted", "input_refused", "context", "input_read"))
+    if refused_ is not None and accepted is None:
+        raise SystemExit(f"{name}: input_refused {refused_} with no input_accepted from the same walk")
+    if accepted is not None and refused_ is not None and not accepted < refused_:
+        raise SystemExit(f"{name}: input_accepted {accepted} is not below input_refused {refused_}")
+    if accepted is not None and named is not None and accepted > named:
+        raise SystemExit(f"{name}: input_accepted {accepted} is above context {named}")
+    if read is not None and accepted is None:
+        raise SystemExit(f"{name}: input_read {read} with no input_accepted")
+    if read is not None and read > accepted:
+        raise SystemExit(f"{name}: input_read {read} is above input_accepted {accepted}")
+    if not any(entry.get(f) is not None for f in LIMIT_TOKEN_FIELDS):
+        raise SystemExit(f"{name}: no limit in the row")
+    if entry.get("date") is not None and not (isinstance(entry["date"], str) and DATE.fullmatch(entry["date"])):
+        raise SystemExit(f"{name}: date {entry.get('date')!r} is not YYYY-MM-DD")
+    if entry.get("note") is not None and not isinstance(entry["note"], str):
+        raise SystemExit(f"{name}: note is not text")
 
 
 def build_limits(manifest):
     files = {}
     out = []
+    seen = set()
     for item in manifest["limits"]:
+        name = f"limits row {item.get('route')} / {item.get('client')} / {item.get('model')}"
+        unknown = set(item) - set(LIMIT_KEYS) - {"evidence", "file"}
+        if unknown:
+            raise SystemExit(f"{name}: unknown keys {sorted(unknown)}")
+        key = (item["route"], item["client"], item["model"])
+        if key in seen:
+            raise SystemExit(f"{name}: two rows with the same route, client and model (one row each; a new walk replaces it)")
+        seen.add(key)
+        check_limit(item, name)
         path = item.get("file") or manifest["limits_file"]
         if path not in files:
             files[path] = [json.loads(line) for line in open(os.path.join(ROOT, path)) if line.strip()]
-        check_evidence(files[path], item)
-        entry = {k: v for k, v in item.items() if k not in ("evidence", "file")}
-        entry.setdefault("models_dev", None)
+        used, proves = check_evidence(files[path], item, name)
+        # Every token count of the row is one that a piece of its evidence proves.
+        for field in ("input_accepted", "input_refused", "input_read", "output_accepted"):
+            if item.get(field) is not None and item[field] not in proves.get(field, ()):
+                raise SystemExit(f"{name}: {field} {item[field]} is not backed by its evidence")
+        for field in ("context", "output"):
+            if item.get(field) is not None and item[field] not in proves.get("named", ()):
+                raise SystemExit(f"{name}: {field} {item[field]} is not named in a raw row's message")
+        # The date: the day the requests were sent, from the raw rows (the newest that backs the row). Only rows that
+        # carry no time may take it from the manifest.
+        days = sorted({r["at"][:10] for r in used if isinstance(r.get("at"), str)})
+        if days:
+            if item.get("date") not in (None, days[-1]):
+                raise SystemExit(f"{name}: date {item['date']} differs from its raw rows ({days[-1]})")
+            date = days[-1]
+        elif item.get("date"):
+            date = item["date"]
+        else:
+            raise SystemExit(f"{name}: its raw rows carry no time, so the manifest must give the date")
+        entry = {"models_dev": None, **{k: v for k, v in item.items() if k not in ("evidence", "file")}, "date": date}
+        entry = {k: entry[k] for k in LIMIT_KEYS if k in entry}
         entry["source"] = path
         out.append(entry)
-    out.sort(key=lambda e: (e["route"], e["model"]))
+    out.sort(key=lambda e: (e["route"], e["model"], e["client"]))
     return out
 
 

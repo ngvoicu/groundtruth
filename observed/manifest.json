@@ -1080,10 +1080,6 @@
   {
    "id": "openrouter-flash-2026-11-12/F1",
    "reason": "stopped at the control: the ~2,600-token prompt was cached only in part (1,280 of 2,661 tokens); F2 repeats it with a larger prompt"
-  },
-  {
-   "id": "limits-2026-11-08/limits.jsonl:probe-codex-gpt-6.1-terra",
-   "reason": "owner chose to keep the documented 922,000 input limit: 920,870 prompt tokens accepted, request size 921,875 refused just below it"
   }
  ],
  "limits": [
@@ -1094,6 +1090,7 @@
    "base_model": "anthropic/claude-opus-5-5",
    "context": 1000000,
    "output": 128000,
+   "input_accepted": 998953,
    "evidence": [
     {
      "row_model": "sub/claude-opus-5-5",
@@ -1107,7 +1104,8 @@
      "row_model": "sub/claude-opus-5-5",
      "message_has": "> 128000, which is the maximum allowed number of output tokens"
     }
-   ]
+   ],
+   "note": "the refusal names the window (\"prompt is too long: 1010190 tokens > 1000000 maximum\"); a request of 998,953 tokens just under it was accepted"
   },
   {
    "route": "claude-subscription",
@@ -1116,6 +1114,7 @@
    "base_model": "anthropic/claude-sonnet-5-5",
    "context": 1000000,
    "output": 128000,
+   "input_accepted": 998953,
    "evidence": [
     {
      "row_model": "probe-claude-sonnet-5-5",
@@ -1129,7 +1128,8 @@
      "row_model": "probe-claude-sonnet-5-5",
      "message_has": "> 128000, which is the maximum allowed number of output tokens"
     }
-   ]
+   ],
+   "note": "the refusal names the window (\"prompt is too long: 1010190 tokens > 1000000 maximum\"); a request of 998,953 tokens just under it was accepted"
   },
   {
    "route": "claude-subscription",
@@ -1138,6 +1138,7 @@
    "base_model": "anthropic/claude-haiku-5-5",
    "context": 1000000,
    "output": 128000,
+   "input_accepted": 998953,
    "evidence": [
     {
      "row_model": "sub/claude-haiku-5-5",
@@ -1151,7 +1152,8 @@
      "row_model": "sub/claude-haiku-5-5",
      "message_has": "> 128000, which is the maximum allowed number of output tokens"
     }
-   ]
+   ],
+   "note": "the refusal names the window (\"prompt is too long: 1010190 tokens > 1000000 maximum\"); a request of 998,953 tokens just under it was accepted"
   },
   {
    "route": "devin",
@@ -1159,8 +1161,8 @@
    "model": "gpt-6-1-sol",
    "base_model": "openai/gpt-6.1-sol",
    "input_accepted": 915390,
-   "input_refused": 925000,
-   "note": "Devin's own model list says 1,000,000",
+   "input_refused": 925390,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 925,000 filler words, which at 1 token per word plus 390 is 925,390 tokens (the accepted request: 915,000 words, 915,390 tokens; 1 token per word as on Devin's GPT-6.1 Terra, GPT-6 Astra and GPT-6 Luna walks of 2026-11-16, two accepted sizes each, each N + 390). The two rows carry no time: they were added to the 2026-11-08 file on 2026-11-09 (commit 5b26ed7, not in the commit of 08:19 that day) and are dated 2026-11-09",
    "evidence": [
     {
      "row_model": "probe-devin-gpt-6-1-sol",
@@ -1168,9 +1170,13 @@
     },
     {
      "row_model": "probe-devin-gpt-6-1-sol",
-     "refused_kind": "devin-gpt-925000"
+     "refused_n": 925000,
+     "per_n": 1,
+     "overhead": 390,
+     "refused_tokens": 925390
     }
-   ]
+   ],
+   "date": "2026-11-09"
   },
   {
    "route": "meta-subscription",
@@ -1209,7 +1215,8 @@
      "row_model": "openai/gpt-6.1-sol",
      "ctx_message_has": "maximum context length is 1050000 tokens"
     }
-   ]
+   ],
+   "date": "2026-11-08"
   },
   {
    "route": "openrouter",
@@ -1223,7 +1230,8 @@
      "row_model": "openai/gpt-6.1-terra",
      "ctx_message_has": "maximum context length is 1050000 tokens"
     }
-   ]
+   ],
+   "date": "2026-11-08"
   },
   {
    "route": "openrouter",
@@ -1237,7 +1245,8 @@
      "row_model": "anthropic/claude-opus-5.5",
      "ctx_message_has": "maximum context length is 1000000 tokens"
     }
-   ]
+   ],
+   "date": "2026-11-08"
   },
   {
    "route": "openrouter",
@@ -1251,7 +1260,8 @@
      "row_model": "anthropic/claude-sonnet-5.5",
      "ctx_message_has": "maximum context length is 1000000 tokens"
     }
-   ]
+   ],
+   "date": "2026-11-08"
   },
   {
    "route": "openrouter",
@@ -1265,7 +1275,8 @@
      "row_model": "anthropic/claude-haiku-5.5",
      "ctx_message_has": "maximum context length is 1000000 tokens"
     }
-   ]
+   ],
+   "date": "2026-11-08"
   },
   {
    "route": "openrouter",
@@ -1279,7 +1290,8 @@
      "row_model": "google/gemini-4-argon",
      "ctx_message_has": "maximum context length is 1048576 tokens"
     }
-   ]
+   ],
+   "date": "2026-11-08"
   },
   {
    "route": "openrouter",
@@ -1293,7 +1305,8 @@
      "row_model": "moonshotai/kimi-k3.1-pro",
      "ctx_message_has": "maximum context length is 1048576 tokens"
     }
-   ]
+   ],
+   "date": "2026-11-08"
   },
   {
    "route": "openrouter",
@@ -1307,7 +1320,8 @@
      "row_model": "deepseek/deepseek-v4.1-flash",
      "ctx_message_has": "maximum context length is 1048576 tokens"
     }
-   ]
+   ],
+   "date": "2026-11-08"
   },
   {
    "route": "openrouter",
@@ -1321,7 +1335,8 @@
      "row_model": "meta/muse-wonder",
      "ctx_message_has": "maximum context length is 1048576 tokens"
     }
-   ]
+   ],
+   "date": "2026-11-08"
   },
   {
    "route": "codex-subscription",
@@ -1329,9 +1344,9 @@
    "model": "gpt-6-astra",
    "base_model": "openai/gpt-6-astra",
    "input_accepted": 915011,
-   "input_refused": 922500,
+   "input_refused": 922511,
    "file": "results/gpt6-2026-11-11/limits.jsonl",
-   "note": "Codex's own model list gives a 272K default window and an 872K maximum for this model",
+   "note": "Codex's own model list gives a 272K default window and an 872K maximum for this model. The refusal gives no count: it held 922,500 filler words, which at 1 token per word plus 11 is 922,511 tokens (the accepted request: 915,000 words, 915,011 tokens; 1 token per word as on this login's GPT-6.1 Terra walk of 2026-11-08, six accepted sizes, each N + 11)",
    "evidence": [
     {
      "row_model": "probe/gpt-6-astra",
@@ -1339,7 +1354,10 @@
     },
     {
      "row_model": "probe/gpt-6-astra",
-     "refused_n": 922500
+     "refused_n": 922500,
+     "per_n": 1,
+     "overhead": 11,
+     "refused_tokens": 922511
     }
    ]
   },
@@ -1349,9 +1367,9 @@
    "model": "gpt-6-luna",
    "base_model": "openai/gpt-6-luna",
    "input_accepted": 915011,
-   "input_refused": 922500,
+   "input_refused": 922511,
    "file": "results/gpt6-2026-11-11/limits.jsonl",
-   "note": "Codex's own model list gives a 272K default window and an 872K maximum for this model",
+   "note": "Codex's own model list gives a 272K default window and an 872K maximum for this model. The refusal gives no count: it held 922,500 filler words, which at 1 token per word plus 11 is 922,511 tokens (the accepted request: 915,000 words, 915,011 tokens; 1 token per word as on this login's GPT-6.1 Terra walk of 2026-11-08, six accepted sizes, each N + 11)",
    "evidence": [
     {
      "row_model": "probe/gpt-6-luna",
@@ -1359,7 +1377,10 @@
     },
     {
      "row_model": "probe/gpt-6-luna",
-     "refused_n": 922500
+     "refused_n": 922500,
+     "per_n": 1,
+     "overhead": 11,
+     "refused_tokens": 922511
     }
    ]
   },
@@ -1369,9 +1390,9 @@
    "model": "gpt-6.1-sol",
    "base_model": "openai/gpt-6.1-sol",
    "input_accepted": 915011,
-   "input_refused": 922500,
+   "input_refused": 922511,
    "file": "results/limits-2026-11-13/limits.jsonl",
-   "note": "Codex's own model list gives a 500K default window and an 872K maximum for this model",
+   "note": "Codex's own model list gives a 500K default window and an 872K maximum for this model. The refusal gives no count: it held 922,500 filler words, which at 1 token per word plus 11 is 922,511 tokens (the accepted request: 915,000 words, 915,011 tokens; 1 token per word as on this login's GPT-6.1 Terra walk of 2026-11-08, six accepted sizes, each N + 11)",
    "evidence": [
     {
      "row_model": "probe/gpt-6.1-sol",
@@ -1379,7 +1400,10 @@
     },
     {
      "row_model": "probe/gpt-6.1-sol",
-     "refused_n": 922500
+     "refused_n": 922500,
+     "per_n": 1,
+     "overhead": 11,
+     "refused_tokens": 922511
     }
    ]
   },
@@ -1431,8 +1455,8 @@
    "model": "glm-5-3",
    "base_model": "zhipuai/glm-5.3",
    "input_accepted": 1047470,
-   "input_refused": 1052451,
-   "note": "Devin's own model list says 1,048,576; the refusal names no limit",
+   "input_refused": 1052845,
+   "note": "Devin's own model list says 1,048,576; the refusal names no limit. It held 1,052,451 filler words, which at 1 token per word plus 394 is 1,052,845 tokens (both accepted requests of this model fit: 1,047,076 words, 1,047,470 tokens, and the calibration request of 2026-11-17 00:27, 100,000 words, 100,394 tokens)",
    "file": "results/limits-2026-11-16/limits.jsonl",
    "evidence": [
     {
@@ -1441,7 +1465,10 @@
     },
     {
      "row_model": "devin/glm-5-3",
-     "refused_n": 1052451
+     "refused_n": 1052451,
+     "per_n": 1,
+     "overhead": 394,
+     "refused_tokens": 1052845
     }
    ]
   },
@@ -1451,8 +1478,8 @@
    "model": "deepseek-v4-1-flash-1017",
    "base_model": "deepseek/deepseek-v4.1-flash-1017",
    "input_accepted": 1047489,
-   "input_refused": 1052451,
-   "note": "Devin's own model list says 1,048,576; the refusal names no limit",
+   "input_refused": 1052864,
+   "note": "Devin's own model list says 1,048,576; the refusal names no limit. It held 1,052,451 filler words, which at 1 token per word plus 413 is 1,052,864 tokens (both accepted requests of this model fit: 1,047,076 words, 1,047,489 tokens, and the calibration request of 2026-11-17 00:27, 100,000 words, 100,413 tokens)",
    "file": "results/limits-2026-11-16/limits.jsonl",
    "evidence": [
     {
@@ -1461,7 +1488,10 @@
     },
     {
      "row_model": "devin/deepseek-v4-1-flash-1017",
-     "refused_n": 1052451
+     "refused_n": 1052451,
+     "per_n": 1,
+     "overhead": 413,
+     "refused_tokens": 1052864
     }
    ]
   },
@@ -1471,8 +1501,8 @@
    "model": "deepseek-v4-pro",
    "base_model": "deepseek/deepseek-v4-pro",
    "input_accepted": 1047542,
-   "input_refused": 1052451,
-   "note": "Devin's own model list says 1,048,576; the refusal names no limit",
+   "input_refused": 1052917,
+   "note": "Devin's own model list says 1,048,576; the refusal names no limit. It held 1,052,451 filler words, which at 1 token per word plus 466 is 1,052,917 tokens (both accepted requests of this model fit: 1,047,076 words, 1,047,542 tokens, and the calibration request of 2026-11-17 00:27, 100,000 words, 100,466 tokens)",
    "file": "results/limits-2026-11-16/limits.jsonl",
    "evidence": [
     {
@@ -1481,7 +1511,10 @@
     },
     {
      "row_model": "devin/deepseek-v4-pro",
-     "refused_n": 1052451
+     "refused_n": 1052451,
+     "per_n": 1,
+     "overhead": 466,
+     "refused_tokens": 1052917
     }
    ]
   },
@@ -1491,8 +1524,8 @@
    "model": "gemini-4-argon",
    "base_model": "google/gemini-4-argon",
    "input_accepted": 1047490,
-   "input_refused": 1052451,
-   "note": "Devin's own model list says 1,048,576; the refusal names no limit",
+   "input_refused": 1052865,
+   "note": "Devin's own model list says 1,048,576; the refusal names no limit. It held 1,052,451 filler words, which at 1 token per word plus 414 is 1,052,865 tokens (both accepted requests of this model fit: 1,047,076 words, 1,047,490 tokens, and the calibration request of 2026-11-17 00:27, 100,000 words, 100,414 tokens)",
    "file": "results/limits-2026-11-16/limits.jsonl",
    "evidence": [
     {
@@ -1501,7 +1534,10 @@
     },
     {
      "row_model": "devin/gemini-4-argon",
-     "refused_n": 1052451
+     "refused_n": 1052451,
+     "per_n": 1,
+     "overhead": 414,
+     "refused_tokens": 1052865
     }
    ]
   },
@@ -1511,8 +1547,8 @@
    "model": "gpt-6-1-terra",
    "base_model": "openai/gpt-6.1-terra",
    "input_accepted": 911390,
-   "input_refused": 923500,
-   "note": "Devin's own model list says 1,000,000; the refusal names no limit",
+   "input_refused": 923890,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 923,500 filler words, which at 1 token per word plus 390 is 923,890 tokens (both accepted requests of this model fit: 898,500 words, 898,890 tokens, and 911,000 words, 911,390 tokens)",
    "file": "results/limits-2026-11-16/limits.jsonl",
    "evidence": [
     {
@@ -1521,7 +1557,10 @@
     },
     {
      "row_model": "devin/gpt-6-1-terra",
-     "refused_n": 923500
+     "refused_n": 923500,
+     "per_n": 1,
+     "overhead": 390,
+     "refused_tokens": 923890
     }
    ]
   },
@@ -1531,8 +1570,8 @@
    "model": "gpt-6-astra",
    "base_model": "openai/gpt-6-astra",
    "input_accepted": 911390,
-   "input_refused": 923500,
-   "note": "Devin's own model list says 1,000,000; the refusal names no limit",
+   "input_refused": 923890,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 923,500 filler words, which at 1 token per word plus 390 is 923,890 tokens (both accepted requests of this model fit: 898,500 words, 898,890 tokens, and 911,000 words, 911,390 tokens)",
    "file": "results/limits-2026-11-16/limits.jsonl",
    "evidence": [
     {
@@ -1541,7 +1580,10 @@
     },
     {
      "row_model": "devin/gpt-6-astra",
-     "refused_n": 923500
+     "refused_n": 923500,
+     "per_n": 1,
+     "overhead": 390,
+     "refused_tokens": 923890
     }
    ]
   },
@@ -1551,8 +1593,8 @@
    "model": "gpt-6-luna",
    "base_model": "openai/gpt-6-luna",
    "input_accepted": 911390,
-   "input_refused": 923500,
-   "note": "Devin's own model list says 1,000,000; the refusal names no limit",
+   "input_refused": 923890,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 923,500 filler words, which at 1 token per word plus 390 is 923,890 tokens (both accepted requests of this model fit: 898,500 words, 898,890 tokens, and 911,000 words, 911,390 tokens)",
    "file": "results/limits-2026-11-16/limits.jsonl",
    "evidence": [
     {
@@ -1561,7 +1603,10 @@
     },
     {
      "row_model": "devin/gpt-6-luna",
-     "refused_n": 923500
+     "refused_n": 923500,
+     "per_n": 1,
+     "overhead": 390,
+     "refused_tokens": 923890
     }
    ]
   },
@@ -1572,7 +1617,7 @@
    "base_model": "anthropic/claude-haiku-5-5",
    "input_accepted": 999072,
    "input_refused": 1004446,
-   "note": "Devin's own model list says 1,000,000; the refusal names no limit. The refused request held 501,937 filler words; at 2 tokens per word plus 572 (the accepted request's count) that is 1,004,446 tokens",
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 501,937 filler words, which at 2 tokens per word plus 572 is 1,004,446 tokens (both accepted requests of this model fit: 499,250 words, 999,072 tokens, and the calibration request of 2026-11-17 00:28, 50,000 words, 100,572 tokens)",
    "file": "results/limits-2026-11-16/limits.jsonl",
    "evidence": [
     {
@@ -1581,7 +1626,10 @@
     },
     {
      "row_model": "devin/claude-haiku-5-5",
-     "refused_n": 501937
+     "refused_n": 501937,
+     "per_n": 2,
+     "overhead": 572,
+     "refused_tokens": 1004446
     }
    ]
   },
@@ -1592,7 +1640,7 @@
    "base_model": "anthropic/claude-sonnet-5-5",
    "input_accepted": 999072,
    "input_refused": 1004446,
-   "note": "Devin's own model list says 1,000,000; the refusal names no limit. The refused request held 501,937 filler words; at 2 tokens per word plus 572 (the accepted request's count) that is 1,004,446 tokens",
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 501,937 filler words, which at 2 tokens per word plus 572 is 1,004,446 tokens (both accepted requests of this model fit: 499,250 words, 999,072 tokens, and the calibration request of 2026-11-17 00:28, 50,000 words, 100,572 tokens)",
    "file": "results/limits-2026-11-16/limits.jsonl",
    "evidence": [
     {
@@ -1601,7 +1649,10 @@
     },
     {
      "row_model": "devin/claude-sonnet-5-5",
-     "refused_n": 501937
+     "refused_n": 501937,
+     "per_n": 2,
+     "overhead": 572,
+     "refused_tokens": 1004446
     }
    ]
   },
@@ -1612,7 +1663,7 @@
    "base_model": "anthropic/claude-opus-5-5",
    "input_accepted": 999072,
    "input_refused": 1004446,
-   "note": "Devin's own model list says 1,000,000; the refusal names no limit. The refused request held 501,937 filler words; at 2 tokens per word plus 572 (the accepted request's count) that is 1,004,446 tokens",
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 501,937 filler words, which at 2 tokens per word plus 572 is 1,004,446 tokens (both accepted requests of this model fit: 499,250 words, 999,072 tokens, and the calibration request of 2026-11-17 00:28, 50,000 words, 100,572 tokens)",
    "file": "results/limits-2026-11-16/limits.jsonl",
    "evidence": [
     {
@@ -1621,7 +1672,56 @@
     },
     {
      "row_model": "devin/claude-opus-5-5",
-     "refused_n": 501937
+     "refused_n": 501937,
+     "per_n": 2,
+     "overhead": 572,
+     "refused_tokens": 1004446
+    }
+   ]
+  },
+  {
+   "route": "codex-subscription",
+   "client": "cliproxyapi",
+   "model": "gpt-6.1-terra",
+   "base_model": "openai/gpt-6.1-terra",
+   "input_accepted": 920870,
+   "input_refused": 921886,
+   "note": "the limit is on input; official catalogs list a 272K window for this route. The refusal gives no count: it held 921,875 filler words, which at 1 token per word plus 11 is 921,886 tokens (all six accepted requests of the walk fit, 865,000 to 920,859 words, each N + 11). Within 1 % of the documented 922,000, so it is shown beside it and does not replace it (owner's decision of 2026-11-16)",
+   "evidence": [
+    {
+     "row_model": "probe-codex-gpt-6.1-terra",
+     "accepted": 920870
+    },
+    {
+     "row_model": "probe-codex-gpt-6.1-terra",
+     "refused_n": 921875,
+     "per_n": 1,
+     "overhead": 11,
+     "refused_tokens": 921886
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "swe-2",
+   "models_dev": null,
+   "input_accepted": 300499,
+   "input_read": 300499,
+   "file": "results/limits-2026-11-16/swe-2-recall.jsonl",
+   "note": "no edge found: no request was refused at any size tried, and Devin lists 262,000. Both code words (one before the filler, one after it) came back at 20,493, 200,497 and 300,499 tokens, so the model read those inputs to the end. Requests of up to 930,487 tokens were accepted on 2026-11-13 (results/limits-2026-11-13) with no check that they were read, and a both-ends request then got no answer at 250K and 300K within 5 minutes: those sizes are not in the row",
+   "evidence": [
+    {
+     "row_model": "devin/swe-2",
+     "accepted": 300499
+    },
+    {
+     "row_model": "devin/swe-2",
+     "read": 300499,
+     "words": [
+      "APRICOT",
+      "WALNUT"
+     ]
     }
    ]
   }
