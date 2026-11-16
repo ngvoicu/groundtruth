@@ -51,3 +51,10 @@
 {"kind": "context", "model": "devin/claude-opus-5-5", "n": 499250, "status": 200, "seconds": 67.3, "promptTokens": 999072, "message": null, "at": "2026-11-16T22:10:18"}
 {"kind": "context", "model": "devin/claude-opus-5-5", "n": 504625, "status": 400, "seconds": 1.7, "promptTokens": null, "message": "devin upstream error (invalid_argument): There is an issue with this request, please try a different model.", "at": "2026-11-16T22:10:19"}
 {"kind": "context", "model": "devin/claude-opus-5-5", "n": 501937, "status": 400, "seconds": 2.1, "promptTokens": null, "message": "devin upstream error (invalid_argument): There is an issue with this request, please try a different model.", "at": "2026-11-16T22:10:21"}
+{"kind": "calibrate", "model": "devin/glm-5-3", "n": 100000, "status": 200, "seconds": 1.4, "promptTokens": 100394, "message": null, "at": "2026-11-17T00:27:35"}
+{"kind": "calibrate", "model": "devin/deepseek-v4-1-flash-1017", "n": 100000, "status": 200, "seconds": 2.6, "promptTokens": 100413, "message": null, "at": "2026-11-17T00:27:37"}
+{"kind": "calibrate", "model": "devin/deepseek-v4-pro", "n": 100000, "status": 200, "seconds": 3.7, "promptTokens": 100466, "message": null, "at": "2026-11-17T00:27:41"}
+{"kind": "calibrate", "model": "devin/gemini-4-argon", "n": 100000, "status": 200, "seconds": 20.6, "promptTokens": 100414, "message": null, "at": "2026-11-17T00:28:02"}
+{"kind": "calibrate", "model": "devin/claude-haiku-5-5", "n": 50000, "status": 200, "seconds": 2.1, "promptTokens": 100572, "message": null, "at": "2026-11-17T00:28:04"}
+{"kind": "calibrate", "model": "devin/claude-sonnet-5-5", "n": 50000, "status": 200, "seconds": 2.4, "promptTokens": 100572, "message": null, "at": "2026-11-17T00:28:06"}
+{"kind": "calibrate", "model": "devin/claude-opus-5-5", "n": 50000, "status": 200, "seconds": 6.7, "promptTokens": 100572, "message": null, "at": "2026-11-17T00:28:13"}

@@ -29,22 +29,27 @@ requests per model, and a quota or rate refusal would have stopped the whole wal
 Devin's `400 invalid_argument: There is an issue with this request, please try a different model.`: it names no
 limit. Claude's tokenizer counts two tokens per " hello", so Claude requests used half the N.
 
-| Model | Listed window | Accepted (tokens counted) | Smallest refused N | Requests (accepted) |
-|---|---|---|---|---|
-| `devin/glm-5-3` | 1,048,576 | 1,047,470 | 1,052,451 | 4 (1) |
-| `devin/deepseek-v4-1-flash-1017` | 1,048,576 | 1,047,489 | 1,052,451 | 4 (1) |
-| `devin/deepseek-v4-pro` | 1,048,576 | 1,047,542 | 1,052,451 | 4 (1) |
-| `devin/gemini-4-argon` | 1,048,576 | 1,047,490 | 1,052,451 | 4 (1) |
-| `devin/gpt-6-1-terra` | 1,000,000 | 911,390 | 923,500 | 7 (2) |
-| `devin/gpt-6-astra` | 1,000,000 | 911,390 | 923,500 | 7 (2) |
-| `devin/gpt-6-luna` | 1,000,000 | 911,390 | 923,500 | 7 (2) |
-| `devin/claude-haiku-5-5` | 1,000,000 | 999,072 | 501,937 (≈ 1,004,446 tokens) | 4 (1) |
-| `devin/claude-sonnet-5-5` | 1,000,000 | 999,072 | 501,937 (≈ 1,004,446 tokens) | 4 (1) |
-| `devin/claude-opus-5-5` | 1,000,000 | 999,072 | 501,937 (≈ 1,004,446 tokens) | 4 (1) |
+| Model | Listed window | Accepted (tokens counted) | Smallest refused: N → tokens | Tokens per " hello", overhead | Requests (accepted) |
+|---|---|---|---|---|---|
+| `devin/glm-5-3` | 1,048,576 | 1,047,470 | 1,052,451 → 1,052,845 | 1, 394 | 5 (2) |
+| `devin/deepseek-v4-1-flash-1017` | 1,048,576 | 1,047,489 | 1,052,451 → 1,052,864 | 1, 413 | 5 (2) |
+| `devin/deepseek-v4-pro` | 1,048,576 | 1,047,542 | 1,052,451 → 1,052,917 | 1, 466 | 5 (2) |
+| `devin/gemini-4-argon` | 1,048,576 | 1,047,490 | 1,052,451 → 1,052,865 | 1, 414 | 5 (2) |
+| `devin/gpt-6-1-terra` | 1,000,000 | 911,390 | 923,500 → 923,890 | 1, 390 | 7 (2) |
+| `devin/gpt-6-astra` | 1,000,000 | 911,390 | 923,500 → 923,890 | 1, 390 | 7 (2) |
+| `devin/gpt-6-luna` | 1,000,000 | 911,390 | 923,500 → 923,890 | 1, 390 | 7 (2) |
+| `devin/claude-haiku-5-5` | 1,000,000 | 999,072 | 501,937 → 1,004,446 | 2, 572 | 5 (2) |
+| `devin/claude-sonnet-5-5` | 1,000,000 | 999,072 | 501,937 → 1,004,446 | 2, 572 | 5 (2) |
+| `devin/claude-opus-5-5` | 1,000,000 | 999,072 | 501,937 → 1,004,446 | 2, 572 | 5 (2) |
 
-GLM-5.3, both DeepSeek models and Gemini 4 Argon accept their listed 1,048,576 and refuse about 4,000 tokens more.
-The three Claude models accept 999,072 and refuse about 1,004,446 (the token count of a refused request is worked out
-from the accepted one: 2 tokens per " hello" plus 572). GPT-6.1 Terra, GPT-6 Astra and GPT-6 Luna accept 911,390 and
+**Turning a refused N into tokens.** Devin's refusals give no token count, so a refused size is worked out from the
+accepted requests of the same model: every one of them fits `tokens = ratio × N + overhead` exactly. Where the walk had
+only one accepted request, one small request (kind `calibrate`, N = 100,000, or 50,000 on Claude, sent at
+00:27–00:28 on 17 November) gives the second point. Every refusal in the file has an accepted request of the same model
+below it, and each row's `at` is when it was sent. The Meta refusals state their own count.
+
+GLM-5.3, both DeepSeek models and Gemini 4 Argon accept their listed 1,048,576 and refuse about 5,300 tokens more.
+The three Claude models accept 999,072 and refuse 1,004,446. GPT-6.1 Terra, GPT-6 Astra and GPT-6 Luna accept 911,390 and
 refuse 923,500 although Devin lists 1,000,000: the same ~922K input limit as GPT-6.1 Sol on Devin (915,390 accepted,
 925,000 refused, `../limits-2026-11-08`) and as these models on the ChatGPT plan.
 
@@ -69,5 +74,8 @@ effort, five minutes each):
 The first five asked for 16 output tokens, which the model's reasoning used up, so they show nothing. With 256 it
 named both words at every size tried, 300,499 tokens included, which is above its listed window and a size that got
 no answer three days earlier. That was the eighth and last request allowed, so there is still no edge: kept as a
-record, **not** in `observed.json`. Rows: `swe-2-recall.jsonl` (the `maxOutput` rows also record the response's
+record, **not** in `observed.json`. For a model that shows no refusal and names no window, the size that counts is
+the largest input whose reply shows both ends were read: here **300,499 tokens** (row of 2026-11-16 21:56), against
+930,487 tokens accepted without that proof on 2026-11-13. A both-ends request at 930K was not sent: the eight requests
+allowed for `swe-2` were used. Rows: `swe-2-recall.jsonl` (the `maxOutput` rows also record the response's
 status and output token count).

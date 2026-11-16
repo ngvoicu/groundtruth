@@ -3,6 +3,11 @@
 
     python3 results/limits-2026-11-16/devin_walk.py <out.jsonl> <model>:<listed window>[:<tokens per " hello">] ...
     python3 results/limits-2026-11-16/devin_walk.py <out.jsonl> --recall <model> <filler sizes, comma-separated> [max output]
+    python3 results/limits-2026-11-16/devin_walk.py <out.jsonl> --calibrate <model>:<N> ...
+
+--calibrate: one small request (kind "calibrate") per model, so that a walk with a single accepted request also has
+a second accepted size: the two give the tokens per " hello" and the overhead, which turn a refused N into tokens.
+A quota or rate refusal stops it, as the walk.
 
 Walk (Chat Completions format, "Reply with just OK." + " hello" x N, a 16-token reply; rows in the format of
 harness/limits.py): one request about 20,000 tokens above the listed window (a refusal is free). If it is accepted,
@@ -117,6 +122,16 @@ def recall(log, model, sizes, max_output):
 
 def main():
     log = open(sys.argv[1], "a")
+    if sys.argv[2] == "--calibrate":
+        for spec in sys.argv[3:]:
+            model, n = spec.split(":")
+            row = ask(log, model, int(n), kind="calibrate")
+            try:
+                outcome(row)
+            except Stop as stop:
+                if str(stop) == "quota":
+                    sys.exit(f"QUOTA STOP at {model}")
+        return
     if sys.argv[2] == "--recall":
         recall(log, sys.argv[3], [int(x) for x in sys.argv[4].split(",")], int(sys.argv[5]) if len(sys.argv) > 5 else 16)
         return
