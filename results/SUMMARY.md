@@ -99,6 +99,12 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   from 2.5 to 30 minutes (7 of 13 at 2.5 minutes), none at 40 minutes or 1 hour; no safe lifetime. DeepSeek: 13 of 13
   at 2.5 minutes, 12 of 13 at 5 minutes, then about 70% out to 1 hour with no trend; safe to 2.5 minutes. See its
   README.
+- `limits-2026-11-16/`: input limits on the Meta login and on Devin. Muse Ember 1.0 and Muse Spark 1.3: the refusal
+  names a 1,048,576-token window (input and output together); 1,047,604 accepted. Devin: GLM-5.3, DeepSeek V4.1 Flash,
+  DeepSeek V4 Pro and Gemini 4 Argon accept their listed 1,048,576 (about 1,047,500 accepted, refused about 4K more);
+  Claude Haiku, Sonnet and Opus 5.5 accept 999,072 and refuse about 1,004,000; GPT-6.1 Terra, GPT-6 Astra and GPT-6
+  Luna accept 911,390 and refuse 923,500 although Devin lists 1,000,000. `swe-2` read both ends of a 300K input (above
+  its listed 262K), no edge: kept as a record, not in `observed.json`. See its README.
 
 ## What this means
 

@@ -1277,6 +1277,248 @@
      "refused_n": 922500
     }
    ]
+  },
+  {
+   "route": "meta-subscription",
+   "client": "cliproxyapi",
+   "model": "muse-ember-1.0",
+   "base_model": "meta/muse-ember-1.0",
+   "models_dev": null,
+   "context": 1048576,
+   "input_accepted": 1047604,
+   "file": "results/limits-2026-11-16/limits.jsonl",
+   "note": "one window shared by input and output, named by the refusal; the output limit was not tested",
+   "evidence": [
+    {
+     "row_model": "muse-ember-1.0",
+     "accepted": 1047604
+    },
+    {
+     "row_model": "muse-ember-1.0",
+     "message_has": "context window of 1048576 tokens"
+    }
+   ]
+  },
+  {
+   "route": "meta-subscription",
+   "client": "cliproxyapi",
+   "model": "muse-spark-1.3",
+   "base_model": "meta/muse-spark-1.3",
+   "models_dev": null,
+   "context": 1048576,
+   "input_accepted": 1047604,
+   "file": "results/limits-2026-11-16/limits.jsonl",
+   "note": "one window shared by input and output, named by the refusal; the output limit was not tested",
+   "evidence": [
+    {
+     "row_model": "muse-spark-1.3",
+     "accepted": 1047604
+    },
+    {
+     "row_model": "muse-spark-1.3",
+     "message_has": "context window of 1048576 tokens"
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "glm-5-3",
+   "base_model": "zhipuai/glm-5.3",
+   "input_accepted": 1047470,
+   "input_refused": 1052451,
+   "note": "Devin's own model list says 1,048,576; the refusal names no limit",
+   "file": "results/limits-2026-11-16/limits.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/glm-5-3",
+     "accepted": 1047470
+    },
+    {
+     "row_model": "devin/glm-5-3",
+     "refused_n": 1052451
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "deepseek-v4-1-flash-1017",
+   "base_model": "deepseek/deepseek-v4.1-flash-1017",
+   "input_accepted": 1047489,
+   "input_refused": 1052451,
+   "note": "Devin's own model list says 1,048,576; the refusal names no limit",
+   "file": "results/limits-2026-11-16/limits.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/deepseek-v4-1-flash-1017",
+     "accepted": 1047489
+    },
+    {
+     "row_model": "devin/deepseek-v4-1-flash-1017",
+     "refused_n": 1052451
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "deepseek-v4-pro",
+   "base_model": "deepseek/deepseek-v4-pro",
+   "input_accepted": 1047542,
+   "input_refused": 1052451,
+   "note": "Devin's own model list says 1,048,576; the refusal names no limit",
+   "file": "results/limits-2026-11-16/limits.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/deepseek-v4-pro",
+     "accepted": 1047542
+    },
+    {
+     "row_model": "devin/deepseek-v4-pro",
+     "refused_n": 1052451
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "gemini-4-argon",
+   "base_model": "google/gemini-4-argon",
+   "input_accepted": 1047490,
+   "input_refused": 1052451,
+   "note": "Devin's own model list says 1,048,576; the refusal names no limit",
+   "file": "results/limits-2026-11-16/limits.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/gemini-4-argon",
+     "accepted": 1047490
+    },
+    {
+     "row_model": "devin/gemini-4-argon",
+     "refused_n": 1052451
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "gpt-6-1-terra",
+   "base_model": "openai/gpt-6.1-terra",
+   "input_accepted": 911390,
+   "input_refused": 923500,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit",
+   "file": "results/limits-2026-11-16/limits.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/gpt-6-1-terra",
+     "accepted": 911390
+    },
+    {
+     "row_model": "devin/gpt-6-1-terra",
+     "refused_n": 923500
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "gpt-6-astra",
+   "base_model": "openai/gpt-6-astra",
+   "input_accepted": 911390,
+   "input_refused": 923500,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit",
+   "file": "results/limits-2026-11-16/limits.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/gpt-6-astra",
+     "accepted": 911390
+    },
+    {
+     "row_model": "devin/gpt-6-astra",
+     "refused_n": 923500
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "gpt-6-luna",
+   "base_model": "openai/gpt-6-luna",
+   "input_accepted": 911390,
+   "input_refused": 923500,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit",
+   "file": "results/limits-2026-11-16/limits.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/gpt-6-luna",
+     "accepted": 911390
+    },
+    {
+     "row_model": "devin/gpt-6-luna",
+     "refused_n": 923500
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "claude-haiku-5-5",
+   "base_model": "anthropic/claude-haiku-5-5",
+   "input_accepted": 999072,
+   "input_refused": 1004446,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. The refused request held 501,937 filler words; at 2 tokens per word plus 572 (the accepted request's count) that is 1,004,446 tokens",
+   "file": "results/limits-2026-11-16/limits.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/claude-haiku-5-5",
+     "accepted": 999072
+    },
+    {
+     "row_model": "devin/claude-haiku-5-5",
+     "refused_n": 501937
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "claude-sonnet-5-5",
+   "base_model": "anthropic/claude-sonnet-5-5",
+   "input_accepted": 999072,
+   "input_refused": 1004446,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. The refused request held 501,937 filler words; at 2 tokens per word plus 572 (the accepted request's count) that is 1,004,446 tokens",
+   "file": "results/limits-2026-11-16/limits.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/claude-sonnet-5-5",
+     "accepted": 999072
+    },
+    {
+     "row_model": "devin/claude-sonnet-5-5",
+     "refused_n": 501937
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "claude-opus-5-5",
+   "base_model": "anthropic/claude-opus-5-5",
+   "input_accepted": 999072,
+   "input_refused": 1004446,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. The refused request held 501,937 filler words; at 2 tokens per word plus 572 (the accepted request's count) that is 1,004,446 tokens",
+   "file": "results/limits-2026-11-16/limits.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/claude-opus-5-5",
+     "accepted": 999072
+    },
+    {
+     "row_model": "devin/claude-opus-5-5",
+     "refused_n": 501937
+    }
+   ]
   }
  ],
  "known": [
