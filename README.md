@@ -77,7 +77,7 @@ share them. `harness/probe.py` (the same evaluation through a real coding tool) 
 `scripts/build_observed.py` refuses a run dated 14 November 2026 or later that has no control or does not start at
 2.5 minutes. Runs before that date keep the ages they were made with.
 
-Options: `--schedule std|long|quick`, `--ages 30m,65m`, `--replicas 3`, `--prefix-tokens 2500`, `--max-output 16`,
+Options: `--schedule std|long|quick`, `--ages 30m,65m`, `--replicas 3`, `--prefix-tokens 2500`, `--filler words|list`, `--max-output 16`,
 `--stream`, `--ttl`, `--beta`, `--header k:v`, `--body-extra '<json>'`, `--label`, `--salt`, `--out`. See `--help`.
 
 ## observed.json
@@ -132,6 +132,11 @@ To add a run: publish its files under `results/`, add it to [`observed/manifest.
 - **Minimum cacheable length.** Below it, nothing is ever cached (OpenAI 1,024 tokens; Anthropic 512–4,096 depending on
   the model). The default 2,500-token prefix plus whatever the proxy adds clears most minimums; raise
   `--prefix-tokens` if the control round fails.
+- **A model may refuse the filler.** The default filler is sentences of random words; Anthropic refused it on Claude
+  Haiku 5.5 through a Claude login (`stop_details` category `bio`, returned by CLIProxyAPI as HTTP 400
+  `claude refusal (bio)`). `--filler list` uses plain numbered sentences instead. The filler does not change caching,
+  and the default stays as it was, so earlier runs remain comparable; a result file names the filler when it is not
+  the default.
 - **A missing cached-tokens field counts as 0.** Some endpoints omit it instead of reporting 0.
 - **Prefixes are salted per run.** Re-running immediately never hits the previous run's cache.
 - **Anthropic caches only marked content.** `messages` runs always mark the prefix; proxies that translate other formats

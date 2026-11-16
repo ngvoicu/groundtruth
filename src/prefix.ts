@@ -14,6 +14,18 @@ const WORDS = (
   "vesper violet willow yarrow zephyr zinc"
 ).split(" ");
 
+/**
+ * The filler after the header. `words` (the default, used by every run before 16 November 2026): sentences of random
+ * words from WORDS. `list`: plain numbered sentences about shop opening hours, for a model that refuses the random
+ * words (Anthropic refused them on Claude Haiku 5.5 through a Claude login, category "bio"). The filler does not
+ * change how a prompt is cached; it only has to be text the model answers.
+ */
+export const FILLERS = ["words", "list"] as const;
+export type Filler = (typeof FILLERS)[number];
+
+const STREETS = ["Main Street", "Mill Lane", "Oak Avenue", "Station Road", "Park Row", "Bridge Street", "Church Lane", "High Street"];
+const SHOPS = ["bakery", "bookshop", "pharmacy", "post office", "hardware store", "florist", "library", "grocery"];
+
 /** Roughly 4 characters per token for English-like text. */
 export const CHARS_PER_TOKEN = 4;
 
@@ -47,7 +59,7 @@ export function newRunSalt(): string {
  * Builds the cacheable prefix for one sample: a header naming the run and sample, then filler sentences
  * until about `targetTokens` tokens.
  */
-export function makePrefix(runSalt: string, sampleId: string, targetTokens = 2500): string {
+export function makePrefix(runSalt: string, sampleId: string, targetTokens = 2500, filler: Filler = "words"): string {
   const rand = mulberry32(hash32(`${runSalt}/${sampleId}`));
   const targetChars = Math.max(1, targetTokens) * CHARS_PER_TOKEN;
   const parts: string[] = [
@@ -57,10 +69,16 @@ export function makePrefix(runSalt: string, sampleId: string, targetTokens = 250
   let length = parts[0].length;
   let sentence = 0;
   while (length < targetChars) {
-    const count = 8 + Math.floor(rand() * 10);
-    const words: string[] = [];
-    for (let i = 0; i < count; i++) words.push(WORDS[Math.floor(rand() * WORDS.length)]);
-    const line = `${sentence + 1}. ${words.join(" ")}.\n`;
+    let line: string;
+    if (filler === "list") {
+      const pick = <T>(list: readonly T[]): T => list[Math.floor(rand() * list.length)];
+      line = `${sentence + 1}. The ${pick(SHOPS)} on ${pick(STREETS)} opens at ${7 + Math.floor(rand() * 4)} and closes at ${5 + Math.floor(rand() * 4)} on weekdays.\n`;
+    } else {
+      const count = 8 + Math.floor(rand() * 10);
+      const words: string[] = [];
+      for (let i = 0; i < count; i++) words.push(WORDS[Math.floor(rand() * WORDS.length)]);
+      line = `${sentence + 1}. ${words.join(" ")}.\n`;
+    }
     parts.push(line);
     length += line.length;
     sentence++;

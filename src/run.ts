@@ -1,7 +1,7 @@
 // The measurement loop: control round, prime every sample, check each exactly once at its age.
 
 import { buildRequest, type Format, isWarm, readStreamUsage, readUsage, type Usage } from "./formats.ts";
-import { makePrefix } from "./prefix.ts";
+import { type Filler, makePrefix } from "./prefix.ts";
 import { formatDuration, planSamples, type Sample, shouldStop } from "./schedule.ts";
 
 export interface RunOptions {
@@ -16,6 +16,8 @@ export interface RunOptions {
   maxOutput: number;
   stream: boolean;
   prefixTokens: number;
+  /** Filler text of the prefixes (default `words`, the filler of every earlier run). */
+  filler?: Filler;
   runSalt: string;
   concurrency: number;
   label: string;
@@ -62,6 +64,8 @@ export interface RunResult {
   format: Format;
   model: string;
   ttl?: string;
+  /** Set only when a filler other than the default was used. */
+  filler?: Filler;
   runSalt: string;
   replicas: number;
   cacheKey: boolean;
@@ -154,6 +158,7 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
     format: o.format,
     model: o.model,
     ttl: o.ttl,
+    ...(o.filler && o.filler !== "words" ? { filler: o.filler } : {}),
     runSalt: o.runSalt,
     replicas: o.replicas,
     cacheKey: o.cacheKey !== false,
@@ -173,7 +178,7 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
   try {
     // Control: an immediate re-send must hit the cache, otherwise nothing below can be measured.
     deps.log(`control: ${o.label}`);
-    const controlPrefix = makePrefix(o.runSalt, "control", o.prefixTokens);
+    const controlPrefix = makePrefix(o.runSalt, "control", o.prefixTokens, o.filler);
     const prime = await call(o, deps, controlPrefix, "control");
     let check: Usage | undefined;
     for (const wait of [3_000, 10_000]) {
@@ -194,7 +199,7 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
     deps.log(`priming ${samples.length} samples`);
     await pool(samples, o.concurrency, async (s) => {
       try {
-        const { startedAt } = await call(o, deps, makePrefix(o.runSalt, s.id, o.prefixTokens), s.id);
+        const { startedAt } = await call(o, deps, makePrefix(o.runSalt, s.id, o.prefixTokens, o.filler), s.id);
         // Lifetimes count from the start of the request that wrote the entry.
         primedAt.set(s.id, startedAt);
       } catch (err) {
@@ -226,7 +231,7 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
         const id = `${s.id}~${item.reprimes + 2}`;
         deps.log(`  ${formatDuration(s.ageMs)} r${s.replica}: ${formatDuration(overdue)} overdue, priming again`);
         try {
-          const { startedAt } = await call(o, deps, makePrefix(o.runSalt, id, o.prefixTokens), id);
+          const { startedAt } = await call(o, deps, makePrefix(o.runSalt, id, o.prefixTokens, o.filler), id);
           primedAt.set(s.id, startedAt);
           prefixId.set(s.id, id);
           due.push({ s, at: startedAt + s.ageMs, reprimes: item.reprimes + 1 });
@@ -238,7 +243,7 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
       const pid = prefixId.get(s.id) as string;
       let got: { usage: Usage; startedAt: number };
       try {
-        got = await call(o, deps, makePrefix(o.runSalt, pid, o.prefixTokens), pid);
+        got = await call(o, deps, makePrefix(o.runSalt, pid, o.prefixTokens, o.filler), pid);
       } catch (err) {
         const message = (err as Error).message.slice(0, 300);
         result.checks.push({ sampleId: s.id, error: message, targetAgeMs: s.ageMs, actualAgeMs: deps.now() - (primedAt.get(s.id) as number), promptTokens: 0, cachedTokens: 0, warm: false });

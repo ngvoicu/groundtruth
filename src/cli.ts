@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { buildRequest, type Format, FORMATS } from "./formats.ts";
-import { makePrefix, newRunSalt } from "./prefix.ts";
+import { FILLERS, type Filler, makePrefix, newRunSalt } from "./prefix.ts";
 import { renderMarkdown } from "./report.ts";
 import { type Deps, PROBE_VERSION, type RunOptions, runProbe } from "./run.ts";
 import { agesFor, formatDuration, planSamples } from "./schedule.ts";
@@ -33,6 +33,8 @@ Options:
                           then at 2.5m, 5m and 7.5m: those are always added
   --replicas <n>          samples per age (default: 3)
   --prefix-tokens <n>     approximate prefix size (default: 2500; must exceed the provider's minimum)
+  --filler <words|list>   filler text of the prefix (default: words, random words; list: plain numbered sentences,
+                          for a model that refuses the random words). Does not change caching
   --max-output <n>        max output tokens per call (default: 16)
   --warm-fraction <f>     share of the prompt that must be cached for a warm check (default: 0.5)
   --stream                use streaming responses
@@ -72,6 +74,7 @@ const { values } = parseArgs({
     ages: { type: "string" },
     replicas: { type: "string" },
     "prefix-tokens": { type: "string" },
+    filler: { type: "string", default: "words" },
     "max-output": { type: "string" },
     "warm-fraction": { type: "string" },
     stream: { type: "boolean", default: false },
@@ -97,6 +100,7 @@ const model = values.model ?? fail("--model is required");
 const format = values.format as Format;
 if (!FORMATS.includes(format)) fail(`--format must be one of ${FORMATS.join(", ")}`);
 if (values.ttl && !/^\d+(m|h)$/.test(values.ttl)) fail("--ttl must look like 5m or 1h");
+if (!FILLERS.includes(values.filler as Filler)) fail(`--filler must be one of ${FILLERS.join(", ")}`);
 
 let bodyExtra: Record<string, unknown> | undefined;
 if (values["body-extra"]) {
@@ -135,6 +139,7 @@ const opts: RunOptions = {
   maxOutput: int(values["max-output"], "max-output", 16),
   stream: values.stream,
   prefixTokens: int(values["prefix-tokens"], "prefix-tokens", 2500),
+  filler: values.filler as Filler,
   runSalt: values.salt ?? newRunSalt(),
   concurrency: int(values.concurrency, "concurrency", 4),
   label,
@@ -146,7 +151,7 @@ if (!(opts.warmFraction! > 0 && opts.warmFraction! <= 1)) fail("--warm-fraction 
 
 if (values["dry-run"]) {
   const samples = planSamples(opts.ages, opts.replicas);
-  const req = buildRequest(format, { model, prefix: makePrefix(opts.runSalt, "control", 40), ttl: opts.ttl, maxOutput: opts.maxOutput, stream: opts.stream, bodyExtra, cacheKey: opts.cacheKey ? `groundtruth-${opts.runSalt}-control` : undefined });
+  const req = buildRequest(format, { model, prefix: makePrefix(opts.runSalt, "control", 40, opts.filler), ttl: opts.ttl, maxOutput: opts.maxOutput, stream: opts.stream, bodyExtra, cacheKey: opts.cacheKey ? `groundtruth-${opts.runSalt}-control` : undefined });
   process.stdout.write(
     `${label}: ${samples.length} samples + control, ages ${opts.ages.map(formatDuration).join(", ")}\n` +
       `POST ${baseUrl.replace(/\/+$/, "")}${req.path}\nheaders: ${Object.keys({ ...req.headers, ...extraHeaders }).join(", ") || "(none extra)"}\n` +
