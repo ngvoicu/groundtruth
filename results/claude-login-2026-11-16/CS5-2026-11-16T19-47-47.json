@@ -1,0 +1,30 @@
+{
+  "probeVersion": "0.2.0",
+  "label": "CS5",
+  "baseUrl": "http://127.0.0.1:8317/v1",
+  "format": "messages",
+  "model": "probe/claude-haiku-5-5",
+  "runSalt": "omo6mkid",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000,
+    1200000,
+    1500000,
+    1800000,
+    2400000,
+    3000000,
+    3600000,
+    3900000,
+    4500000
+  ],
+  "startedAt": "2026-11-16T19:47:47.088Z",
+  "status": "failed",
+  "checks": [],
+  "error": "HTTP 400: {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"claude refusal (bio)\"}}",
+  "finishedAt": "2026-11-16T19:47:49.701Z"
+}

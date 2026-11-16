@@ -105,6 +105,11 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   Claude Haiku, Sonnet and Opus 5.5 accept 999,072 and refuse about 1,004,000; GPT-6.1 Terra, GPT-6 Astra and GPT-6
   Luna accept 911,390 and refuse 923,500 although Devin lists 1,000,000. `swe-2` read both ends of a 300K input (above
   its listed 262K), no edge: kept as a record, not in `observed.json`. See its README.
+- `claude-login-2026-11-16/`: Claude Opus 5.5 and Sonnet 5.5 on one Claude login, plain probe through CLIProxyAPI,
+  Messages format, 3 samples per age (CS1 – CS4). With no ttl and with `ttl: "1h"` alike: 3/3 warm at every age from
+  2.5 minutes to 1 hour, 0/3 at 65 and 75 minutes. This is the 1-hour cache that CLIProxyAPI asks for on Claude logins,
+  now measured; the usage of single writes (`tier.jsonl`) puts every cached token in the 1-hour tier. Claude Haiku 5.5
+  refuses the probe's filler text on this login (CS5, CS6): no result. See its README.
 
 ## What this means
 

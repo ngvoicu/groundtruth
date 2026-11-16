@@ -937,6 +937,60 @@
    "requires": "router-for-me/CLIProxyAPI#7284",
    "continues": "openrouter-flash-2026-11-12/F5",
    "note": "CLIProxyAPI 8.0.67 with router-for-me/CLIProxyAPI#7284 (cache markers and session id for OpenRouter); ~6,000-token prompt; the 5-minute age again with 10 samples"
+  },
+  {
+   "id": "claude-login-2026-11-16/CS1",
+   "file": "results/claude-login-2026-11-16/CS1-2026-11-16T19-45-21.json",
+   "route": "claude-subscription",
+   "model": "claude-opus-5-5",
+   "client": "cliproxyapi",
+   "models_dev": null,
+   "base_model": "anthropic/claude-opus-5-5",
+   "options": {
+    "format": "messages"
+   },
+   "note": "one Claude login (login A of two), pinned by a temporary alias that no other login or API key serves; no ttl asked: CLIProxyAPI wrote the 1-hour cache tier itself (tier.jsonl)"
+  },
+  {
+   "id": "claude-login-2026-11-16/CS2",
+   "file": "results/claude-login-2026-11-16/CS2-2026-11-16T19-45-41.json",
+   "route": "claude-subscription",
+   "model": "claude-opus-5-5",
+   "client": "cliproxyapi",
+   "models_dev": null,
+   "base_model": "anthropic/claude-opus-5-5",
+   "options": {
+    "format": "messages",
+    "ttl": "1h"
+   },
+   "note": "one Claude login (login A of two), pinned by a temporary alias that no other login or API key serves"
+  },
+  {
+   "id": "claude-login-2026-11-16/CS3",
+   "file": "results/claude-login-2026-11-16/CS3-2026-11-16T19-46-01.json",
+   "route": "claude-subscription",
+   "model": "claude-sonnet-5-5",
+   "client": "cliproxyapi",
+   "models_dev": null,
+   "base_model": "anthropic/claude-sonnet-5-5",
+   "options": {
+    "format": "messages"
+   },
+   "note": "one Claude login (login A of two), pinned by a temporary alias that no other login or API key serves; no ttl asked: CLIProxyAPI wrote the 1-hour cache tier itself (tier.jsonl)"
+  },
+  {
+   "id": "claude-login-2026-11-16/CS4",
+   "file": "results/claude-login-2026-11-16/CS4-2026-11-16T19-46-21.json",
+   "route": "claude-subscription",
+   "model": "claude-sonnet-5-5",
+   "client": "cliproxyapi",
+   "models_dev": null,
+   "base_model": "anthropic/claude-sonnet-5-5",
+   "options": {
+    "format": "messages",
+    "ttl": "1h"
+   },
+   "note": "one Claude login (login A of two), pinned by a temporary alias that no other login or API key serves"
   }
  ],
  "excluded": [
