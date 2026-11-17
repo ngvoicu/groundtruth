@@ -125,11 +125,16 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   the default filler again). `gpt-audio-1.5` takes no text request, and the key cannot call `gpt-6-cyber` or the two
   Daybreak models: nothing measured. Cost $10.01 (`ledger.md`). See its README.
 - `logins-2026-11-17/`: the subscription logins through CLIProxyAPI, probe 0.3.1 with `--stop-on-refusal`. Codex
-  login (LC1 – LC4): the first runs of this route checked at 2.5 minutes, and GPT-6.1 Sol, GPT-6 Astra and GPT-6 Luna
-  miss at random from there on (Sol 2 of 3 at 2.5 minutes, 0 of 3 at 1 hour, 2 of 3 at 2 hours): no age fully warm.
+  login (LC1 – LC4), checked from 2.5 minutes: GPT-6.1 Sol and GPT-6 Astra hit 2 of 3 at 2.5 minutes, GPT-6 Luna 1 of 3,
+  all three 3 of 3 at 5 minutes, then some later ages miss (Sol 0 of 3 at 1 hour, 2 of 3 at 2 hours). Their published
+  value is 0: no tested age through which every check hit, which does not mean the route does not cache; a first look
+  at 2.5 minutes with plain requests for Astra and Luna (Sol's C1 had also missed at 5 and 7.5 minutes), not a
+  comparison that shows a change, and an effect of load on the login at priming is not excluded (see its README).
+  Runs continuing them were started the same day and will be published with them.
   Meta login with the 24-hour retention CLIProxyAPI adds: Muse Spark 1.3 warm through 10 minutes, cold at 30 (LM2);
-  Ember and Wonder warm in all 42 checks to 2 hours, left out because they would lower the 4 hours of
-  `meta-24h-2026-11-10` only by ending at 2 hours (LM1, LM3). Antigravity Gemini 3.8 Flash: safe to 2.5 minutes, as
+  Ember and Wonder (LM1, LM3) completed the standard schedule warm in all 42 checks to 2 hours, where that schedule
+  ends; runs continuing them at 4, 8, 12 and 24 hours were started on 2026-11-17 (`campaign/logins-long`, ML1, ML3),
+  and each pair is published together, as one evaluation, when the continuation has ended, whatever it shows. Antigravity Gemini 3.8 Flash: safe to 2.5 minutes, as
   A3 (LA1). Claude Fable 5.2 on a Claude login: warm to 1 hour, cold at 65 minutes, with and without `ttl: "1h"`
   (LF1, LF2); its refusal names a 1,000,000-token window. Narrower input windows (below). Devin and Antigravity's
   other models refused for request rate: no lifetime. See its README.
@@ -169,8 +174,9 @@ here, the refused sizes in the paragraph above are those of the rows before this
 - **OpenAI's 12-hour lifetime doesn't pass through CPA to OpenRouter** yet (P3): the option is dropped when CPA
   translates Responses to Chat Completions.
 - **Codex keeps the cache for hours when a cache key is sent** (C1). Without a key (C2) checks land on other cache
-  nodes and look cold within minutes. Checked from 2.5 minutes (`logins-2026-11-17`, LC1 – LC4), the same route
-  misses at random at every age, the first included: hours at best, and no age that is safe.
+  nodes and look cold within minutes. Checked from 2.5 minutes with a key (C1 and `logins-2026-11-17`, LC1 – LC4), the
+  same route misses some checks in the first minutes and at some later ages, with fully warm ages between (all of
+  LC1 – LC4 3 of 3 at 5 minutes): no age through which every check hit, in today's runs.
 - **GPT-6.1 elsewhere lasts 30–40 min**, matching OpenAI's documented ≥ 30 min, through CPA or not; so do the GPT-6
   models on an OpenAI key (`direct-2026-11-17`).
 - Many open-weight routes (GLM, Kimi, Grok, Gemini) are mixed or short: a client should not assume they cache, and

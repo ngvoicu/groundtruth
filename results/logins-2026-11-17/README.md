@@ -6,11 +6,13 @@ request counts against a plan. `ledger.md` has what each request or run used.
 
 **Findings.**
 
-- **The Codex login misses at random from 2.5 minutes on** (LC1, LC3, LC4, plain probe, 3 samples per age): GPT-6.1 Sol
-  and GPT-6 Astra hit 2 of 3 at 2.5 minutes, GPT-6 Luna 1 of 3, and every later age is mixed (Sol 0 of 3 at 1 h, then
-  2 of 3 at 90 minutes and 2 hours; Astra 3 of 3 at 75 and 90 minutes). No earlier run of this route checked at
-  2.5 minutes (they started at 5). On providers.dev the safe value of `openai-codex/gpt-6.1-sol` and `gpt-6-luna`
-  would go from 5 minutes to 0, and of `gpt-6-astra` from 2 hours (G1, through pi) to 0.
+- **The Codex login missed at 2.5 minutes and at some later ages** (LC1, LC3, LC4, plain probe, 3 samples per age):
+  GPT-6.1 Sol and GPT-6 Astra hit 2 of 3 at 2.5 minutes, GPT-6 Luna 1 of 3; at 5 minutes all three hit 3 of 3. After
+  that, ages where every check hit alternate with ages that miss some (Sol 0 of 3 at 1 h, then 2 of 3 at 90 minutes
+  and 2 hours; Astra 3 of 3 at 75 and 90 minutes, 1 of 3 at 2 hours; Luna cold at 1 h and 75 minutes, where it
+  stopped). On providers.dev the safe value of `openai-codex/gpt-6.1-sol` and `gpt-6-luna` goes from 5 minutes to 0,
+  and of `gpt-6-astra` from 2 hours (G1, through pi) to 0. What that 0 means, and what it does not, is under
+  section 2 (Codex).
 - **Every window is narrower now, and nothing contradicts an earlier walk.** Codex login: GPT-6.1 Sol, GPT-6 Astra and
   GPT-6 Luna accept 921,500 tokens and refuse 922,300 (documented: 922,000). Devin: its GPT models the same 921,500 /
   922,300 (Devin lists 1,000,000), its Claude 5.5 models 999,500 / 1,000,300, DeepSeek V4.1 Flash, DeepSeek V4 Pro and
@@ -118,9 +120,9 @@ over the published evaluations of the entry and profile (`site/design/safe-cache
 | LC2 | Codex `gpt-6.1-terra` | hit | 1, 0, 0 (stopped) | – | 5 min | 0 → 0 |
 | LC3 | Codex `gpt-6-astra` | hit | 2, 3, 2, 2, 3, 2, 3, 1, 2, 2, 1, 3, 3, 1 | – | – | 2 h → **0** |
 | LC4 | Codex `gpt-6-luna` | hit | 1, 3, 1, 2, 3, 2, 3, 1, 2, 2, 0, 0 (stopped) | – | 1 h | 5 min → **0** |
-| LM1 | Meta `muse-ember-1.0` (24h) | hit | 3 at every age | 2 h | – | long 4 h → 2 h if added: **left out** |
+| LM1 | Meta `muse-ember-1.0` (24h) | hit | 3 at every age | 2 h | – | long 4 h; published with its continuation ML1 |
 | LM2 | Meta `muse-spark-1.3` (24h) | hit | 3, 3, 3, 3, 2, 3, 3, 0, 0 (stopped) | 10 min | 30 min | long 5 min → 5 min |
-| LM3 | Meta `muse-wonder-1.0` (24h) | hit | 3 at every age | 2 h | – | long 4 h → 2 h if added: **left out** |
+| LM3 | Meta `muse-wonder-1.0` (24h) | hit | 3 at every age | 2 h | – | long 4 h; published with its continuation ML3 |
 | LA1 | Antigravity `gemini-3.8-flash-high` | hit | 3, 2, 1, 0, 1, 0, 0 (stopped) | 2.5 min | 10 min | 2.5 min → 2.5 min |
 | LD1 – LD8 | Devin, eight models | | rate refusal: no check (below) | | | unchanged |
 
@@ -128,11 +130,26 @@ over the published evaluations of the entry and profile (`site/design/safe-cache
   (`cpa-codex-long-2026-11-06`) as the published plain run; X1's checks to 12 hours stay in the file but are no
   longer shown. The safe values drop because of misses at 2.5 minutes, not because the runs are shorter. Whether a
   route that hits 2 of 3 at 2 hours but misses 1 of 3 at 2.5 minutes is "0" is the site's rule (a miss ends the safe
-  value). One thing to know: the window walk sent three 921,500-token requests to the same login one to two minutes
-  before these runs began; the misses go on to 2 hours, so they are not only at the start.
-- **Meta Ember and Wonder** were warm in all 42 checks each. Added, they would lower the published long lifetime from
-  4 hours to 2 hours only because they stop at 2 hours, so they are not in `manifest-entries.json` (listed under
-  `excluded` with that reason); their files are here.
+  value).
+
+  **What the 0 is.** It means that there is no tested age through which every check hit; it does not mean that this
+  route does not cache (at 5 minutes all three hit 3 of 3, and most checks hit). The earlier runs of Astra and Luna on
+  this route (G1, G2) were made by another client (pi, low reasoning, larger prompts) and started at 5 minutes, so
+  LC3 and LC4 are a first look at 2.5 minutes with plain requests. Of Sol's, C1 (`cpa-8.0.53`, 2026-11-04, the plain
+  probe with a cache key) also checked from 2.5 minutes, and missed at 5 and 7.5 minutes (2 and 1 of 3); X1 started
+  at 5 minutes; H1 and H2 were made by coding tools with low reasoning and larger prompts. None of this is a
+  comparison that shows a change. The window walk sent three requests of 921,500 tokens to the same login one to two minutes
+  before the priming, and the owner's own sessions use the login, so an effect of load at priming is not excluded
+  (every sample, the late ones too, was primed in those first minutes). The missing `session_id` in the request record
+  is not the cause: CLIProxyAPI copies the request's `prompt_cache_key` into the upstream session id. Runs that continue
+  LC1, LC3 and LC4 were started on 2026-11-17 (branch `campaign/logins-long`, CL1, CL3, CL4), primed about four hours
+  after these, with no window request before them; Sol and Astra missed again. They will be published together with
+  these runs.
+- **Meta Ember and Wonder** are completed runs, warm in all 42 checks each through 2 hours, which end there because the
+  standard schedule ends there. Runs that continue them at 4, 8, 12 and 24 hours were started on 2026-11-17 (branch
+  `campaign/logins-long`, ML1 and ML3). Each pair is published together, as one evaluation, when the continuing run
+  has ended, whatever it shows; until then LM1 and LM3 are under `excluded` with that reason, and their files are
+  here. The published long lifetime of 4 hours is that of `meta-24h-2026-11-10` (through pi).
 - **Antigravity.** Google answered `MODEL_CAPACITY_EXHAUSTED` (HTTP 503, "No capacity available for model … on the
   server") to many requests between 12:27 and 12:59 UTC, which CLIProxyAPI turned into short pauses of the model; the
   probe retried them as transient errors (71 retries in all). That is the server's capacity, not the account's quota.
@@ -149,8 +166,10 @@ request. Each probe ended at its refusal. The supervisor of that moment watched 
 every run, so it started LD5 and LD6 after the first refusal; it was ended by hand at 14:39:00 together with the two
 runs still priming, LD2 (DeepSeek V4 Pro, all 42 samples primed) and LD6 (Grok 4.7, past its control). LD7 (`kimi-k3`)
 and LD8 (`swe-2`) never started. `supervise.py` now watches between starts. No Devin request was sent after 14:39.
-Files: LD1, LD3, LD4, LD5 (`failed`, with the refusal), LD2's last progress file (`LD2-…ended-by-hand.json`); LD6 left
-only a log, which is not committed.
+Files: LD1, LD3, LD4, LD5 (`failed`, with the refusal), LD2's last progress file (`LD2-…ended-by-hand.json`). LD6 left
+only a log, which is not committed: nothing in this repository records LD6's control or what it used; what is said of
+it here and in `ledger.md` (its control, about 5 requests) comes from that local log and from the login's request
+counter, and cannot be checked from these files.
 
 ## 3. Claude Fable 5.2 on the Claude login (added at about 15:40)
 
@@ -199,7 +218,8 @@ alias `probe/ag-<id>` on the Antigravity login only, one prime at a time, starte
 priming, Antigravity answered `429 RESOURCE_EXHAUSTED` (`RATE_LIMIT_EXCEEDED`: "You have exhausted your capacity on
 this model. Resets in 0s."). LA2 ended at the refusal; the supervisor ended LA3 and LA4 (past their controls, which
 all hit: 5,740 of 5,752, 5,760 of 5,772 and 2,633 of 4,672 tokens cached) and started nothing more. LA3 and LA4 left
-only logs (not committed), so their tokens are not in the ledger. LA2's file is kept, not in `observed.json`.
+only logs (not committed), so their tokens are not in the ledger, and their controls given here are read from those
+local logs: no file in this repository records them. LA2's file is kept, not in `observed.json`.
 
 **Result for the two Claude ids of this login** (`claude-opus-4-6-thinking`, `claude-sonnet-4-6`): the control hit (an
 immediate re-send was served from the cache), no lifetime. By the chief's decision nothing more goes to them today.
