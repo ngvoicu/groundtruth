@@ -16,6 +16,10 @@ request counts against a plan. `ledger.md` has what each request or run used.
   922,300 (Devin lists 1,000,000), its Claude 5.5 models 999,500 / 1,000,300, DeepSeek V4.1 Flash, DeepSeek V4 Pro and
   Gemini 4 Argon 1,048,076 / 1,048,876 (Devin lists 1,048,576).
 - **Devin refused for request rate** two minutes into its lifetime runs; no Devin lifetime was measured.
+- **Claude Fable 5.2 on the Claude login** (added by the owner at about 15:40): the 1-hour cache, as its siblings: warm
+  in every check to 1 h, cold at 65 and 75 minutes, with and without `ttl: "1h"`. Its window refusal names 1,000,000.
+- **Antigravity refused for rate** (429 `RESOURCE_EXHAUSTED`) 40 s into the runs of its other models (also added at
+  15:40); none of them was measured.
 
 ## How the requests reached one account
 
@@ -135,16 +139,65 @@ and LD8 (`swe-2`) never started. `supervise.py` now watches between starts. No D
 Files: LD1, LD3, LD4, LD5 (`failed`, with the refusal), LD2's last progress file (`LD2-…ended-by-hand.json`); LD6 left
 only a log, which is not committed.
 
+## 3. Claude Fable 5.2 on the Claude login (added at about 15:40)
+
+Measured as its siblings on 2026-11-16 (`../claude-login-2026-11-16`, CS1 – CS8): plain probe, Messages format, the
+control, then 2.5, 5, 7.5, 10, 15, 20, 25, 30, 40, 50, 60, 65 and 75 minutes, 3 samples each, 2 primes at a time, on
+**Claude login A** (the one with the higher priority, −15, the login of CS1 – CS8), through a temporary alias
+`probe/claude-fable-5-2` on that login only. Over the runs login A's request counter rose; the other Claude login's and
+both Claude API keys' stayed at 0 (the API keys now list `claude-fable-5-2` by its plain name since the configuration
+change of 15:58, not the alias). Anthropic took the default filler; `--filler list` was not needed. The process did
+not change during these runs (16:18:13 throughout).
+
+| Run | Request | Control | Warm at each age | Warm through | First all cold |
+|---|---|---|---|---|---|
+| LF1 | one `cache_control` marker, no ttl | hit | 3/3 from 2.5 min to 1 h; 0/3 at 65 and 75 min | 1 h | 65 min |
+| LF2 | the marker with `ttl: "1h"` | hit | the same | 1 h | 65 min |
+
+**Window** (`fable_window.py`, `limits-claude.jsonl`): one request of 500,500 " hello" (two tokens each), refused at
+once: `prompt is too long: 1001190 tokens > 1000000 maximum`. No accepted large request was sent (Fable is the dearest
+model on the plan), so the row has the named window (1,000,000) and no accepted size; the output limit was not tested.
+
+providers.dev has no entry `claude-subscription/claude-fable-5-2` yet: these runs and the row name the model
+`claude-fable-5-2` on route `claude-subscription`, as the siblings' rows do, and land there once the entry exists.
+
+## 4. Antigravity: the login's other chat models (added at about 15:40)
+
+The login's own model list (management API, `/credentials/models` for that login), as the login names them:
+
+| Id | Name the login gives | Kind | CPA's local catalog says (not the login, not measured) | Run |
+|---|---|---|---|---|
+| `claude-opus-4-6-thinking` | Claude Opus 4.6 (Thinking) | chat | 200,000 / 64,000 output | LA2: control hit, refused while priming |
+| `claude-sonnet-4-6` | Claude Sonnet 4.6 (Thinking) | chat | 200,000 / 64,000 | LA3: control hit, then ended |
+| `gemini-3.8-flash-high` | Gemini 3.8 Flash | chat | 1,048,576 / 65,536 | LA1 (above) |
+| `gemini-3.8-flash-tiered` | Gemini 3.8 Flash (Tiered) | chat | 1,048,576 / 65,536 | LA4: control hit, then ended |
+| `gemini-3-flash` | Gemini 3 Flash | chat | 1,048,576 / 65,536 | not started |
+| `gpt-oss-120b-medium` | GPT-OSS 120B (Medium) | chat | 114,000 / 32,768 | not started |
+| `gemini-3.1-flash-lite` | Gemini 3.1 Flash Lite | chat | 1,048,576 / 65,535 | not started |
+| `gemini-3.5-flash-lite` | Gemini 3.5 Flash Lite | chat | 1,048,576 / 65,535 | not started |
+| `gemini-3.1-flash-image` | Gemini 3.1 Flash Image | image | none | not a chat model |
+
+The login's list gives no window; the figures beside are CPA's local catalog (`models-local.json`). `owned_by` in
+`/v1/models` is not the login: there `claude-sonnet-4-6` showed `antigravity` at 14:16 and `anthropic` after the
+restart.
+
+Each model was to get one run as LA1 (Responses format, 5,000-token prefix, standard schedule), through a temporary
+alias `probe/ag-<id>` on the Antigravity login only, one prime at a time, started 15 s apart. 40 s in, while LA2 was
+priming, Antigravity answered `429 RESOURCE_EXHAUSTED` (`RATE_LIMIT_EXCEEDED`: "You have exhausted your capacity on
+this model. Resets in 0s."). LA2 ended at the refusal; the supervisor ended LA3 and LA4 (past their controls, which
+all hit: 5,740 of 5,752, 5,760 of 5,772 and 2,633 of 4,672 tokens cached) and started nothing more. LA3 and LA4 left
+only logs (not committed), so their tokens are not in the ledger. LA2's file is kept, not in `observed.json`.
+
 ## Files
 
-- `limits-codex.jsonl`, `limits-devin.jsonl`: every window request (the rows of `harness/limits.py`, plus
+- `limits-codex.jsonl`, `limits-devin.jsonl`, `limits-claude.jsonl`: every window request (the rows of `harness/limits.py`, plus
   `outputTokens`).
 - `L*-2026-11-17T*.json` / `.md`: the lifetime runs (probe 0.3.1: `spent` sums what each run's answered requests used).
-- `manifest-entries.json`: what these runs add to `observed/manifest.json`: 6 cache runs (LC1 – LC4, LM2, LA1), 13
-  limits rows that replace the rows of the same route, client and model, and 5 `excluded` entries (LM1, LM3, the
-  Devin runs, the GLM-5.3 window).
+- `manifest-entries.json`: what these runs add to `observed/manifest.json`: 8 cache runs (LC1 – LC4, LM2, LA1, LF1,
+  LF2), 13 limits rows that replace the rows of the same route, client and model, one new limits row (Fable), and 6
+  `excluded` entries (LM1, LM3, the Devin runs, the GLM-5.3 window, the Antigravity runs LA2 – LA8).
 - `ledger.md` (`ledger.py`): the tokens per request and per run, per login.
-- `window_walk.py`, `run-windows.sh`, `supervise.py`, `run-lifetimes.sh`: what ran. `logs/` stays local (git-ignored).
+- `window_walk.py`, `run-windows.sh`, `fable_window.py`, `supervise.py`, `run-lifetimes.sh`: what ran. `logs/` stays local (git-ignored).
 
 If a run's window is lost: the probes write `<label>-<time>.partial.json` as they go and their final files when done;
 the supervisors log every process id they started in `logs/supervise-<login>.log`. A run cannot be resumed; one that

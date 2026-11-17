@@ -1,5 +1,5 @@
 {
- "comment": "Entries the runs of results/logins-2026-11-17 would add to observed/manifest.json (T-74, branch campaign/logins). runs: appended to runs. limits: each REPLACES the existing row of the same route, client and model (one row each). excluded: appended to excluded. Nothing here is a result: build_observed.py computes them from the raw files.",
+ "comment": "Entries the runs of results/logins-2026-11-17 would add to observed/manifest.json (T-74, branch campaign/logins). limits: the 13 rows replace existing rows; the claude-fable-5-2 row is new. runs: appended to runs. limits: each REPLACES the existing row of the same route, client and model (one row each). excluded: appended to excluded. Nothing here is a result: build_observed.py computes them from the raw files.",
  "runs": [
   {
    "id": "logins-2026-11-17/LC1",
@@ -70,6 +70,33 @@
     "prefix_tokens": 5000
    },
    "note": "Google answered MODEL_CAPACITY_EXHAUSTED (503) to many requests for half an hour, which the probe retried; the priming took 12 minutes, the 15 samples overdue by then were primed again, and every check ran within its time"
+  },
+  {
+   "id": "logins-2026-11-17/LF1",
+   "file": "results/logins-2026-11-17/LF1-2026-11-17T14-37-20.json",
+   "route": "claude-subscription",
+   "client": "cliproxyapi",
+   "model": "claude-fable-5-2",
+   "models_dev": null,
+   "base_model": "anthropic/claude-fable-5-2",
+   "options": {
+    "format": "messages"
+   },
+   "note": "one Claude login (login A of two, priority -15, as CS1 - CS8), pinned by a temporary alias (probe/claude-fable-5-2) that no other login or API key serves; no ttl asked"
+  },
+  {
+   "id": "logins-2026-11-17/LF2",
+   "file": "results/logins-2026-11-17/LF2-2026-11-17T14-37-35.json",
+   "route": "claude-subscription",
+   "client": "cliproxyapi",
+   "model": "claude-fable-5-2",
+   "models_dev": null,
+   "base_model": "anthropic/claude-fable-5-2",
+   "options": {
+    "format": "messages",
+    "ttl": "1h"
+   },
+   "note": "one Claude login (login A of two, priority -15, as CS1 - CS8), pinned by a temporary alias (probe/claude-fable-5-2) that no other login or API key serves"
   }
  ],
  "limits": [
@@ -371,6 +398,21 @@
      "refused_tokens": 922300
     }
    ]
+  },
+  {
+   "route": "claude-subscription",
+   "client": "cliproxyapi",
+   "model": "claude-fable-5-2",
+   "base_model": "anthropic/claude-fable-5-2",
+   "context": 1000000,
+   "note": "the refusal names the window (\"prompt is too long: 1001190 tokens > 1000000 maximum\"); no large request was accepted on purpose (Fable is the dearest model on the plan), so no accepted size; the output limit was not tested",
+   "file": "results/logins-2026-11-17/limits-claude.jsonl",
+   "evidence": [
+    {
+     "row_model": "probe/claude-fable-5-2",
+     "message_has": "> 1000000 maximum"
+    }
+   ]
   }
  ],
  "excluded": [
@@ -393,6 +435,10 @@
   {
    "id": "logins-2026-11-17/limits-devin.jsonl devin/glm-5-3",
    "reason": "GLM-5.3: 1,048,876 tokens refused, then 1,048,076 answered 502 'empty completion (0 output tokens)' after 143 s; not retried, so no accepted size of this walk and no new row"
+  },
+  {
+   "id": "logins-2026-11-17/LA2",
+   "reason": "Antigravity answered 429 RESOURCE_EXHAUSTED (RATE_LIMIT_EXCEEDED, \"You have exhausted your capacity on this model\") while priming claude-opus-4-6-thinking; the login was stopped there, so no check. LA3 and LA4 (claude-sonnet-4-6, gemini-3.8-flash-tiered) were ended after their controls and left no run file; LA5 - LA8 never started"
   }
  ]
 }

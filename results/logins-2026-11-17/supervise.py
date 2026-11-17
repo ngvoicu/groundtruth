@@ -48,8 +48,11 @@ for spec in specs:
         break
     label, rest = spec.split("=", 1)
     model, _, extra = rest.partition("@")
+    extra = extra.replace("@", " ").split()
+    # Defaults: the standard schedule, 2 primes at a time. A run's own --ages or --concurrency replaces them.
+    defaults = ([] if "--ages" in extra else ["--schedule", "std"]) + ([] if "--concurrency" in extra else ["--concurrency", "2"])
     cmd = ["node", "src/cli.ts", "--base-url", "http://127.0.0.1:8317/v1", "--model", model, "--label", label,
-           "--schedule", "std", "--replicas", "3", "--concurrency", "2", "--stop-on-refusal", "--out", R] + extra.replace("@", " ").split()
+           "--replicas", "3", "--stop-on-refusal", "--out", R] + defaults + extra
     out = open(f"{R}/logs/{label}.log", "a")
     p = subprocess.Popen(cmd, stdout=out, stderr=subprocess.STDOUT)
     procs[label] = p

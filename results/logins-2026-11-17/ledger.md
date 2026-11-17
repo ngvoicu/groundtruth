@@ -8,6 +8,7 @@ per-token charge; the OpenAI and Claude API keys of the proxy served none of the
 
 | Login | Model | N | Status | Input tokens (reply) | Output tokens (reply) | Price | Running input total of the login |
 |---|---|---|---|---|---|---|---|
+| Claude login A | `probe/claude-fable-5-2` | 500,500 | 400 | – | – | $0 | 0 |
 | Codex login | `probe/gpt-6.1-sol` | 922,289 | 400 | – | – | $0 | 0 |
 | Codex login | `probe/gpt-6.1-sol` | 921,489 | 200 | 921500 | 5 | $0 | 921,500 |
 | Codex login | `probe/gpt-6-astra` | 922,289 | 400 | – | – | $0 | 921,500 |
@@ -37,7 +38,7 @@ per-token charge; the OpenAI and Claude API keys of the proxy served none of the
 | Devin login | `devin/gpt-6-astra` | 921,910 | 400 | – | – | $0 | 8,907,228 |
 | Devin login | `devin/gpt-6-astra` | 921,110 | 200 | 921500 | 5 | $0 | 9,828,728 |
 
-Refused requests report no usage. Devin's 502 on `devin/glm-5-3` reported none either; it may still have
+Refused requests report no usage (the Fable request above 1,000,000 tokens included). Devin's 502 on `devin/glm-5-3` reported none either; it may still have
 counted against the plan (it ran 143 s).
 
 ## Lifetime runs (one row per run)
@@ -45,6 +46,7 @@ counted against the plan (it ran 143 s).
 | Login | Run | Model | Status | Requests answered | Input tokens | of them cached | Output tokens | Price | Running input total of the login |
 |---|---|---|---|---|---|---|---|---|---|
 | Antigravity login | LA1 | `gemini-3.8-flash-high` | stopped-early | 80 | 372,638 | 20,898 | 2,331 | $0 | 372,638 |
+| Antigravity login | LA2 | `probe/ag-claude-opus-4-6-thinking` | failed | 15 | 85,987 | 5,740 | 0 | $0 | 458,625 |
 | Codex login | LC1 | `probe/gpt-6.1-sol` | completed | 87 | 233,370 | 70,656 | 435 | $0 | 2,997,870 |
 | Codex login | LC2 | `probe/gpt-6.1-terra` | stopped-early | 53 | 142,594 | 5,120 | 265 | $0 | 3,140,464 |
 | Codex login | LC3 | `probe/gpt-6-astra` | completed | 87 | 233,517 | 78,208 | 435 | $0 | 3,373,981 |
@@ -54,6 +56,8 @@ counted against the plan (it ran 143 s).
 | Devin login | LD3 | `devin/gemini-4-argon` | failed | 7 | 35,961 | 3,046 | 112 | $0 | 10,165,704 |
 | Devin login | LD4 | `devin/glm-5-3` | failed | 14 | 42,577 | 6,848 | 80 | $0 | 10,208,281 |
 | Devin login | LD5 | `devin/gpt-6-1-sol` | failed | 0 | 0 | 0 | 0 | $0 | 10,208,281 |
+| Claude login A | LF1 | `probe/claude-fable-5-2` | completed | 80 | 355,542 | 151,058 | 596 | $0 | 355,542 |
+| Claude login A | LF2 | `probe/claude-fable-5-2` | completed | 80 | 355,212 | 150,914 | 500 | $0 | 710,754 |
 | Meta login | LM1 | `muse-ember-1.0` | completed | 86 | 226,174 | 109,692 | 1,376 | $0 | 226,174 |
 | Meta login | LM2 | `muse-spark-1.3` | stopped-early | 71 | 187,010 | 53,445 | 1,136 | $0 | 413,184 |
 | Meta login | LM3 | `muse-wonder-1.0` | completed | 86 | 226,360 | 109,564 | 1,371 | $0 | 639,544 |
@@ -66,7 +70,8 @@ rose by 105 answered requests over the Devin lifetime runs; the files of LD1 to 
 
 | Login | Input tokens answered (windows and lifetime runs) |
 |---|---|
-| Antigravity login | 372,638 |
+| Antigravity login | 458,625 |
+| Claude login A | 710,754 |
 | Codex login | 3,591,690 |
 | Devin login | 10,208,281 |
 | Meta login | 639,544 |
