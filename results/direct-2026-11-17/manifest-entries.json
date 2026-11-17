@@ -1,0 +1,171 @@
+{
+ "comment": "Entries for observed/manifest.json from results/direct-2026-11-17 (branch campaign/direct): add runs to runs and excluded to excluded. Not applied here; a later task assembles the manifest.",
+ "runs": [
+  {
+   "id": "direct-2026-11-17/oa-luna",
+   "file": "results/direct-2026-11-17/oa-luna-2026-11-17T12-19-31.json",
+   "route": "openai-api",
+   "client": "direct",
+   "model": "gpt-6-luna",
+   "models_dev": "openai/gpt-6-luna",
+   "base_model": "openai/gpt-6-luna",
+   "options": {}
+  },
+  {
+   "id": "direct-2026-11-17/oa-terra",
+   "file": "results/direct-2026-11-17/oa-terra-2026-11-17T12-21-58.json",
+   "route": "openai-api",
+   "client": "direct",
+   "model": "gpt-6.1-terra",
+   "models_dev": "openai/gpt-6.1-terra",
+   "base_model": "openai/gpt-6.1-terra",
+   "options": {}
+  },
+  {
+   "id": "direct-2026-11-17/oa-sol6",
+   "file": "results/direct-2026-11-17/oa-sol6-2026-11-17T12-22-09.json",
+   "route": "openai-api",
+   "client": "direct",
+   "model": "gpt-6-sol",
+   "models_dev": "openai/gpt-6-sol",
+   "base_model": "openai/gpt-6-sol",
+   "options": {}
+  },
+  {
+   "id": "direct-2026-11-17/oa-chat-latest",
+   "file": "results/direct-2026-11-17/oa-chat-latest-2026-11-17T12-22-34.json",
+   "route": "openai-api",
+   "client": "direct",
+   "model": "chat-latest",
+   "models_dev": "openai/chat-latest",
+   "base_model": "openai/gpt-5.5-instant",
+   "options": {}
+  },
+  {
+   "id": "direct-2026-11-17/oa-astra",
+   "file": "results/direct-2026-11-17/oa-astra-2026-11-17T12-22-49.json",
+   "route": "openai-api",
+   "client": "direct",
+   "model": "gpt-6-astra",
+   "models_dev": "openai/gpt-6-astra",
+   "base_model": "openai/gpt-6-astra",
+   "options": {}
+  },
+  {
+   "id": "direct-2026-11-17/an-haiku-list-5m",
+   "file": "results/direct-2026-11-17/an-haiku-list-5m-2026-11-17T12-20-34.json",
+   "route": "anthropic-api",
+   "client": "direct",
+   "model": "claude-haiku-5-5",
+   "models_dev": "anthropic/claude-haiku-5-5",
+   "base_model": "anthropic/claude-haiku-5-5",
+   "options": {
+    "format": "messages"
+   },
+   "note": "the probe's `list` filler (plain numbered sentences): Anthropic answered the default filler of random words on this model with refusals (stop_reason \"refusal\", category \"bio\"; an-haiku-5m, stopped and kept)"
+  },
+  {
+   "id": "direct-2026-11-17/an-haiku-list-1h",
+   "file": "results/direct-2026-11-17/an-haiku-list-1h-2026-11-17T12-22-03.json",
+   "route": "anthropic-api",
+   "client": "direct",
+   "model": "claude-haiku-5-5",
+   "models_dev": "anthropic/claude-haiku-5-5",
+   "base_model": "anthropic/claude-haiku-5-5",
+   "options": {
+    "format": "messages",
+    "ttl": "1h"
+   },
+   "note": "the probe's `list` filler (plain numbered sentences): Anthropic answered the default filler of random words on this model with refusals (stop_reason \"refusal\", category \"bio\"; an-haiku-5m, stopped and kept)"
+  },
+  {
+   "id": "direct-2026-11-17/an-sonnet-5m",
+   "file": "results/direct-2026-11-17/an-sonnet-5m-2026-11-17T12-22-14.json",
+   "route": "anthropic-api",
+   "client": "direct",
+   "model": "claude-sonnet-5-5",
+   "models_dev": "anthropic/claude-sonnet-5-5",
+   "base_model": "anthropic/claude-sonnet-5-5",
+   "options": {
+    "format": "messages"
+   }
+  },
+  {
+   "id": "direct-2026-11-17/an-sonnet-1h",
+   "file": "results/direct-2026-11-17/an-sonnet-1h-2026-11-17T12-22-19.json",
+   "route": "anthropic-api",
+   "client": "direct",
+   "model": "claude-sonnet-5-5",
+   "models_dev": "anthropic/claude-sonnet-5-5",
+   "base_model": "anthropic/claude-sonnet-5-5",
+   "options": {
+    "format": "messages",
+    "ttl": "1h"
+   }
+  },
+  {
+   "id": "direct-2026-11-17/an-opus-5m",
+   "file": "results/direct-2026-11-17/an-opus-5m-2026-11-17T12-22-39.json",
+   "route": "anthropic-api",
+   "client": "direct",
+   "model": "claude-opus-5-5",
+   "models_dev": "anthropic/claude-opus-5-5",
+   "base_model": "anthropic/claude-opus-5-5",
+   "options": {
+    "format": "messages"
+   }
+  },
+  {
+   "id": "direct-2026-11-17/an-opus-1h",
+   "file": "results/direct-2026-11-17/an-opus-1h-2026-11-17T12-22-44.json",
+   "route": "anthropic-api",
+   "client": "direct",
+   "model": "claude-opus-5-5",
+   "models_dev": "anthropic/claude-opus-5-5",
+   "base_model": "anthropic/claude-opus-5-5",
+   "options": {
+    "format": "messages",
+    "ttl": "1h"
+   }
+  },
+  {
+   "id": "direct-2026-11-17/an-fable-5m",
+   "file": "results/direct-2026-11-17/an-fable-5m-2026-11-17T12-24-16.json",
+   "route": "anthropic-api",
+   "client": "direct",
+   "model": "claude-fable-5-2",
+   "models_dev": "anthropic/claude-fable-5-2",
+   "base_model": "anthropic/claude-fable-5-2",
+   "options": {
+    "format": "messages"
+   }
+  },
+  {
+   "id": "direct-2026-11-17/an-fable-1h",
+   "file": "results/direct-2026-11-17/an-fable-1h-2026-11-17T12-24-21.json",
+   "route": "anthropic-api",
+   "client": "direct",
+   "model": "claude-fable-5-2",
+   "models_dev": "anthropic/claude-fable-5-2",
+   "base_model": "anthropic/claude-fable-5-2",
+   "options": {
+    "format": "messages",
+    "ttl": "1h"
+   }
+  }
+ ],
+ "excluded": [
+  {
+   "id": "direct-2026-11-17/an-haiku-5m",
+   "reason": "stopped by hand after the control: Claude Haiku 5.5 answered the default filler of random words with refusals (stop_reason \"refusal\", category \"bio\"); measured with the `list` filler instead (an-haiku-list-5m, an-haiku-list-1h)"
+  },
+  {
+   "id": "direct-2026-11-17/oa-audio, oa-audio-chat",
+   "reason": "gpt-audio-1.5 takes no plain text request: the Responses API refuses the model (HTTP 400 model_not_found, \"not supported with the Responses API\"), Chat Completions refuses a request without audio (HTTP 400 \"requires that either input content or output modality contain audio\"); nothing measured"
+  },
+  {
+   "id": "direct-2026-11-17/oa-daybreak-blue, oa-daybreak-red, oa-cyber",
+   "reason": "the key cannot call gpt-daybreak-blue-latest, gpt-daybreak-red-latest or gpt-6-cyber (HTTP 404 model_not_found; none of them is in the key's model list); nothing measured"
+  }
+ ]
+}
