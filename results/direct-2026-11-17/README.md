@@ -79,8 +79,13 @@ Anthropic ($7.20 of it Claude Fable 5.2), so every run fitted the stop; Fable wa
 ## Files
 
 - `<run>-<time>.json` / `.md`: the probe's result of each run (the failed ones included).
-- `logs/<run>.log`: the probe's log; `logs/<run>.usage.jsonl`: one line per reply (model, status, usage as reported, stop
-  reason; never a header, the prompt or the answer); `logs/<run>.dry-run.txt`: the dry run made before; `logs/<run>.pid`
-  and `logs/launches.txt`: the process of each run and when it started.
+- `logs/<run>.usage.jsonl`: one line per reply (time, run label, model, status, usage as reported, stop reason and stop
+  details; never a header, the prompt or the answer), 840 lines, 17 of them `an-haiku-5m` (4 with
+  `stop_reason: "refusal"`, category `bio`). `ledger.py` reads these; run in a clean copy it rewrites `ledger.jsonl`
+  and `ledger.md` as committed. They are committed with `git add -f`, as is `an-haiku-5m-…partial.json`: `results/**/logs/`
+  and `*.partial.json` stay ignored for every other folder.
+- Not in the repository (they stay with the measuring task, git-ignored): `logs/<run>.log`, the probe's log;
+  `logs/<run>.dry-run.txt`, the dry run made before; `logs/<run>.pid` and `logs/launches.txt`, the process of each run
+  and when it started.
 - `run.sh`, `key.py`: how the runs were started. `ledger.py`, `ledger.jsonl`, `ledger.md`: the cost.
 - `manifest-entries.json`: the entries these runs add to `observed/manifest.json` (not applied here).

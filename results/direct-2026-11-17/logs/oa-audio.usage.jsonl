@@ -1,0 +1,1 @@
+{"at":"2026-11-17T12:22:24.383Z","label":"oa-audio","model":"gpt-audio-1.5","status":400,"error":{"type":"invalid_request_error","code":"model_not_found","message":"The requested model 'gpt-audio-1.5' is not supported with the Responses API."}}

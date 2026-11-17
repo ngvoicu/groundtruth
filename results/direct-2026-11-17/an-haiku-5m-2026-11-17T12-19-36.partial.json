@@ -1,0 +1,68 @@
+{
+  "probeVersion": "0.3.0",
+  "label": "an-haiku-5m",
+  "baseUrl": "https://api.anthropic.com/v1",
+  "format": "messages",
+  "model": "claude-haiku-5-5",
+  "request": {
+    "method": "POST",
+    "path": "/messages",
+    "bodyExtra": null,
+    "prefixTokens": 2500,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "anthropic-version": "2023-06-01",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "claude-haiku-5-5",
+      "max_tokens": 16,
+      "stream": false,
+      "system": [
+        {
+          "type": "text",
+          "text": "<prefix: about 2500 tokens of words filler, one per sample>",
+          "cache_control": {
+            "type": "ephemeral"
+          }
+        }
+      ],
+      "messages": [
+        {
+          "role": "user",
+          "content": "Reply with the single word OK."
+        }
+      ]
+    }
+  },
+  "runSalt": "e6tqs4ej",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000
+  ],
+  "startedAt": "2026-11-17T12:19:36.709Z",
+  "status": "running",
+  "checks": [],
+  "control": {
+    "prime": {
+      "promptTokens": 4329,
+      "cachedTokens": 0
+    },
+    "check": {
+      "promptTokens": 4329,
+      "cachedTokens": 4313
+    },
+    "warm": true
+  }
+}
