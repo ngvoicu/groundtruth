@@ -1,0 +1,444 @@
+{
+ "comment": "Entries the runs of results/logins-2026-11-17 would add to observed/manifest.json (T-74, branch campaign/logins). limits: the 13 rows replace existing rows; the claude-fable-5-2 row is new. runs: appended to runs. limits: each REPLACES the existing row of the same route, client and model (one row each). excluded: appended to excluded. Nothing here is a result: build_observed.py computes them from the raw files.",
+ "runs": [
+  {
+   "id": "logins-2026-11-17/LC1",
+   "file": "results/logins-2026-11-17/LC1-2026-11-17T12-26-35.json",
+   "route": "codex-subscription",
+   "client": "cliproxyapi",
+   "model": "gpt-6.1-sol",
+   "models_dev": null,
+   "base_model": "openai/gpt-6.1-sol",
+   "options": {},
+   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6.1-sol). Misses at random from 2.5 minutes on (2 of 3), hits at every age to 2 h but 1 h; the first run of this route checked at 2.5 minutes. Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58); its 2-hour checks ran at 14:27 UTC through build ngvoicu-local-a64b6855 (the owner restarted the proxy at 16:18:13 local), every earlier request through e8d8d777. The Codex login answered those checks: from the restart to 16:29:29 its request counter rose by exactly the 6 two-hour checks of LC1 and LC3 and the OpenAI API key by none, and the alias probe/... exists on that login only"
+  },
+  {
+   "id": "logins-2026-11-17/LC2",
+   "file": "results/logins-2026-11-17/LC2-2026-11-17T12-26-50.json",
+   "route": "codex-subscription",
+   "client": "cliproxyapi",
+   "model": "gpt-6.1-terra",
+   "models_dev": null,
+   "base_model": "openai/gpt-6.1-terra",
+   "options": {},
+   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6.1-terra). Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58)"
+  },
+  {
+   "id": "logins-2026-11-17/LC3",
+   "file": "results/logins-2026-11-17/LC3-2026-11-17T12-27-05.json",
+   "route": "codex-subscription",
+   "client": "cliproxyapi",
+   "model": "gpt-6-astra",
+   "models_dev": null,
+   "base_model": "openai/gpt-6-astra",
+   "options": {},
+   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6-astra). Misses at random from 2.5 minutes on (2 of 3), hits to 2 h. Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58); its 2-hour checks ran at 14:27 UTC through build ngvoicu-local-a64b6855 (the owner restarted the proxy at 16:18:13 local), every earlier request through e8d8d777. The Codex login answered those checks: from the restart to 16:29:29 its request counter rose by exactly the 6 two-hour checks of LC1 and LC3 and the OpenAI API key by none, and the alias probe/... exists on that login only"
+  },
+  {
+   "id": "logins-2026-11-17/LC4",
+   "file": "results/logins-2026-11-17/LC4-2026-11-17T12-27-20.json",
+   "route": "codex-subscription",
+   "client": "cliproxyapi",
+   "model": "gpt-6-luna",
+   "models_dev": null,
+   "base_model": "openai/gpt-6-luna",
+   "options": {},
+   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6-luna). Misses at random from 2.5 minutes on, cold at 1 h and 75 min. Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58)"
+  },
+  {
+   "id": "logins-2026-11-17/LM2",
+   "file": "results/logins-2026-11-17/LM2-2026-11-17T12-26-50.json",
+   "route": "meta-subscription",
+   "client": "cliproxyapi",
+   "model": "muse-spark-1.3",
+   "models_dev": null,
+   "base_model": "meta/muse-spark-1.3",
+   "options": {
+    "prompt_cache_retention": "24h"
+   },
+   "note": "the probe does not send prompt_cache_retention; CLIProxyAPI's payload rule for muse-* adds \"24h\" to every request to the Meta login (in the config since 2026-11-10). Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58)"
+  },
+  {
+   "id": "logins-2026-11-17/LA1",
+   "file": "results/logins-2026-11-17/LA1-2026-11-17T12-26-35.json",
+   "route": "antigravity",
+   "client": "cliproxyapi",
+   "model": "gemini-3.8-flash-high",
+   "models_dev": null,
+   "base_model": "google/gemini-3.8-flash",
+   "options": {
+    "prefix_tokens": 5000
+   },
+   "note": "Google answered MODEL_CAPACITY_EXHAUSTED (503) to many requests for half an hour, which the probe retried; the priming took 12 minutes, the 15 samples overdue by then were primed again, and every check ran within its time. Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58)"
+  },
+  {
+   "id": "logins-2026-11-17/LF1",
+   "file": "results/logins-2026-11-17/LF1-2026-11-17T14-37-20.json",
+   "route": "claude-subscription",
+   "client": "cliproxyapi",
+   "model": "claude-fable-5-2",
+   "models_dev": null,
+   "base_model": "anthropic/claude-fable-5-2",
+   "options": {
+    "format": "messages"
+   },
+   "note": "one Claude login (login A of two, priority -15, as CS1 - CS8), pinned by a temporary alias (probe/claude-fable-5-2) that no other login or API key serves; no ttl asked. Served by build ngvoicu-local-a64b6855 (from 16:18:13 local); login A rose, the other Claude login and both Claude API keys stayed at 0"
+  },
+  {
+   "id": "logins-2026-11-17/LF2",
+   "file": "results/logins-2026-11-17/LF2-2026-11-17T14-37-35.json",
+   "route": "claude-subscription",
+   "client": "cliproxyapi",
+   "model": "claude-fable-5-2",
+   "models_dev": null,
+   "base_model": "anthropic/claude-fable-5-2",
+   "options": {
+    "format": "messages",
+    "ttl": "1h"
+   },
+   "note": "one Claude login (login A of two, priority -15, as CS1 - CS8), pinned by a temporary alias (probe/claude-fable-5-2) that no other login or API key serves. Served by build ngvoicu-local-a64b6855 (from 16:18:13 local); login A rose, the other Claude login and both Claude API keys stayed at 0"
+  }
+ ],
+ "limits": [
+  {
+   "route": "codex-subscription",
+   "client": "cliproxyapi",
+   "model": "gpt-6.1-sol",
+   "base_model": "openai/gpt-6.1-sol",
+   "input_accepted": 921500,
+   "input_refused": 922300,
+   "note": "Codex's own model list gives a 500K default window and an 872K maximum for this model. The refusal gives no count: it held 922,289 filler words, which at 1 token per word plus 11 is 922,300 tokens (the accepted request of this walk: 921,489 words, 921,500 tokens; 1 token per word plus 11 as on this login's GPT-6.1 Terra walk of 2026-11-08, six accepted sizes). The documented maximum input of 922,000 lies between. The walk of 2026-11-13 had accepted 915,011 and refused 922,511",
+   "file": "results/logins-2026-11-17/limits-codex.jsonl",
+   "evidence": [
+    {
+     "row_model": "probe/gpt-6.1-sol",
+     "accepted": 921500
+    },
+    {
+     "row_model": "probe/gpt-6.1-sol",
+     "refused_n": 922289,
+     "per_n": 1,
+     "overhead": 11,
+     "refused_tokens": 922300
+    }
+   ]
+  },
+  {
+   "route": "codex-subscription",
+   "client": "cliproxyapi",
+   "model": "gpt-6-astra",
+   "base_model": "openai/gpt-6-astra",
+   "input_accepted": 921500,
+   "input_refused": 922300,
+   "note": "Codex's own model list gives a 272K default window and an 872K maximum for this model. The refusal gives no count: it held 922,289 filler words, which at 1 token per word plus 11 is 922,300 tokens (the accepted request of this walk: 921,489 words, 921,500 tokens; 1 token per word plus 11 as on this login's GPT-6.1 Terra walk of 2026-11-08, six accepted sizes). The documented maximum input of 922,000 lies between. The walk of 2026-11-11 had accepted 915,011 and refused 922,511",
+   "file": "results/logins-2026-11-17/limits-codex.jsonl",
+   "evidence": [
+    {
+     "row_model": "probe/gpt-6-astra",
+     "accepted": 921500
+    },
+    {
+     "row_model": "probe/gpt-6-astra",
+     "refused_n": 922289,
+     "per_n": 1,
+     "overhead": 11,
+     "refused_tokens": 922300
+    }
+   ]
+  },
+  {
+   "route": "codex-subscription",
+   "client": "cliproxyapi",
+   "model": "gpt-6-luna",
+   "base_model": "openai/gpt-6-luna",
+   "input_accepted": 921500,
+   "input_refused": 922300,
+   "note": "Codex's own model list gives a 272K default window and an 872K maximum for this model. The refusal gives no count: it held 922,289 filler words, which at 1 token per word plus 11 is 922,300 tokens (the accepted request of this walk: 921,489 words, 921,500 tokens; 1 token per word plus 11 as on this login's GPT-6.1 Terra walk of 2026-11-08, six accepted sizes). The documented maximum input of 922,000 lies between. The walk of 2026-11-11 had accepted 915,011 and refused 922,511",
+   "file": "results/logins-2026-11-17/limits-codex.jsonl",
+   "evidence": [
+    {
+     "row_model": "probe/gpt-6-luna",
+     "accepted": 921500
+    },
+    {
+     "row_model": "probe/gpt-6-luna",
+     "refused_n": 922289,
+     "per_n": 1,
+     "overhead": 11,
+     "refused_tokens": 922300
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "deepseek-v4-1-flash-1017",
+   "base_model": "deepseek/deepseek-v4.1-flash-1017",
+   "input_accepted": 1048076,
+   "input_refused": 1048876,
+   "note": "Devin's own model list says 1,048,576; the refusal names no limit. It held 1,048,463 filler words, which at 1 token per word plus 413 is 1,048,876 tokens (the accepted request of this walk: 1,047,663 words, 1,048,076 tokens; 1 token per word plus 413 as on the walk of 2026-11-16, two accepted sizes, one of them its calibration request). The listed 1,048,576 lies between. The earlier walk had accepted 1,047,489 and refused 1,052,864",
+   "file": "results/logins-2026-11-17/limits-devin.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/deepseek-v4-1-flash-1017",
+     "accepted": 1048076
+    },
+    {
+     "row_model": "devin/deepseek-v4-1-flash-1017",
+     "refused_n": 1048463,
+     "per_n": 1,
+     "overhead": 413,
+     "refused_tokens": 1048876
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "gpt-6-luna",
+   "base_model": "openai/gpt-6-luna",
+   "input_accepted": 921500,
+   "input_refused": 922300,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 921,910 filler words, which at 1 token per word plus 390 is 922,300 tokens (the accepted request of this walk: 921,110 words, 921,500 tokens; 1 token per word plus 390 as on the walk of 2026-11-16, two accepted sizes per model). OpenAI's documented maximum input of 922,000 lies between. The earlier walk had accepted 911,390 and refused 923,890",
+   "file": "results/logins-2026-11-17/limits-devin.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/gpt-6-luna",
+     "accepted": 921500
+    },
+    {
+     "row_model": "devin/gpt-6-luna",
+     "refused_n": 921910,
+     "per_n": 1,
+     "overhead": 390,
+     "refused_tokens": 922300
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "claude-haiku-5-5",
+   "base_model": "anthropic/claude-haiku-5-5",
+   "input_accepted": 999500,
+   "input_refused": 1000300,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 499,864 filler words, which at 2 tokens per word plus 572 is 1,000,300 tokens (the accepted request of this walk: 499,464 words, 999,500 tokens; 2 tokens per word plus 572 as on the walk of 2026-11-16, two accepted sizes per model). The listed 1,000,000 lies between. The earlier walk had accepted 999,072 and refused 1,004,446",
+   "file": "results/logins-2026-11-17/limits-devin.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/claude-haiku-5-5",
+     "accepted": 999500
+    },
+    {
+     "row_model": "devin/claude-haiku-5-5",
+     "refused_n": 499864,
+     "per_n": 2,
+     "overhead": 572,
+     "refused_tokens": 1000300
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "deepseek-v4-pro",
+   "base_model": "deepseek/deepseek-v4-pro",
+   "input_accepted": 1048076,
+   "input_refused": 1048876,
+   "note": "Devin's own model list says 1,048,576; the refusal names no limit. It held 1,048,410 filler words, which at 1 token per word plus 466 is 1,048,876 tokens (the accepted request of this walk: 1,047,610 words, 1,048,076 tokens; 1 token per word plus 466 as on the walk of 2026-11-16, two accepted sizes, one of them its calibration request). The listed 1,048,576 lies between. The earlier walk had accepted 1,047,542 and refused 1,052,917",
+   "file": "results/logins-2026-11-17/limits-devin.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/deepseek-v4-pro",
+     "accepted": 1048076
+    },
+    {
+     "row_model": "devin/deepseek-v4-pro",
+     "refused_n": 1048410,
+     "per_n": 1,
+     "overhead": 466,
+     "refused_tokens": 1048876
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "gpt-6-1-terra",
+   "base_model": "openai/gpt-6.1-terra",
+   "input_accepted": 921500,
+   "input_refused": 922300,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 921,910 filler words, which at 1 token per word plus 390 is 922,300 tokens (the accepted request of this walk: 921,110 words, 921,500 tokens; 1 token per word plus 390 as on the walk of 2026-11-16, two accepted sizes per model). OpenAI's documented maximum input of 922,000 lies between. The earlier walk had accepted 911,390 and refused 923,890",
+   "file": "results/logins-2026-11-17/limits-devin.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/gpt-6-1-terra",
+     "accepted": 921500
+    },
+    {
+     "row_model": "devin/gpt-6-1-terra",
+     "refused_n": 921910,
+     "per_n": 1,
+     "overhead": 390,
+     "refused_tokens": 922300
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "gemini-4-argon",
+   "base_model": "google/gemini-4-argon",
+   "input_accepted": 1048076,
+   "input_refused": 1048876,
+   "note": "Devin's own model list says 1,048,576; the refusal names no limit. It held 1,048,462 filler words, which at 1 token per word plus 414 is 1,048,876 tokens (the accepted request of this walk: 1,047,662 words, 1,048,076 tokens; 1 token per word plus 414 as on the walk of 2026-11-16, two accepted sizes, one of them its calibration request). The listed 1,048,576 lies between. The earlier walk had accepted 1,047,490 and refused 1,052,865",
+   "file": "results/logins-2026-11-17/limits-devin.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/gemini-4-argon",
+     "accepted": 1048076
+    },
+    {
+     "row_model": "devin/gemini-4-argon",
+     "refused_n": 1048462,
+     "per_n": 1,
+     "overhead": 414,
+     "refused_tokens": 1048876
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "gpt-6-1-sol",
+   "base_model": "openai/gpt-6.1-sol",
+   "input_accepted": 921500,
+   "input_refused": 922300,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 921,910 filler words, which at 1 token per word plus 390 is 922,300 tokens (the accepted request of this walk: 921,110 words, 921,500 tokens; 1 token per word plus 390 as on Devin's GPT-6.1 Terra, GPT-6 Astra and Luna walks of 2026-11-16, two accepted sizes each). OpenAI's documented maximum input of 922,000 lies between. The earlier walk had accepted 915,390 and refused 925,390",
+   "file": "results/logins-2026-11-17/limits-devin.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/gpt-6-1-sol",
+     "accepted": 921500
+    },
+    {
+     "row_model": "devin/gpt-6-1-sol",
+     "refused_n": 921910,
+     "per_n": 1,
+     "overhead": 390,
+     "refused_tokens": 922300
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "claude-sonnet-5-5",
+   "base_model": "anthropic/claude-sonnet-5-5",
+   "input_accepted": 999500,
+   "input_refused": 1000300,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 499,864 filler words, which at 2 tokens per word plus 572 is 1,000,300 tokens (the accepted request of this walk: 499,464 words, 999,500 tokens; 2 tokens per word plus 572 as on the walk of 2026-11-16, two accepted sizes per model). The listed 1,000,000 lies between. The earlier walk had accepted 999,072 and refused 1,004,446",
+   "file": "results/logins-2026-11-17/limits-devin.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/claude-sonnet-5-5",
+     "accepted": 999500
+    },
+    {
+     "row_model": "devin/claude-sonnet-5-5",
+     "refused_n": 499864,
+     "per_n": 2,
+     "overhead": 572,
+     "refused_tokens": 1000300
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "claude-opus-5-5",
+   "base_model": "anthropic/claude-opus-5-5",
+   "input_accepted": 999500,
+   "input_refused": 1000300,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 499,864 filler words, which at 2 tokens per word plus 572 is 1,000,300 tokens (the accepted request of this walk: 499,464 words, 999,500 tokens; 2 tokens per word plus 572 as on the walk of 2026-11-16, two accepted sizes per model). The listed 1,000,000 lies between. The earlier walk had accepted 999,072 and refused 1,004,446",
+   "file": "results/logins-2026-11-17/limits-devin.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/claude-opus-5-5",
+     "accepted": 999500
+    },
+    {
+     "row_model": "devin/claude-opus-5-5",
+     "refused_n": 499864,
+     "per_n": 2,
+     "overhead": 572,
+     "refused_tokens": 1000300
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "gpt-6-astra",
+   "base_model": "openai/gpt-6-astra",
+   "input_accepted": 921500,
+   "input_refused": 922300,
+   "note": "Devin's own model list says 1,000,000; the refusal names no limit. It held 921,910 filler words, which at 1 token per word plus 390 is 922,300 tokens (the accepted request of this walk: 921,110 words, 921,500 tokens; 1 token per word plus 390 as on the walk of 2026-11-16, two accepted sizes per model). OpenAI's documented maximum input of 922,000 lies between. The earlier walk had accepted 911,390 and refused 923,890",
+   "file": "results/logins-2026-11-17/limits-devin.jsonl",
+   "evidence": [
+    {
+     "row_model": "devin/gpt-6-astra",
+     "accepted": 921500
+    },
+    {
+     "row_model": "devin/gpt-6-astra",
+     "refused_n": 921910,
+     "per_n": 1,
+     "overhead": 390,
+     "refused_tokens": 922300
+    }
+   ]
+  },
+  {
+   "route": "claude-subscription",
+   "client": "cliproxyapi",
+   "model": "claude-fable-5-2",
+   "base_model": "anthropic/claude-fable-5-2",
+   "context": 1000000,
+   "note": "the refusal names the window (\"prompt is too long: 1001190 tokens > 1000000 maximum\"); no large request was accepted on purpose (Fable is the dearest model on the plan), so no accepted size; the output limit was not tested",
+   "file": "results/logins-2026-11-17/limits-claude.jsonl",
+   "evidence": [
+    {
+     "row_model": "probe/claude-fable-5-2",
+     "message_has": "> 1000000 maximum"
+    }
+   ]
+  }
+ ],
+ "excluded": [
+  {
+   "id": "logins-2026-11-17/LM1",
+   "reason": "Muse Ember 1.0 on the Meta login (24h retention added by CLIProxyAPI): warm in all 42 checks to 2 h. Left out because it would lower the published long lifetime (4 h, meta-24h-2026-11-10/M1) only by ending at 2 h while still warm (2-hour checks through build a64b6855, answered by the Meta login: its counter rose by exactly the 6 two-hour checks of LM1 and LM3)"
+  },
+  {
+   "id": "logins-2026-11-17/LM3",
+   "reason": "Muse Wonder 1.0 on the Meta login (24h retention added by CLIProxyAPI): warm in all 42 checks to 2 h. Left out because it would lower the published long lifetime (4 h, meta-24h-2026-11-10/M2) only by ending at 2 h while still warm (2-hour checks through build a64b6855, answered by the Meta login: its counter rose by exactly the 6 two-hour checks of LM1 and LM3)"
+  },
+  {
+   "id": "logins-2026-11-17/LD1, LD3, LD4, LD5",
+   "reason": "Devin answered 429 \"Reached request rate limit\" during priming (LD5 at its first request); the runs ended at the refusal with no check"
+  },
+  {
+   "id": "logins-2026-11-17/LD2, LD6",
+   "reason": "ended by hand after the Devin login's rate refusal, before any check (LD2 had primed its samples, LD6 had passed its control)"
+  },
+  {
+   "id": "logins-2026-11-17/limits-devin.jsonl devin/glm-5-3",
+   "reason": "GLM-5.3: 1,048,876 tokens refused, then the request of 1,048,076 tokens answered 502 'empty completion (0 output tokens)' after 143 s (14:28, build e8d8d777); sent once more at 17:57 (build a64b6855, the chief's go): no answer (connection closed after 125 s). Neither says anything about the window: no accepted size, no new row; GLM-5.3's window stays as published and is still open"
+  },
+  {
+   "id": "logins-2026-11-17/LA2",
+   "reason": "Antigravity answered 429 RESOURCE_EXHAUSTED (RATE_LIMIT_EXCEEDED, \"You have exhausted your capacity on this model\") while priming claude-opus-4-6-thinking; the login was stopped there, so no check. LA3 and LA4 (claude-sonnet-4-6, gemini-3.8-flash-tiered) were ended after their controls and left no run file; LA5 - LA8 never started"
+  }
+ ]
+}

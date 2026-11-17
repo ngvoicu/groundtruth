@@ -27,6 +27,13 @@ export interface RunOptions {
   cacheKey?: boolean;
   /** Send a per-sample `session_id` (OpenRouter sticky routing). Default false. */
   sessionId?: boolean;
+  /**
+   * End the run at the first quota or rate refusal (HTTP 429, or an answer that names a quota or usage limit) instead
+   * of retrying it. For a subscription whose quota must not be pressed again (from 0.3.1). Default false.
+   */
+  stopOnRefusal?: boolean;
+  /** Wait this long after each priming request (ms), to stay under a request-rate limit (from 0.3.2). Default 0. */
+  primePauseMs?: number;
 }
 
 export interface SendResult {
@@ -141,10 +148,21 @@ export interface RunResult {
   control?: { prime: Usage; check: Usage; warm: boolean };
   status: "running" | "completed" | "stopped-early" | "no-observable-cache" | "failed";
   error?: string;
+  /** Every answered request of the run, its token counts as the replies report them (from 0.3.1). */
+  spent?: Spent;
   checks: Check[];
 }
 
-export const PROBE_VERSION = "0.3.0";
+export interface Spent {
+  requests: number;
+  promptTokens: number;
+  cachedTokens: number;
+  /** Summed over the replies that report an output count; `requestsWithoutOutput` counts the others. */
+  outputTokens: number;
+  requestsWithoutOutput: number;
+}
+
+export const PROBE_VERSION = "0.3.2";
 
 /** How long after its planned age a check may still run: 30 s, or 10 % of the age when longer. */
 export function lateAfterMs(ageMs: number): number {
@@ -167,8 +185,16 @@ function retryable(err: unknown): boolean {
   return true; // network errors
 }
 
+/** A quota or rate refusal, with `stopOnRefusal`: never retried, it ends the run. */
+export class RefusalStop extends HttpError {}
+const QUOTA = /quota|rate.?limit|usage.?limit|resource.?exhausted|too many requests|model_cooldown|exceeded your/i;
+
+export function isRefusal(err: unknown): boolean {
+  return err instanceof HttpError && (err.status === 429 || (err.status >= 400 && QUOTA.test(err.message)));
+}
+
 /** Sends one request for a prefix and returns its usage, retrying transient failures. */
-async function call(o: RunOptions, deps: Deps, prefix: string, sampleId: string): Promise<{ usage: Usage; startedAt: number }> {
+async function call(o: RunOptions, deps: Deps, prefix: string, sampleId: string, spent?: Spent): Promise<{ usage: Usage; startedAt: number }> {
   // sampleId also keys the prompt cache and the session, so a re-primed sample (id~2) starts on fresh keys.
   const req = buildRequest(o.format, {
     cacheKey: o.cacheKey === false ? undefined : `groundtruth-${o.runSalt}-${sampleId}`,
@@ -198,8 +224,19 @@ async function call(o: RunOptions, deps: Deps, prefix: string, sampleId: string)
         }
       }
       if (!usage) throw new HttpError(502, `no usage in response: ${res.text.slice(0, 200)}`);
+      if (spent) {
+        spent.requests++;
+        spent.promptTokens += usage.promptTokens;
+        spent.cachedTokens += usage.cachedTokens;
+        if (usage.outputTokens === undefined) spent.requestsWithoutOutput++;
+        else spent.outputTokens += usage.outputTokens;
+      }
       return { usage, startedAt };
     } catch (err) {
+      if (o.stopOnRefusal && isRefusal(err)) {
+        const e = err as HttpError;
+        throw new RefusalStop(e.status, `quota or rate refusal, not retried: ${e.message}`);
+      }
       if (attempt >= RETRY_DELAYS_MS.length || !retryable(err)) throw err;
       deps.log(`  retry in ${RETRY_DELAYS_MS[attempt] / 1000}s: ${(err as Error).message}`);
       await deps.sleep(RETRY_DELAYS_MS[attempt]);
@@ -232,8 +269,10 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
     plannedAges: o.ages,
     startedAt: new Date(deps.now()).toISOString(),
     status: "running",
+    spent: { requests: 0, promptTokens: 0, cachedTokens: 0, outputTokens: 0, requestsWithoutOutput: 0 },
     checks: [],
   };
+  const spent = result.spent as Spent;
   const finish = (status: RunResult["status"], error?: string) => {
     result.status = status;
     if (error) result.error = error;
@@ -246,11 +285,11 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
     // Control: an immediate re-send must hit the cache, otherwise nothing below can be measured.
     deps.log(`control: ${o.label}`);
     const controlPrefix = makePrefix(o.runSalt, "control", o.prefixTokens, o.filler);
-    const prime = await call(o, deps, controlPrefix, "control");
+    const prime = await call(o, deps, controlPrefix, "control", spent);
     let check: Usage | undefined;
     for (const wait of [3_000, 10_000]) {
       await deps.sleep(wait);
-      check = (await call(o, deps, controlPrefix, "control")).usage;
+      check = (await call(o, deps, controlPrefix, "control", spent)).usage;
       if (warmOf(check)) break;
     }
     const warm = check !== undefined && warmOf(check);
@@ -264,16 +303,26 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
     // The prompt (and cache key) a sample is checked with: its own id, or id~n after being primed again.
     const prefixId = new Map<string, string>(samples.map((s) => [s.id, s.id]));
     deps.log(`priming ${samples.length} samples`);
+    // A refusal (stopOnRefusal) ends the priming of every worker: no further request is sent.
+    let refused: RefusalStop | undefined;
     await pool(samples, o.concurrency, async (s) => {
+      if (refused) return;
       try {
-        const { startedAt } = await call(o, deps, makePrefix(o.runSalt, s.id, o.prefixTokens, o.filler), s.id);
+        const { startedAt } = await call(o, deps, makePrefix(o.runSalt, s.id, o.prefixTokens, o.filler), s.id, spent);
         // Lifetimes count from the start of the request that wrote the entry.
         primedAt.set(s.id, startedAt);
+        if (o.primePauseMs) await deps.sleep(o.primePauseMs);
       } catch (err) {
+        if (err instanceof RefusalStop) {
+          refused = err;
+          return;
+        }
         deps.log(`  priming ${s.id} failed, sample dropped: ${(err as Error).message.slice(0, 160)}`);
       }
     });
+    if (refused) throw refused;
     if (!primedAt.size) throw new Error("every priming request failed");
+    deps.log(`priming done: ${primedAt.size} of ${samples.length} samples primed`);
     deps.onProgress?.(result);
 
     // Check each sample exactly once, when it reaches its age. Priming every sample first can take long (slow or
@@ -298,11 +347,12 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
         const id = `${s.id}~${item.reprimes + 2}`;
         deps.log(`  ${formatDuration(s.ageMs)} r${s.replica}: ${formatDuration(overdue)} overdue, priming again`);
         try {
-          const { startedAt } = await call(o, deps, makePrefix(o.runSalt, id, o.prefixTokens, o.filler), id);
+          const { startedAt } = await call(o, deps, makePrefix(o.runSalt, id, o.prefixTokens, o.filler), id, spent);
           primedAt.set(s.id, startedAt);
           prefixId.set(s.id, id);
           due.push({ s, at: startedAt + s.ageMs, reprimes: item.reprimes + 1 });
         } catch (err) {
+          if (err instanceof RefusalStop) throw err;
           deps.log(`  priming ${id} failed, sample dropped: ${(err as Error).message.slice(0, 160)}`);
         }
         continue;
@@ -310,8 +360,9 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
       const pid = prefixId.get(s.id) as string;
       let got: { usage: Usage; startedAt: number };
       try {
-        got = await call(o, deps, makePrefix(o.runSalt, pid, o.prefixTokens, o.filler), pid);
+        got = await call(o, deps, makePrefix(o.runSalt, pid, o.prefixTokens, o.filler), pid, spent);
       } catch (err) {
+        if (err instanceof RefusalStop) throw err;
         const message = (err as Error).message.slice(0, 300);
         result.checks.push({ sampleId: s.id, error: message, targetAgeMs: s.ageMs, actualAgeMs: deps.now() - (primedAt.get(s.id) as number), promptTokens: 0, cachedTokens: 0, warm: false });
         deps.log(`  ${formatDuration(s.ageMs)} r${s.replica}: ERROR ${message.slice(0, 120)}`);

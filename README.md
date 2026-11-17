@@ -87,7 +87,14 @@ share them. `harness/probe.py` (the same evaluation through a real coding tool) 
 
 Options: `--schedule std|long|quick`, `--ages 30m,65m`, `--replicas 3`, `--prefix-tokens 2500`, `--filler words|list`, `--max-output 16`,
 `--stream`, `--ttl`, `--beta`, `--header k:v`, `--body-extra '<json>'`, `--label`, `--salt`, `--out`,
-`--usage-log <file>` (one JSON line per reply with the usage as reported, for a cost ledger). See `--help`.
+`--stop-on-refusal`, `--prime-pause <ms>`, `--usage-log <file>` (one JSON line per reply with the usage as reported,
+for a cost ledger). See `--help`.
+
+`--stop-on-refusal` (from 0.3.1) ends a run at the first quota or rate refusal (HTTP 429, or an answer that names a
+quota or usage limit) instead of retrying it: for a subscription whose quota must not be pressed again. From 0.3.1
+every run file also sums what its answered requests used (`spent`: requests, prompt, cached and output tokens as the
+replies report them). `--prime-pause` (from 0.3.2) waits after each priming request, for a request-rate limit; with
+`--concurrency 1` the priming then sends one request at a time, and the log says when it is done (`priming done`).
 
 ## observed.json
 

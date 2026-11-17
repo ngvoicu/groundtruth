@@ -42,6 +42,9 @@ Options:
   --no-cache-key          don't send a per-sample prompt_cache_key (sent by default on chat/responses)
   --session-id            send a per-sample session_id (OpenRouter sticky routing)
   --concurrency <n>       parallel priming requests (default: 4)
+  --prime-pause <ms>      wait this long after each priming request (default 0), for a request-rate limit
+  --stop-on-refusal       end the run at the first quota or rate refusal (HTTP 429, or an answer naming a quota or
+                          usage limit) instead of retrying it: for a subscription's quota
   --label <text>          run label used in file names and the report (default: <model>-<format>)
   --salt <text>           run salt (default: random)
   --out <dir>             output directory (default: results)
@@ -84,6 +87,8 @@ const { values } = parseArgs({
     "cache-key": { type: "boolean", default: true },
     "session-id": { type: "boolean", default: false },
     concurrency: { type: "string" },
+    "stop-on-refusal": { type: "boolean", default: false },
+    "prime-pause": { type: "string" },
     label: { type: "string" },
     salt: { type: "string" },
     out: { type: "string", default: "results" },
@@ -149,6 +154,8 @@ const opts: RunOptions = {
   label,
   cacheKey: values["cache-key"],
   sessionId: values["session-id"],
+  stopOnRefusal: values["stop-on-refusal"],
+  primePauseMs: values["prime-pause"] === undefined ? 0 : int(values["prime-pause"], "prime-pause", 0),
   warmFraction: values["warm-fraction"] === undefined ? 0.5 : Number(values["warm-fraction"]),
 };
 if (!(opts.warmFraction! > 0 && opts.warmFraction! <= 1)) fail("--warm-fraction must be in (0, 1]");

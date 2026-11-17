@@ -79,6 +79,50 @@ test("hard errors fail the run with a message", async () => {
   assert.match(r.error ?? "", /HTTP 401/);
 });
 
+test("with stopOnRefusal a 429 is not retried and ends the run, during priming and at a check", async () => {
+  for (const failAt of [4, 8]) {
+    const { deps } = fakeUpstream(60 * MIN);
+    const send = deps.send;
+    let n = 0;
+    deps.send = async (u, h, b) => {
+      n++;
+      if (n === failAt) return { status: 429, text: "usage limit reached" };
+      return send(u, h, b);
+    };
+    const r = await runProbe({ ...opts([5 * MIN, 10 * MIN], 2), stopOnRefusal: true }, deps);
+    assert.equal(r.status, "failed");
+    assert.match(r.error ?? "", /quota or rate refusal, not retried: HTTP 429/);
+    assert.equal(n, failAt, "no request after the refusal");
+  }
+  // A 400 that names a quota stops too; one that doesn't is an ordinary error.
+  const { deps } = fakeUpstream(60 * MIN);
+  deps.send = async () => ({ status: 400, text: "Your weekly usage quota has been exhausted" });
+  const r = await runProbe({ ...opts([5 * MIN], 1), stopOnRefusal: true }, deps);
+  assert.match(r.error ?? "", /not retried/);
+});
+
+test("primePauseMs waits after each priming request", async () => {
+  const { deps } = fakeUpstream(60 * MIN);
+  const sleeps: number[] = [];
+  const sleep = deps.sleep;
+  deps.sleep = async (ms) => { sleeps.push(ms); await sleep(ms); };
+  const r = await runProbe({ ...opts([5 * MIN], 2), concurrency: 1, primePauseMs: 1234 }, deps);
+  assert.equal(r.status, "completed");
+  // during priming (before the first wait for a check age); the checks are then spaced by the same 1,234 ms
+  const priming = sleeps.slice(0, sleeps.findIndex((ms) => ms > MIN));
+  assert.deepEqual(priming.filter((ms) => ms === 1234), [1234, 1234]);
+});
+
+test("the run file sums what every answered request used", async () => {
+  const { deps } = fakeUpstream(60 * MIN);
+  const r = await runProbe(opts([5 * MIN], 2), deps);
+  // control prime + one re-send, 2 primes, 2 checks
+  assert.equal(r.spent?.requests, 6);
+  assert.equal(r.spent?.promptTokens, 6 * 2600);
+  assert.equal(r.spent?.cachedTokens, 3 * 2560);
+  assert.equal(r.spent?.requestsWithoutOutput, 6, "the fake reports no output count");
+});
+
 test("a check that keeps failing is recorded as an error and the run continues", async () => {
   const { deps } = fakeUpstream(60 * MIN);
   const send = deps.send;

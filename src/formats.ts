@@ -33,6 +33,8 @@ export interface Usage {
   promptTokens: number;
   /** Prompt tokens served from cache. A missing field counts as 0. */
   cachedTokens: number;
+  /** Output tokens as the reply reports them (from 0.3.1), when it does. */
+  outputTokens?: number;
 }
 
 const QUESTION = "Reply with the single word OK.";
@@ -125,18 +127,25 @@ export function usageFromObject(format: Format, usage: Record<string, unknown>):
     const read = num(usage.cache_read_input_tokens);
     const write = num(usage.cache_creation_input_tokens);
     const input = num(usage.input_tokens);
-    return { promptTokens: input + read + write, cachedTokens: read };
+    return { promptTokens: input + read + write, cachedTokens: read, ...output(usage.output_tokens) };
   }
   if (format === "responses" || "input_tokens" in usage) {
     return {
       promptTokens: num(usage.input_tokens),
       cachedTokens: num(obj(usage.input_tokens_details)?.cached_tokens),
+      ...output(usage.output_tokens),
     };
   }
   return {
     promptTokens: num(usage.prompt_tokens),
     cachedTokens: num(obj(usage.prompt_tokens_details)?.cached_tokens) || num(usage.prompt_cache_hit_tokens),
+    ...output(usage.completion_tokens),
   };
+}
+
+/** The output count only when the reply carries one, so a missing field is not recorded as 0. */
+function output(value: unknown): { outputTokens?: number } {
+  return typeof value === "number" && Number.isFinite(value) ? { outputTokens: value } : {};
 }
 
 /**
