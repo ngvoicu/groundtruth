@@ -61,7 +61,7 @@ for label in sorted(k for k in pids if not k.startswith("sequence-")):
         else:
             a[1] += 1
             a[0] += 1 if c["warm"] else 0
-    seen = ", ".join(f"{fmt(a)} {w}/{n}" + (f" (+{x} left out)" if x else "") for a, (w, n, x) in sorted(per.items()))
+    seen = ", ".join(f"{fmt(a)} {w}/{n}" + (f" (+{x} error or late)" if x else "") for a, (w, n, x) in sorted(per.items()))
     done = {a for a, v in per.items() if sum(v[1:]) >= j["replicas"]}
     nxt = next((a for a in ages if a not in done), None)
     ctl = j.get("control")
@@ -79,7 +79,10 @@ seqs = ", ".join(f"{k} pid {v} {'running' if alive(v) else 'ended'}" for k, v in
 out = [f"# Status, written {dt.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %z')}", "",
        f"Supervisors: {seqs or 'none'}", "",
        "Times are local and approximate (run start + age; priming adds minutes). A run ends by itself after two fully",
-       "cold ages in a row.", "",
+       "cold ages in a row. Errors count neither warm nor cold.", "",
+       "CL1 and CL3: from the 4-hour age every check is refused by the proxy (400 \"unknown provider for model",
+       "probe/...\"): the owner's configuration of 20:50 excluded gpt-6.1-sol and gpt-6-astra from the Codex login.",
+       "Nothing reaches OpenAI; the runs end by themselves after 24 h. No alias or backup of logins-long is left.", "",
        "| Run | Model | Process | Where | Control | Answered by (X-CPA-AUTH-KIND) | Warm/checks per age so far |",
        "|---|---|---|---|---|---|---|"] + rows
 open(f"{L}/status.md", "w").write("\n".join(out) + "\n")

@@ -63,14 +63,28 @@ at 2.5, 5 and 7.5 min and 24 h). Pinned by temporary aliases `probe/<model>` on 
 
 | Run | Model | Control | Warm / checks per age | Warm through | Last warm | First all cold | Published short today |
 |---|---|---|---|---|---|---|---|
-| CL1 | `gpt-6.1-sol` | hit (2,560 / 2,707) | running, see `logs/status.md` (to 24 h) | | | | 5 min |
+| CL1 | `gpt-6.1-sol` | hit (2,560 / 2,707) | 2, 3, 1, 2, 3, 1, 3, 2, 2, 1, 2, 1, 2, 2 of 3 (2.5 min – 2 h); from 4 h refused by the proxy (errors, below) | – | 2 h | – | 5 min |
 | CL2 | `gpt-6.1-terra` | hit (2,560 / 2,682) | 1, 1, 1, 0, 0 of 3 (2.5 – 15 min), stopped | – | 7.5 min | 10 min | 0 |
-| CL3 | `gpt-6-astra` | hit (2,560 / 2,714) | running (to 24 h) | | | | 2 h |
+| CL3 | `gpt-6-astra` | hit (2,560 / 2,714) | 3, 3, 3, 3, 2, 3, 1, 3, 1, 2, 2, 1, 2, 1 of 3 (2.5 min – 2 h); from 4 h refused by the proxy (errors, below) | 10 min | 2 h | – | 2 h |
 | CL4 | `gpt-6-luna` | **missed** (0 / 2,659, at 3 s and at 10 s) | none: ended at the control | – | – | – | 5 min |
 
 Each continues LCn (`continues`): the entry carries LCn's checks and its own, in the short profile (no lifetime asked).
 CL4 continues LC4 with only its missed control; Luna was not started again. The safe values the site derives are those
 of the merged checks; LC1 – LC4 already had misses at 2.5 minutes.
+
+**The checks from 4 hours on were refused by the proxy; CL1's and CL3's data end at 2 hours.** At 20:50 local the
+owner's other session rewrote CLIProxyAPI's configuration with `oauth.excluded-models`, which among much else excludes
+`gpt-6.1-sol`, `gpt-6-astra` and `gpt-6-luna` from the Codex login (the login now serves `gpt-6.2-sol`,
+`gpt-6.2-astra`, `gpt-6.1-terra`, `codex-auto-review` and image models; the plain old ids are left to the OpenAI API
+key). The login file was rewritten by a token refresh at 20:48:49 and holds no alias since; whether the refresh or the
+owner's session emptied it, the files and the management API do not say. It is the same account (account id, e-mail
+and plan in the file unchanged against the backup of 18:22, compared by script, not printed). The 2-hour checks (about
+20:28 and 20:30 local) were still answered by the login; the 4-hour checks (22:28 and 22:31 local) were answered 400
+`unknown provider for model probe/gpt-6.1-sol` / `probe/gpt-6-astra` by the proxy itself: nothing reached OpenAI. The
+8-, 12- and 24-hour checks get the same answer: each is recorded as an error (it counts neither warm nor cold), and the
+runs end by themselves after the 24-hour age. The aliases were not put back, by the chief's decision: they would point
+at models the owner had excluded from the login. No alias of this part is left in the proxy, and its backup
+(`pre-logins-long-aliases-20261117-182253`) was deleted at 22:46 after one read for that comparison: it predates the owner's changes and must never be restored.
 
 ## 3. Antigravity: the login's other chat models (AG1 – AG5)
 
@@ -132,6 +146,11 @@ have one account, the Meta login; every answer `oauth`; its counter was 0 before
   LM3, which that part put in `excluded` and the assembly must move to `runs`.
 - `ledger.md` (`ledger.py`), `run.sh`, `sequence.py` (one run of a login priming at a time, a login stopped at its
   refusal), `status.py` (`logs/status.md`). `logs/` stays local.
+
+**Collecting and the proxy.** CL1, CL3, ML1 and ML3 end by themselves after their 24-hour ages (about 18:27 –
+18:31 local, 2026-11-18); then `git add` their final `.json` / `.md`, rerun `ledger.py`, and rerun the scratch build.
+Nothing of this part is left to put back in the proxy: its four `probe/` aliases are gone (see section 2) and its
+backup is deleted.
 
 If this window is lost: `python3 results/logins-long-2026-11-17/status.py` rebuilds `logs/status.md` from the files;
 the supervisors log every process id in `logs/sequence-<login>.log`. A run cannot be resumed; one that was cut off is
