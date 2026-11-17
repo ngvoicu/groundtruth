@@ -31,11 +31,21 @@ request counts against a plan. `ledger.md` has what each request or run used.
   below, at the end.
 - **Devin** (`devin/…` ids), **Meta** (`muse-…`) and **Antigravity** (`gemini-3.8-flash-high`) ids are each served by
   one login only. The Devin login's counter rose by exactly the walk's 10 accepted and 12 failed requests.
-- **CLIProxyAPI was restarted during the runs, by someone else**: the process of 2026-11-16 18:48:58 was replaced at
-  16:18:13 (14:18 UTC) by a new one, on a binary replaced at 16:18, after the configuration had been rewritten at
-  15:58 (the API keys of Claude and OpenAI got model lists). Every request of this folder went through the earlier
-  process except the 2-hour checks of LC1, LC3, LM1 and LM3 (14:27 UTC). The aliases are in the login file and were
-  served across the restart; none of the API keys lists a `probe/…` name.
+- **Builds.** The owner restarted the proxy twice while this folder was made, each time on a new build of his:
+  `ngvoicu-local-e8d8d777` (the process of 2026-11-16 18:48:58) until 16:18:13 local, `ngvoicu-local-a64b6855` (the
+  same plus his PR #7634) until 18:09:07, `ngvoicu-local-c52243ab` after that. The configuration was rewritten at
+  15:58 (the Claude and OpenAI API keys got model lists). What each build served:
+  - e8d8d777: every window request but GLM-5.3's second one; LC1 – LC4, LM1 – LM3 and LA1 up to their 90-minute checks
+    (LC2, LC4, LM2 and LA1 entirely); the Devin runs LD1 – LD6.
+  - a64b6855: the 2-hour checks of LC1, LC3, LM1 and LM3 (14:27 UTC); Fable's window request and LF1, LF2; LA2 – LA4;
+    GLM-5.3's second window request.
+  - c52243ab: nothing of this folder.
+- **Who answered the four 2-hour checks after the first restart.** The aliases live in the login file and were still
+  listed after the restart (`/v1/models` at 16:31 showed all four `probe/…` ids), and no API key lists a `probe/…`
+  name, also after the configuration change. From the restart to 16:29:29 the Codex login's request counter rose by
+  exactly 6 (the two-hour checks of LC1 and LC3, 3 each) and the OpenAI API key's stayed at 0; the Meta login's rose by
+  exactly 6 (LM1 and LM3; `muse-…` ids have no other account). So the logins answered them, and each run is proven to
+  its last age. The `X-CPA-AUTH-KIND` header of a64b6855 was not recorded by the probe.
 
 ## 1. Input windows (`window_walk.py`, `run-windows.sh`)
 
@@ -72,7 +82,10 @@ per word, DeepSeek V4.1 Flash 413, DeepSeek V4 Pro 466, Gemini 4 Argon 414), who
 the tokens per word. The limits rows in `manifest-entries.json` say so in their notes.
 
 **GLM-5.3** refused 1,048,876 tokens, then answered the request of 1,048,076 tokens with HTTP 502 "devin upstream
-returned an empty completion (0 output tokens)" after 143 s: neither accepted nor refused. It was not sent again. The
+returned an empty completion (0 output tokens)" after 143 s: neither accepted nor refused. With the chief's go it was
+sent once more at 17:57 (build a64b6855, Devin quiet): no answer, the connection was closed after 125 s (the row with
+status null). Neither row says anything about the window: **GLM-5.3's window is still open**, its published bounds
+stay, and the rows are not a limits entry. The
 first version of `window_walk.py` ended the whole Devin walk at that answer; the models it had not reached were walked
 by a second command (`run-windows.sh`, comment at the end), with the script changed to end only that model. Its row
 stays as published: this walk has no accepted size of GLM-5.3 to convert the refusal with (with the overhead of
@@ -187,6 +200,27 @@ priming, Antigravity answered `429 RESOURCE_EXHAUSTED` (`RATE_LIMIT_EXCEEDED`: "
 this model. Resets in 0s."). LA2 ended at the refusal; the supervisor ended LA3 and LA4 (past their controls, which
 all hit: 5,740 of 5,752, 5,760 of 5,772 and 2,633 of 4,672 tokens cached) and started nothing more. LA3 and LA4 left
 only logs (not committed), so their tokens are not in the ledger. LA2's file is kept, not in `observed.json`.
+
+**Result for the two Claude ids of this login** (`claude-opus-4-6-thinking`, `claude-sonnet-4-6`): the control hit (an
+immediate re-send was served from the cache), no lifetime. By the chief's decision nothing more goes to them today.
+
+**What the refusals mean for the owner's own use of this login today**, as far as the answers show: the 429 named one
+model, `claude-opus-4-6-thinking` ("You have exhausted your capacity on this model. Resets in 0s."), a rate limit
+(`RATE_LIMIT_EXCEEDED`) with no later reset time; nothing refused the account as a whole. The earlier 503s
+(`MODEL_CAPACITY_EXHAUSTED`, 12:27 – 12:59 UTC, `gemini-3.8-flash-high`) were Google's server capacity, not this
+account's.
+
+## What was not measured (for the next task)
+
+- **Devin lifetimes**, all eight: `devin/claude-opus-5-5`, `deepseek-v4-pro`, `gemini-4-argon`, `glm-5-3`,
+  `gpt-6-1-sol`, `grok-4-7`, `kimi-k3`, `swe-2` (LD1 – LD8 above). The chief's pace for a retest: never more than one
+  request to Devin at a time while priming (probe `--concurrency 1`, `--prime-pause` from probe 0.3.2), the next run
+  only once the one before has logged `priming done`; on a 429, wait once for the reset it names plus a minute and go on
+  at half the pace; a second 429, or any refusal that speaks of the plan, quota or credits, ends Devin.
+- **Antigravity**: `gemini-3.8-flash-tiered`, `gemini-3-flash`, `gemini-3.1-flash-lite`, `gemini-3.5-flash-lite`,
+  `gpt-oss-120b-medium`: no run. The chief's form for a second try: one run at a time, one request at a time while
+  priming, cheapest first, the first refusal of any kind ends Antigravity. Not the two Claude ids.
+- **GLM-5.3's window on Devin** (above).
 
 ## Files
 

@@ -35,7 +35,7 @@ for f in sorted(glob.glob(f"{D}/limits-*.jsonl")):
             total[lg] = total.get(lg, 0) + r["promptTokens"]
         lines.append(f"| {lg} | `{r['model']}` | {r['n']:,} | {r['status']} | {r['promptTokens'] or '–'} | "
                      f"{r.get('outputTokens') if r.get('outputTokens') is not None else '–'} | $0 | {total.get(lg, 0):,} |")
-lines += ["", "Refused requests report no usage (the Fable request above 1,000,000 tokens included). Devin's 502 on `devin/glm-5-3` reported none either; it may still have",
+lines += ["", "Refused requests report no usage (the Fable request above 1,000,000 tokens included). Devin's 502 on `devin/glm-5-3` and its second attempt (no answer) reported none either; they may still have",
           "counted against the plan (it ran 143 s).", "",
           "## Lifetime runs (one row per run)", "",
           "| Login | Run | Model | Status | Requests answered | Input tokens | of them cached | Output tokens | Price | Running input total of the login |",

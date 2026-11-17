@@ -10,7 +10,7 @@
    "models_dev": null,
    "base_model": "openai/gpt-6.1-sol",
    "options": {},
-   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6.1-sol). Misses at random from 2.5 minutes on (2 of 3), hits at every age to 2 h but 1 h; the first run of this route checked at 2.5 minutes. its 2-hour checks ran at 14:27 UTC, after CLIProxyAPI was restarted (by someone else, 14:18 UTC) on a replaced binary; every earlier request went through the process of 2026-11-16 18:48"
+   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6.1-sol). Misses at random from 2.5 minutes on (2 of 3), hits at every age to 2 h but 1 h; the first run of this route checked at 2.5 minutes. Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58); its 2-hour checks ran at 14:27 UTC through build ngvoicu-local-a64b6855 (the owner restarted the proxy at 16:18:13 local), every earlier request through e8d8d777. The Codex login answered those checks: from the restart to 16:29:29 its request counter rose by exactly the 6 two-hour checks of LC1 and LC3 and the OpenAI API key by none, and the alias probe/... exists on that login only"
   },
   {
    "id": "logins-2026-11-17/LC2",
@@ -21,7 +21,7 @@
    "models_dev": null,
    "base_model": "openai/gpt-6.1-terra",
    "options": {},
-   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6.1-terra)"
+   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6.1-terra). Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58)"
   },
   {
    "id": "logins-2026-11-17/LC3",
@@ -32,7 +32,7 @@
    "models_dev": null,
    "base_model": "openai/gpt-6-astra",
    "options": {},
-   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6-astra). Misses at random from 2.5 minutes on (2 of 3), hits to 2 h. its 2-hour checks ran at 14:27 UTC, after CLIProxyAPI was restarted (by someone else, 14:18 UTC) on a replaced binary; every earlier request went through the process of 2026-11-16 18:48"
+   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6-astra). Misses at random from 2.5 minutes on (2 of 3), hits to 2 h. Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58); its 2-hour checks ran at 14:27 UTC through build ngvoicu-local-a64b6855 (the owner restarted the proxy at 16:18:13 local), every earlier request through e8d8d777. The Codex login answered those checks: from the restart to 16:29:29 its request counter rose by exactly the 6 two-hour checks of LC1 and LC3 and the OpenAI API key by none, and the alias probe/... exists on that login only"
   },
   {
    "id": "logins-2026-11-17/LC4",
@@ -43,7 +43,7 @@
    "models_dev": null,
    "base_model": "openai/gpt-6-luna",
    "options": {},
-   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6-luna). Misses at random from 2.5 minutes on, cold at 1 h and 75 min"
+   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6-luna). Misses at random from 2.5 minutes on, cold at 1 h and 75 min. Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58)"
   },
   {
    "id": "logins-2026-11-17/LM2",
@@ -56,7 +56,7 @@
    "options": {
     "prompt_cache_retention": "24h"
    },
-   "note": "the probe does not send prompt_cache_retention; CLIProxyAPI's payload rule for muse-* adds \"24h\" to every request to the Meta login (in the config since 2026-11-10)"
+   "note": "the probe does not send prompt_cache_retention; CLIProxyAPI's payload rule for muse-* adds \"24h\" to every request to the Meta login (in the config since 2026-11-10). Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58)"
   },
   {
    "id": "logins-2026-11-17/LA1",
@@ -69,7 +69,7 @@
    "options": {
     "prefix_tokens": 5000
    },
-   "note": "Google answered MODEL_CAPACITY_EXHAUSTED (503) to many requests for half an hour, which the probe retried; the priming took 12 minutes, the 15 samples overdue by then were primed again, and every check ran within its time"
+   "note": "Google answered MODEL_CAPACITY_EXHAUSTED (503) to many requests for half an hour, which the probe retried; the priming took 12 minutes, the 15 samples overdue by then were primed again, and every check ran within its time. Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58)"
   },
   {
    "id": "logins-2026-11-17/LF1",
@@ -82,7 +82,7 @@
    "options": {
     "format": "messages"
    },
-   "note": "one Claude login (login A of two, priority -15, as CS1 - CS8), pinned by a temporary alias (probe/claude-fable-5-2) that no other login or API key serves; no ttl asked"
+   "note": "one Claude login (login A of two, priority -15, as CS1 - CS8), pinned by a temporary alias (probe/claude-fable-5-2) that no other login or API key serves; no ttl asked. Served by build ngvoicu-local-a64b6855 (from 16:18:13 local); login A rose, the other Claude login and both Claude API keys stayed at 0"
   },
   {
    "id": "logins-2026-11-17/LF2",
@@ -96,7 +96,7 @@
     "format": "messages",
     "ttl": "1h"
    },
-   "note": "one Claude login (login A of two, priority -15, as CS1 - CS8), pinned by a temporary alias (probe/claude-fable-5-2) that no other login or API key serves"
+   "note": "one Claude login (login A of two, priority -15, as CS1 - CS8), pinned by a temporary alias (probe/claude-fable-5-2) that no other login or API key serves. Served by build ngvoicu-local-a64b6855 (from 16:18:13 local); login A rose, the other Claude login and both Claude API keys stayed at 0"
   }
  ],
  "limits": [
@@ -418,11 +418,11 @@
  "excluded": [
   {
    "id": "logins-2026-11-17/LM1",
-   "reason": "Muse Ember 1.0 on the Meta login (24h retention added by CLIProxyAPI): warm in all 42 checks to 2 h. Left out because it would lower the published long lifetime (4 h, meta-24h-2026-11-10/M1) only by ending at 2 h while still warm"
+   "reason": "Muse Ember 1.0 on the Meta login (24h retention added by CLIProxyAPI): warm in all 42 checks to 2 h. Left out because it would lower the published long lifetime (4 h, meta-24h-2026-11-10/M1) only by ending at 2 h while still warm (2-hour checks through build a64b6855, answered by the Meta login: its counter rose by exactly the 6 two-hour checks of LM1 and LM3)"
   },
   {
    "id": "logins-2026-11-17/LM3",
-   "reason": "Muse Wonder 1.0 on the Meta login (24h retention added by CLIProxyAPI): warm in all 42 checks to 2 h. Left out because it would lower the published long lifetime (4 h, meta-24h-2026-11-10/M2) only by ending at 2 h while still warm"
+   "reason": "Muse Wonder 1.0 on the Meta login (24h retention added by CLIProxyAPI): warm in all 42 checks to 2 h. Left out because it would lower the published long lifetime (4 h, meta-24h-2026-11-10/M2) only by ending at 2 h while still warm (2-hour checks through build a64b6855, answered by the Meta login: its counter rose by exactly the 6 two-hour checks of LM1 and LM3)"
   },
   {
    "id": "logins-2026-11-17/LD1, LD3, LD4, LD5",
@@ -434,7 +434,7 @@
   },
   {
    "id": "logins-2026-11-17/limits-devin.jsonl devin/glm-5-3",
-   "reason": "GLM-5.3: 1,048,876 tokens refused, then 1,048,076 answered 502 'empty completion (0 output tokens)' after 143 s; not retried, so no accepted size of this walk and no new row"
+   "reason": "GLM-5.3: 1,048,876 tokens refused, then the request of 1,048,076 tokens answered 502 'empty completion (0 output tokens)' after 143 s (14:28, build e8d8d777); sent once more at 17:57 (build a64b6855, the chief's go): no answer (connection closed after 125 s). Neither says anything about the window: no accepted size, no new row; GLM-5.3's window stays as published and is still open"
   },
   {
    "id": "logins-2026-11-17/LA2",

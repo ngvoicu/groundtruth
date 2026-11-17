@@ -37,8 +37,9 @@ per-token charge; the OpenAI and Claude API keys of the proxy served none of the
 | Devin login | `devin/claude-opus-5-5` | 499,464 | 200 | 999500 | 4 | $0 | 8,907,228 |
 | Devin login | `devin/gpt-6-astra` | 921,910 | 400 | – | – | $0 | 8,907,228 |
 | Devin login | `devin/gpt-6-astra` | 921,110 | 200 | 921500 | 5 | $0 | 9,828,728 |
+| Devin login | `devin/glm-5-3` | 1,047,682 | None | – | – | $0 | 9,828,728 |
 
-Refused requests report no usage (the Fable request above 1,000,000 tokens included). Devin's 502 on `devin/glm-5-3` reported none either; it may still have
+Refused requests report no usage (the Fable request above 1,000,000 tokens included). Devin's 502 on `devin/glm-5-3` and its second attempt (no answer) reported none either; they may still have
 counted against the plan (it ran 143 s).
 
 ## Lifetime runs (one row per run)
