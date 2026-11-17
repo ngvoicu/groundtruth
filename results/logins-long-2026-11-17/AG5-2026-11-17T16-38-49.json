@@ -1,0 +1,107 @@
+{
+  "probeVersion": "0.3.3",
+  "label": "AG5",
+  "baseUrl": "http://127.0.0.1:8317/v1",
+  "format": "responses",
+  "model": "gpt-oss-120b-medium",
+  "request": {
+    "method": "POST",
+    "path": "/responses",
+    "bodyExtra": null,
+    "prefixTokens": 5000,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "gpt-oss-120b-medium",
+      "input": [
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "<prefix: about 5000 tokens of words filler, one per sample>"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "Reply with the single word OK."
+            }
+          ]
+        }
+      ],
+      "max_output_tokens": 16,
+      "store": false,
+      "stream": false,
+      "prompt_cache_key": "groundtruth-x0t07531-<sample>"
+    }
+  },
+  "runSalt": "x0t07531",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000,
+    1200000,
+    1500000,
+    1800000,
+    2400000,
+    3000000,
+    3600000,
+    4500000,
+    5400000,
+    7200000
+  ],
+  "startedAt": "2026-11-17T16:38:49.478Z",
+  "status": "no-observable-cache",
+  "spent": {
+    "requests": 3,
+    "promptTokens": 14340,
+    "cachedTokens": 201,
+    "outputTokens": 111,
+    "requestsWithoutOutput": 0,
+    "replyHeaders": {
+      "x-cpa-auth-kind": {
+        "oauth": 3
+      }
+    }
+  },
+  "checks": [],
+  "control": {
+    "prime": {
+      "promptTokens": 4780,
+      "cachedTokens": 67,
+      "outputTokens": 30
+    },
+    "check": {
+      "promptTokens": 4780,
+      "cachedTokens": 67,
+      "outputTokens": 40
+    },
+    "warm": false,
+    "replyHeaders": {
+      "prime": {
+        "x-cpa-auth-kind": "oauth"
+      },
+      "check": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    }
+  },
+  "error": "an immediate re-send was not served from cache",
+  "finishedAt": "2026-11-17T16:39:05.415Z"
+}
