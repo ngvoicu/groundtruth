@@ -101,6 +101,18 @@ test("with stopOnRefusal a 429 is not retried and ends the run, during priming a
   assert.match(r.error ?? "", /not retried/);
 });
 
+test("primePauseMs waits after each priming request", async () => {
+  const { deps } = fakeUpstream(60 * MIN);
+  const sleeps: number[] = [];
+  const sleep = deps.sleep;
+  deps.sleep = async (ms) => { sleeps.push(ms); await sleep(ms); };
+  const r = await runProbe({ ...opts([5 * MIN], 2), concurrency: 1, primePauseMs: 1234 }, deps);
+  assert.equal(r.status, "completed");
+  // during priming (before the first wait for a check age); the checks are then spaced by the same 1,234 ms
+  const priming = sleeps.slice(0, sleeps.findIndex((ms) => ms > MIN));
+  assert.deepEqual(priming.filter((ms) => ms === 1234), [1234, 1234]);
+});
+
 test("the run file sums what every answered request used", async () => {
   const { deps } = fakeUpstream(60 * MIN);
   const r = await runProbe(opts([5 * MIN], 2), deps);

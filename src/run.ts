@@ -32,6 +32,8 @@ export interface RunOptions {
    * of retrying it. For a subscription whose quota must not be pressed again (from 0.3.1). Default false.
    */
   stopOnRefusal?: boolean;
+  /** Wait this long after each priming request (ms), to stay under a request-rate limit (from 0.3.2). Default 0. */
+  primePauseMs?: number;
 }
 
 export interface SendResult {
@@ -160,7 +162,7 @@ export interface Spent {
   requestsWithoutOutput: number;
 }
 
-export const PROBE_VERSION = "0.3.1";
+export const PROBE_VERSION = "0.3.2";
 
 /** How long after its planned age a check may still run: 30 s, or 10 % of the age when longer. */
 export function lateAfterMs(ageMs: number): number {
@@ -309,6 +311,7 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
         const { startedAt } = await call(o, deps, makePrefix(o.runSalt, s.id, o.prefixTokens, o.filler), s.id, spent);
         // Lifetimes count from the start of the request that wrote the entry.
         primedAt.set(s.id, startedAt);
+        if (o.primePauseMs) await deps.sleep(o.primePauseMs);
       } catch (err) {
         if (err instanceof RefusalStop) {
           refused = err;
@@ -319,6 +322,7 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
     });
     if (refused) throw refused;
     if (!primedAt.size) throw new Error("every priming request failed");
+    deps.log(`priming done: ${primedAt.size} of ${samples.length} samples primed`);
     deps.onProgress?.(result);
 
     // Check each sample exactly once, when it reaches its age. Priming every sample first can take long (slow or

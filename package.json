@@ -1,6 +1,6 @@
 {
   "name": "groundtruth",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "The measuring tool behind providers.dev: how long LLM prompt caches really live and how large the limits really are, per endpoint, model and route",
   "type": "module",
   "license": "MIT",
