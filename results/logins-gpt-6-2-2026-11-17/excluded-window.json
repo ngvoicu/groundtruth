@@ -1,0 +1,4 @@
+[
+ {"id": "logins-gpt-6-2-2026-11-17/limits-codex.jsonl probe/gpt-6.2-sol, probe/gpt-6.2-astra",
+  "reason": "One window request per model on the Codex login (temporary aliases on that login only), 2026-11-18 01:04 local: N = 929,989 (\"Reply with just OK.\" + \" hello\" x N, Responses, low effort; 930,000 tokens with the 11-token overhead of the login's earlier walks), refused by both with 400 \"Your input exceeds the context window of this model. Please adjust your input and try again.\", which names no limit. No accepted request was sent (by the chief's decision: a refusal only), so there is no limits row: a row with a refused size needs an accepted one. It shows only that the window is below 930,000 tokens, as for GPT-6.1 Sol, GPT-6 Astra and GPT-6 Luna (refused at 922,300, accepted at 921,500, logins-2026-11-17)."}
+]

@@ -1,0 +1,206 @@
+{
+  "probeVersion": "0.3.3",
+  "label": "GS1",
+  "baseUrl": "http://127.0.0.1:8317/v1",
+  "format": "responses",
+  "model": "probe/gpt-6.2-sol",
+  "request": {
+    "method": "POST",
+    "path": "/responses",
+    "bodyExtra": null,
+    "prefixTokens": 2500,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "probe/gpt-6.2-sol",
+      "input": [
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "<prefix: about 2500 tokens of words filler, one per sample>"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "Reply with the single word OK."
+            }
+          ]
+        }
+      ],
+      "max_output_tokens": 16,
+      "store": false,
+      "stream": false,
+      "prompt_cache_key": "groundtruth-fnvwkw7a-<sample>"
+    }
+  },
+  "runSalt": "fnvwkw7a",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000,
+    1200000,
+    1500000,
+    1800000,
+    2400000,
+    3000000,
+    3600000,
+    4500000,
+    5400000,
+    7200000
+  ],
+  "startedAt": "2026-11-17T21:26:51.100Z",
+  "status": "stopped-early",
+  "spent": {
+    "requests": 53,
+    "promptTokens": 142293,
+    "cachedTokens": 7552,
+    "outputTokens": 265,
+    "requestsWithoutOutput": 0,
+    "replyHeaders": {
+      "x-cpa-auth-kind": {
+        "oauth": 53
+      }
+    }
+  },
+  "checks": [
+    {
+      "sampleId": "2.5m-r1",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 150003,
+      "promptTokens": 2669,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "2.5m-r2",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 152471,
+      "promptTokens": 2702,
+      "cachedTokens": 2688,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "2.5m-r3",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 154375,
+      "promptTokens": 2693,
+      "cachedTokens": 2432,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "5m-r1",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300003,
+      "promptTokens": 2655,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "5m-r2",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300002,
+      "promptTokens": 2671,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "5m-r3",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300320,
+      "promptTokens": 2686,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "7.5m-r1",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450004,
+      "promptTokens": 2660,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "7.5m-r2",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450244,
+      "promptTokens": 2690,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "7.5m-r3",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450002,
+      "promptTokens": 2678,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    }
+  ],
+  "control": {
+    "prime": {
+      "promptTokens": 2694,
+      "cachedTokens": 0,
+      "outputTokens": 5
+    },
+    "check": {
+      "promptTokens": 2694,
+      "cachedTokens": 2432,
+      "outputTokens": 5
+    },
+    "warm": true,
+    "replyHeaders": {
+      "prime": {
+        "x-cpa-auth-kind": "oauth"
+      },
+      "check": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    }
+  },
+  "finishedAt": "2026-11-17T21:34:42.108Z"
+}

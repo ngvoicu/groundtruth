@@ -113,8 +113,9 @@ requests ran across the proxy restart (18:38:49 – 18:39:05).
 answer; the only errors were Google's server capacity for `gemini-3.8-flash-tiered`, which the probe retried. The two
 Claude ids of the login were not sent anything.
 
-The website has no entry yet for these ids under `antigravity` (only `gemini-3.8-flash-high`); the rows land there
-once entries exist.
+The website has no entry yet for these ids under `antigravity` (only `gemini-3.8-flash-high`). It adds one for a
+model measured on a mapped route that models.dev does not list (`site/src/core/resolve.ts`, "Models that exist only
+because we measured them"), filled from `base_model` where models.dev has it, so these rows make their own entries.
 
 ## 4. Meta login: Ember and Wonder to 24 hours (ML1, ML3)
 
