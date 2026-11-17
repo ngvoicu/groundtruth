@@ -137,11 +137,21 @@ def build_cache(manifest):
         if client not in CLIENTS or run["route"] not in ROUTES:
             raise SystemExit(f"{run['id']}: unknown client or route")
         options = dict(run.get("options") or {})
-        # A run file that records its extra body fields: each must be in the manifest's options, as sent.
-        for field, value in (data.get("body_extra") or {}).items():
-            if options.get(field) != value:
+        # A run file that records its extra body fields: each must be in the manifest's options, as sent, or in
+        # removed_by_proxy: a field the client sent that is shown not to reach the provider on this route and build
+        # (options are what the provider received; the proof goes in the run's note).
+        removed = run.get("removed_by_proxy") or {}
+        sent = data.get("body_extra") or {}
+        for field, value in sent.items():
+            if options.get(field) != value and removed.get(field) != value:
                 raise SystemExit(f"{run['id']}: the run file sent {field} = {json.dumps(value)}; its options in "
-                                 f"{MANIFEST} must say so")
+                                 f"{MANIFEST} must say so, or removed_by_proxy where the proxy removes it")
+        for field, value in removed.items():
+            if sent.get(field) != value or field in options:
+                raise SystemExit(f"{run['id']}: removed_by_proxy names {field} = {json.dumps(value)}, which the run "
+                                 f"file does not record as sent, or which is also in its options")
+        if removed and not run.get("note"):
+            raise SystemExit(f"{run['id']}: removed_by_proxy needs a note with the proof of the removal")
         if data.get("effort") and "reasoning" not in options:
             options["reasoning"] = data["effort"]
         entry = {
@@ -169,7 +179,7 @@ def build_cache(manifest):
             if not data["control"] or first != 150:
                 raise SystemExit(f"{run['id']}: an evaluation must start with a control and a check at 2.5 minutes "
                                  f"(control checks: {len(data['control'])}, first age: {first} s)")
-        for key in ("requires", "lacks", "note", "continues"):
+        for key in ("requires", "lacks", "note", "continues", "removed_by_proxy"):
             if run.get(key):
                 entry[key] = run[key]
         entry["_started"] = data["started"]

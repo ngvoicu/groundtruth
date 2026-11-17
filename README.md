@@ -125,6 +125,11 @@ subscription routes that have no public API (a ChatGPT plan through Codex, Devin
 - `continues` names an earlier run that this one adds checks to: older ages, or more samples of an age (same route,
   client, model and options). Its `checks` and its three summary numbers then cover that run too, and any run that
   one continues; `source` is the file with its own checks.
+- `removed_by_proxy` (from 2026-11-17): body fields the client sent (the run file records them) that are shown not
+  to reach the provider on that route and build, because the proxy deletes them. `options` hold what the provider
+  received, so such a field is not in `options` and asks for nothing; the run's `note` must give the proof (the
+  proxy's source, and requests showing it). `build_observed.py` accepts a recorded field only when it is in
+  `options` or here with the same value, and refuses this key without a note.
 - `requires` / `lacks` name a CLIProxyAPI change the run had or did not have yet (for OpenRouter, the cache markers
   and session id of router-for-me/CLIProxyAPI#7284). A reader on a build with that change should skip `lacks` runs.
 - `models_dev` is the matching entry in models.dev (`provider/model`) when that route exists there, and
