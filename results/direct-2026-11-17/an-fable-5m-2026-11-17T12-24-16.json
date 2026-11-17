@@ -1,0 +1,166 @@
+{
+  "probeVersion": "0.3.0",
+  "label": "an-fable-5m",
+  "baseUrl": "https://api.anthropic.com/v1",
+  "format": "messages",
+  "model": "claude-fable-5-2",
+  "request": {
+    "method": "POST",
+    "path": "/messages",
+    "bodyExtra": null,
+    "prefixTokens": 2500,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "anthropic-version": "2023-06-01",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "claude-fable-5-2",
+      "max_tokens": 16,
+      "stream": false,
+      "system": [
+        {
+          "type": "text",
+          "text": "<prefix: about 2500 tokens of words filler, one per sample>",
+          "cache_control": {
+            "type": "ephemeral"
+          }
+        }
+      ],
+      "messages": [
+        {
+          "role": "user",
+          "content": "Reply with the single word OK."
+        }
+      ]
+    }
+  },
+  "runSalt": "v5m98616",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000
+  ],
+  "startedAt": "2026-11-17T12:24:16.931Z",
+  "status": "stopped-early",
+  "checks": [
+    {
+      "sampleId": "2.5m-r1",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 150064,
+      "promptTokens": 4327,
+      "cachedTokens": 4311,
+      "warm": true
+    },
+    {
+      "sampleId": "2.5m-r2",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 151132,
+      "promptTokens": 4296,
+      "cachedTokens": 4280,
+      "warm": true
+    },
+    {
+      "sampleId": "2.5m-r3",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 151132,
+      "promptTokens": 4314,
+      "cachedTokens": 4298,
+      "warm": true
+    },
+    {
+      "sampleId": "5m-r1",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300013,
+      "promptTokens": 4297,
+      "cachedTokens": 4281,
+      "warm": true
+    },
+    {
+      "sampleId": "5m-r2",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300103,
+      "promptTokens": 4289,
+      "cachedTokens": 4273,
+      "warm": true
+    },
+    {
+      "sampleId": "5m-r3",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 301073,
+      "promptTokens": 4328,
+      "cachedTokens": 4312,
+      "warm": true
+    },
+    {
+      "sampleId": "7.5m-r1",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450006,
+      "promptTokens": 4334,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "7.5m-r2",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450826,
+      "promptTokens": 4324,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "7.5m-r3",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450979,
+      "promptTokens": 4328,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "10m-r1",
+      "targetAgeMs": 600000,
+      "actualAgeMs": 600005,
+      "promptTokens": 4317,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "10m-r2",
+      "targetAgeMs": 600000,
+      "actualAgeMs": 600242,
+      "promptTokens": 4313,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "10m-r3",
+      "targetAgeMs": 600000,
+      "actualAgeMs": 600966,
+      "promptTokens": 4297,
+      "cachedTokens": 0,
+      "warm": false
+    }
+  ],
+  "control": {
+    "prime": {
+      "promptTokens": 4346,
+      "cachedTokens": 0
+    },
+    "check": {
+      "promptTokens": 4346,
+      "cachedTokens": 4330
+    },
+    "warm": true
+  },
+  "finishedAt": "2026-11-17T12:34:28.080Z"
+}

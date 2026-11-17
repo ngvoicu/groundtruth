@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // groundtruth: measure how long a prompt cache lives on one endpoint/model.
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { buildRequest, type Format, FORMATS } from "./formats.ts";
@@ -9,6 +9,7 @@ import { FILLERS, type Filler, makePrefix, newRunSalt } from "./prefix.ts";
 import { renderMarkdown } from "./report.ts";
 import { type Deps, describeRequest, PROBE_VERSION, type RunOptions, runProbe } from "./run.ts";
 import { agesFor, formatDuration, planSamples } from "./schedule.ts";
+import { usageLogLine } from "./usagelog.ts";
 
 const HELP = `groundtruth ${PROBE_VERSION}
 
@@ -44,6 +45,8 @@ Options:
   --label <text>          run label used in file names and the report (default: <model>-<format>)
   --salt <text>           run salt (default: random)
   --out <dir>             output directory (default: results)
+  --usage-log <file>      append one JSON line per reply: model, status and the usage as reported (for a cost
+                          ledger); never a header, the prompt or the answer
   --dry-run               print the plan and one request body, send nothing
   -h, --help              show this help
 `;
@@ -84,6 +87,7 @@ const { values } = parseArgs({
     label: { type: "string" },
     salt: { type: "string" },
     out: { type: "string", default: "results" },
+    "usage-log": { type: "string" },
     "dry-run": { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
   },
@@ -176,7 +180,9 @@ const deps: Deps = {
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
   send: async (url, headers, body) => {
     const res = await fetch(url, { method: "POST", headers, body, signal: AbortSignal.timeout(300_000) });
-    return { status: res.status, text: await res.text() };
+    const text = await res.text();
+    if (values["usage-log"]) appendFileSync(values["usage-log"], `${JSON.stringify(usageLogLine(label, body, res.status, text, new Date()))}\n`);
+    return { status: res.status, text };
   },
   log: (line) => process.stderr.write(`[${new Date().toISOString().slice(11, 19)}] ${line}\n`),
   onProgress: (r) => writeFileSync(`${base}.partial.json`, JSON.stringify(r, null, 2)),

@@ -1,0 +1,63 @@
+{
+  "probeVersion": "0.3.0",
+  "label": "oa-audio-chat",
+  "baseUrl": "https://api.openai.com/v1",
+  "format": "chat",
+  "model": "gpt-audio-1.5",
+  "request": {
+    "method": "POST",
+    "path": "/chat/completions",
+    "bodyExtra": null,
+    "prefixTokens": 2500,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "gpt-audio-1.5",
+      "messages": [
+        {
+          "role": "system",
+          "content": "<prefix: about 2500 tokens of words filler, one per sample>"
+        },
+        {
+          "role": "user",
+          "content": "Reply with the single word OK."
+        }
+      ],
+      "max_tokens": 16,
+      "stream": false,
+      "prompt_cache_key": "groundtruth-kq47jwio-<sample>"
+    }
+  },
+  "runSalt": "kq47jwio",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000,
+    1200000,
+    1500000,
+    1800000,
+    2400000,
+    3000000,
+    3600000,
+    4500000,
+    5400000,
+    7200000
+  ],
+  "startedAt": "2026-11-17T12:23:40.978Z",
+  "status": "failed",
+  "checks": [],
+  "error": "HTTP 400: {\n  \"error\": {\n    \"message\": \"This model requires that either input content or output modality contain audio.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"model\",\n    \"code\": \"invalid_value\"\n  }\n}",
+  "finishedAt": "2026-11-17T12:23:42.821Z"
+}

@@ -86,7 +86,8 @@ share them. `harness/probe.py` (the same evaluation through a real coding tool) 
 2.5 minutes. Runs before that date keep the ages they were made with.
 
 Options: `--schedule std|long|quick`, `--ages 30m,65m`, `--replicas 3`, `--prefix-tokens 2500`, `--filler words|list`, `--max-output 16`,
-`--stream`, `--ttl`, `--beta`, `--header k:v`, `--body-extra '<json>'`, `--label`, `--salt`, `--out`. See `--help`.
+`--stream`, `--ttl`, `--beta`, `--header k:v`, `--body-extra '<json>'`, `--label`, `--salt`, `--out`,
+`--usage-log <file>` (one JSON line per reply with the usage as reported, for a cost ledger). See `--help`.
 
 ## observed.json
 
