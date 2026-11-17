@@ -64,5 +64,28 @@ class RemovedByProxy(unittest.TestCase):
                        removed_by_proxy={"prompt_cache_retention": "24h"}, note="n")
 
 
+class Ladder(unittest.TestCase):
+    def build(self, control_warm, checks):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "results"))
+            f = {**run_file(None), "control": {"warm": control_warm}, "checks": checks}
+            with open(os.path.join(root, "results", "T.json"), "w") as out:
+                json.dump(f, out)
+            bo.ROOT = root
+            return bo.build_cache({"runs": [{"id": "x/T", "file": "results/T.json", "route": "antigravity",
+                                             "client": "cliproxyapi", "model": "m"}]})[0]
+
+    def test_a_missed_control_is_published_without_ages(self):
+        e = self.build(False, [])
+        self.assertEqual(e["control"], {"warm": 0, "total": 1})
+        self.assertEqual(e["checks"], [])
+
+    def test_a_hit_control_still_needs_2_5_minutes_first(self):
+        with self.assertRaisesRegex(SystemExit, "2.5 minutes"):
+            self.build(True, [])
+        with self.assertRaisesRegex(SystemExit, "2.5 minutes"):
+            self.build(True, [{"targetAgeMs": 300000, "actualAgeMs": 300500, "warm": True}])
+
+
 if __name__ == "__main__":
     unittest.main()

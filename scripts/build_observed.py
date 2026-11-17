@@ -173,8 +173,11 @@ def build_cache(manifest):
             **summarize(data["checks"]),
         }
         # From 14 November 2026 every evaluation starts the same way: a control (the prompt sent again at once), then
-        # 2.5 minutes as its first age. A run that continues another one carries on from where that one stopped.
-        if entry["date"] >= LADDER_SINCE and not run.get("continues"):
+        # 2.5 minutes as its first age. A run that continues another one carries on from where that one stopped. A run
+        # whose control missed has no ages by the method (no observable cache: it ends at the control); it is a result
+        # and is published as such, as cpa-8.0.53/D6 and O1 were before that date.
+        control_missed = bool(data["control"]) and not any(data["control"]) and not data["checks"]
+        if entry["date"] >= LADDER_SINCE and not run.get("continues") and not control_missed:
             first = min(data["checks"]) if data["checks"] else None
             if not data["control"] or first != 150:
                 raise SystemExit(f"{run['id']}: an evaluation must start with a control and a check at 2.5 minutes "
