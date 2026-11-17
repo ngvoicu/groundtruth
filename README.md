@@ -87,13 +87,17 @@ share them. `harness/probe.py` (the same evaluation through a real coding tool) 
 
 Options: `--schedule std|long|quick`, `--ages 30m,65m`, `--replicas 3`, `--prefix-tokens 2500`, `--filler words|list`, `--max-output 16`,
 `--stream`, `--ttl`, `--beta`, `--header k:v`, `--body-extra '<json>'`, `--label`, `--salt`, `--out`,
-`--stop-on-refusal`, `--prime-pause <ms>`. See `--help`.
+`--stop-on-refusal`, `--prime-pause <ms>`, `--record-header <name>`. See `--help`.
 
 `--stop-on-refusal` (from 0.3.1) ends a run at the first quota or rate refusal (HTTP 429, or an answer that names a
 quota or usage limit) instead of retrying it: for a subscription whose quota must not be pressed again. From 0.3.1
 every run file also sums what its answered requests used (`spent`: requests, prompt, cached and output tokens as the
 replies report them). `--prime-pause` (from 0.3.2) waits after each priming request, for a request-rate limit; with
 `--concurrency 1` the priming then sends one request at a time, and the log says when it is done (`priming done`).
+From 0.3.3 every run file records, for every answered request, the value of CLIProxyAPI's reply header
+`X-CPA-AUTH-KIND` (`oauth` for a login, `apikey` for an API key: the kind of credential that answered): per check
+(`replyHeaders`), for the control, and counted over the run (`spent.replyHeaders`; a reply without it counts as
+`(absent)`). `--record-header <name>` records other reply headers instead; one that can carry a credential is refused.
 
 ## observed.json
 

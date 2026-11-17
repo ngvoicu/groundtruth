@@ -246,3 +246,28 @@ test("an old run file without a request record still renders", () => {
   const old = { probeVersion: "0.2.0", label: "old", baseUrl: "http://x/v1", format: "responses" as const, model: "m", runSalt: "s", replicas: 1, cacheKey: true, plannedAges: [], startedAt: "2026-11-15T00:00:00Z", status: "completed" as const, checks: [] };
   assert.doesNotMatch(renderMarkdown(old), /Request/);
 });
+
+test("every reply's x-cpa-auth-kind is recorded: per check, for the control, and counted over the run (0.3.3)", async () => {
+  const { deps } = fakeUpstream(60 * MIN);
+  const send = deps.send;
+  let n = 0;
+  // CLIProxyAPI names the kind of credential that answered; the third answer comes without the header.
+  deps.send = async (url, headers, body) => {
+    const res = await send(url, headers, body);
+    n++;
+    return { ...res, headers: n === 3 ? {} : { "x-cpa-auth-kind": n === 4 ? "apikey" : "oauth" } };
+  };
+  const r = await runProbe({ ...opts([5 * MIN], 2), concurrency: 1 }, deps);
+  assert.equal(r.status, "completed");
+  assert.deepEqual(r.control?.replyHeaders, { prime: { "x-cpa-auth-kind": "oauth" }, check: { "x-cpa-auth-kind": "oauth" } });
+  // control prime + check (2), priming of 2 samples (3: no header, 4: apikey), 2 checks: 6 answered requests.
+  assert.equal(r.spent?.requests, 6);
+  assert.deepEqual(r.spent?.replyHeaders, { "x-cpa-auth-kind": { oauth: 4, "(absent)": 1, apikey: 1 } });
+  for (const c of r.checks) assert.deepEqual(c.replyHeaders, { "x-cpa-auth-kind": "oauth" });
+  assert.match(renderMarkdown(r), /Reply headers \(every answered request\): x-cpa-auth-kind `oauth` ×4, `\(absent\)` ×1, `apikey` ×1/);
+
+  // Other headers only when asked for; a sender that returns no headers counts every reply as absent.
+  const plain = fakeUpstream(60 * MIN);
+  const r2 = await runProbe({ ...opts([5 * MIN], 1), replyHeaders: ["x-other"] }, plain.deps);
+  assert.deepEqual(r2.spent?.replyHeaders, { "x-other": { "(absent)": 4 } });
+});

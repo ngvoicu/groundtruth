@@ -34,12 +34,24 @@ export interface RunOptions {
   stopOnRefusal?: boolean;
   /** Wait this long after each priming request (ms), to stay under a request-rate limit (from 0.3.2). Default 0. */
   primePauseMs?: number;
+  /**
+   * Response headers whose value is recorded for every reply (from 0.3.3), lower case. Default
+   * DEFAULT_REPLY_HEADERS: CLIProxyAPI's `x-cpa-auth-kind` (`oauth` or `apikey`, the kind of credential that
+   * answered). A reply without the header is counted as `(absent)`.
+   */
+  replyHeaders?: string[];
 }
 
 export interface SendResult {
   status: number;
   text: string;
+  /** The response headers, names in lower case (from 0.3.3; a sender may leave them out). */
+  headers?: Record<string, string>;
 }
+
+/** Reply headers recorded by default: the kind of credential CLIProxyAPI answered with (`oauth` or `apikey`). */
+export const DEFAULT_REPLY_HEADERS: readonly string[] = ["x-cpa-auth-kind"];
+const ABSENT = "(absent)";
 
 export interface Deps {
   now: () => number;
@@ -62,6 +74,8 @@ export interface Check {
   promptTokens: number;
   cachedTokens: number;
   warm: boolean;
+  /** The recorded reply headers of this check's answer (from 0.3.3; `replyHeaders`). */
+  replyHeaders?: Record<string, string>;
 }
 
 /**
@@ -145,7 +159,7 @@ export interface RunResult {
   plannedAges: number[];
   startedAt: string;
   finishedAt?: string;
-  control?: { prime: Usage; check: Usage; warm: boolean };
+  control?: { prime: Usage; check: Usage; warm: boolean; replyHeaders?: { prime: Record<string, string>; check: Record<string, string> } };
   status: "running" | "completed" | "stopped-early" | "no-observable-cache" | "failed";
   error?: string;
   /** Every answered request of the run, its token counts as the replies report them (from 0.3.1). */
@@ -160,9 +174,14 @@ export interface Spent {
   /** Summed over the replies that report an output count; `requestsWithoutOutput` counts the others. */
   outputTokens: number;
   requestsWithoutOutput: number;
+  /**
+   * Every answered request, counted by the value of each recorded reply header (from 0.3.3), e.g.
+   * `{ "x-cpa-auth-kind": { "oauth": 45 } }`. A reply without the header counts as `(absent)`.
+   */
+  replyHeaders?: Record<string, Record<string, number>>;
 }
 
-export const PROBE_VERSION = "0.3.2";
+export const PROBE_VERSION = "0.3.3";
 
 /** How long after its planned age a check may still run: 30 s, or 10 % of the age when longer. */
 export function lateAfterMs(ageMs: number): number {
@@ -194,7 +213,7 @@ export function isRefusal(err: unknown): boolean {
 }
 
 /** Sends one request for a prefix and returns its usage, retrying transient failures. */
-async function call(o: RunOptions, deps: Deps, prefix: string, sampleId: string, spent?: Spent): Promise<{ usage: Usage; startedAt: number }> {
+async function call(o: RunOptions, deps: Deps, prefix: string, sampleId: string, spent?: Spent): Promise<{ usage: Usage; startedAt: number; replyHeaders: Record<string, string> }> {
   // sampleId also keys the prompt cache and the session, so a re-primed sample (id~2) starts on fresh keys.
   const req = buildRequest(o.format, {
     cacheKey: o.cacheKey === false ? undefined : `groundtruth-${o.runSalt}-${sampleId}`,
@@ -224,14 +243,24 @@ async function call(o: RunOptions, deps: Deps, prefix: string, sampleId: string,
         }
       }
       if (!usage) throw new HttpError(502, `no usage in response: ${res.text.slice(0, 200)}`);
+      const replyHeaders: Record<string, string> = {};
+      for (const name of o.replyHeaders ?? DEFAULT_REPLY_HEADERS) {
+        const n = name.toLowerCase();
+        replyHeaders[n] = res.headers?.[n] ?? ABSENT;
+      }
       if (spent) {
+        spent.replyHeaders ??= {};
+        for (const [n, v] of Object.entries(replyHeaders)) {
+          const tally = (spent.replyHeaders[n] ??= {});
+          tally[v] = (tally[v] ?? 0) + 1;
+        }
         spent.requests++;
         spent.promptTokens += usage.promptTokens;
         spent.cachedTokens += usage.cachedTokens;
         if (usage.outputTokens === undefined) spent.requestsWithoutOutput++;
         else spent.outputTokens += usage.outputTokens;
       }
-      return { usage, startedAt };
+      return { usage, startedAt, replyHeaders };
     } catch (err) {
       if (o.stopOnRefusal && isRefusal(err)) {
         const e = err as HttpError;
@@ -269,7 +298,7 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
     plannedAges: o.ages,
     startedAt: new Date(deps.now()).toISOString(),
     status: "running",
-    spent: { requests: 0, promptTokens: 0, cachedTokens: 0, outputTokens: 0, requestsWithoutOutput: 0 },
+    spent: { requests: 0, promptTokens: 0, cachedTokens: 0, outputTokens: 0, requestsWithoutOutput: 0, replyHeaders: {} },
     checks: [],
   };
   const spent = result.spent as Spent;
@@ -287,13 +316,16 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
     const controlPrefix = makePrefix(o.runSalt, "control", o.prefixTokens, o.filler);
     const prime = await call(o, deps, controlPrefix, "control", spent);
     let check: Usage | undefined;
+    let checkHeaders: Record<string, string> = {};
     for (const wait of [3_000, 10_000]) {
       await deps.sleep(wait);
-      check = (await call(o, deps, controlPrefix, "control", spent)).usage;
+      const got = await call(o, deps, controlPrefix, "control", spent);
+      check = got.usage;
+      checkHeaders = got.replyHeaders;
       if (warmOf(check)) break;
     }
     const warm = check !== undefined && warmOf(check);
-    result.control = { prime: prime.usage, check: check as Usage, warm };
+    result.control = { prime: prime.usage, check: check as Usage, warm, replyHeaders: { prime: prime.replyHeaders, check: checkHeaders } };
     deps.log(`  control ${warm ? "warm" : "COLD"} (cached ${check?.cachedTokens}/${check?.promptTokens})`);
     if (!warm) return finish("no-observable-cache", "an immediate re-send was not served from cache");
 
@@ -358,7 +390,7 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
         continue;
       }
       const pid = prefixId.get(s.id) as string;
-      let got: { usage: Usage; startedAt: number };
+      let got: { usage: Usage; startedAt: number; replyHeaders: Record<string, string> };
       try {
         got = await call(o, deps, makePrefix(o.runSalt, pid, o.prefixTokens, o.filler), pid, spent);
       } catch (err) {
@@ -382,6 +414,7 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
         promptTokens: usage.promptTokens,
         cachedTokens: usage.cachedTokens,
         warm: warmOf(usage),
+        replyHeaders: got.replyHeaders,
       };
       result.checks.push(c);
       const list = byAge.get(s.ageMs) ?? [];

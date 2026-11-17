@@ -7,7 +7,7 @@ import { parseArgs } from "node:util";
 import { buildRequest, type Format, FORMATS } from "./formats.ts";
 import { FILLERS, type Filler, makePrefix, newRunSalt } from "./prefix.ts";
 import { renderMarkdown } from "./report.ts";
-import { type Deps, describeRequest, PROBE_VERSION, type RunOptions, runProbe } from "./run.ts";
+import { DEFAULT_REPLY_HEADERS, type Deps, describeRequest, PROBE_VERSION, type RunOptions, runProbe } from "./run.ts";
 import { agesFor, formatDuration, planSamples } from "./schedule.ts";
 
 const HELP = `groundtruth ${PROBE_VERSION}
@@ -44,6 +44,9 @@ Options:
   --prime-pause <ms>      wait this long after each priming request (default 0), for a request-rate limit
   --stop-on-refusal       end the run at the first quota or rate refusal (HTTP 429, or an answer naming a quota or
                           usage limit) instead of retrying it: for a subscription's quota
+  --record-header <name>  response header whose value is recorded for every reply, repeatable (default:
+                          x-cpa-auth-kind, CLIProxyAPI's kind of credential that answered: oauth or apikey).
+                          Never name a header that can carry a credential
   --label <text>          run label used in file names and the report (default: <model>-<format>)
   --salt <text>           run salt (default: random)
   --out <dir>             output directory (default: results)
@@ -86,6 +89,7 @@ const { values } = parseArgs({
     concurrency: { type: "string" },
     "stop-on-refusal": { type: "boolean", default: false },
     "prime-pause": { type: "string" },
+    "record-header": { type: "string", multiple: true },
     label: { type: "string" },
     salt: { type: "string" },
     out: { type: "string", default: "results" },
@@ -152,9 +156,13 @@ const opts: RunOptions = {
   sessionId: values["session-id"],
   stopOnRefusal: values["stop-on-refusal"],
   primePauseMs: values["prime-pause"] === undefined ? 0 : int(values["prime-pause"], "prime-pause", 0),
+  replyHeaders: values["record-header"]?.length ? values["record-header"].map((h) => h.trim().toLowerCase()) : [...DEFAULT_REPLY_HEADERS],
   warmFraction: values["warm-fraction"] === undefined ? 0.5 : Number(values["warm-fraction"]),
 };
 if (!(opts.warmFraction! > 0 && opts.warmFraction! <= 1)) fail("--warm-fraction must be in (0, 1]");
+for (const h of opts.replyHeaders ?? []) {
+  if (/^(authorization|proxy-authorization|cookie|set-cookie|x-api-key)$|token|secret|session/.test(h)) fail(`--record-header ${h}: a header that can carry a credential is never recorded`);
+}
 
 if (values["dry-run"]) {
   const samples = planSamples(opts.ages, opts.replicas);
@@ -183,7 +191,12 @@ const deps: Deps = {
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
   send: async (url, headers, body) => {
     const res = await fetch(url, { method: "POST", headers, body, signal: AbortSignal.timeout(300_000) });
-    return { status: res.status, text: await res.text() };
+    const replyHeaders: Record<string, string> = {};
+    for (const name of opts.replyHeaders ?? []) {
+      const v = res.headers.get(name);
+      if (v !== null) replyHeaders[name] = v;
+    }
+    return { status: res.status, text: await res.text(), headers: replyHeaders };
   },
   log: (line) => process.stderr.write(`[${new Date().toISOString().slice(11, 19)}] ${line}\n`),
   onProgress: (r) => writeFileSync(`${base}.partial.json`, JSON.stringify(r, null, 2)),

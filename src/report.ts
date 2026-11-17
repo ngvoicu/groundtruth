@@ -55,6 +55,10 @@ export function renderMarkdown(result: RunResult): string {
     `- Started ${result.startedAt}${result.finishedAt ? `, finished ${result.finishedAt}` : ""} · status **${result.status}**${result.error ? ` (${result.error})` : ""}`,
     `- Probe ${result.probeVersion} · run salt \`${result.runSalt}\` · ${result.replicas} replicas per age · prompt_cache_key ${result.cacheKey === false ? "off" : "per sample"}`,
   ];
+  const tallies = Object.entries(result.spent?.replyHeaders ?? {});
+  if (tallies.length) {
+    lines.push(`- Reply headers (every answered request): ${tallies.map(([n, t]) => `${n} ${Object.entries(t).map(([v, c]) => `\`${v}\` ×${c}`).join(", ")}`).join("; ")}`);
+  }
   const q = result.request;
   if (q) {
     lines.push(
