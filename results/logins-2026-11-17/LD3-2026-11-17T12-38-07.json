@@ -1,0 +1,94 @@
+{
+  "probeVersion": "0.3.1",
+  "label": "LD3",
+  "baseUrl": "http://127.0.0.1:8317/v1",
+  "format": "responses",
+  "model": "devin/gemini-4-argon",
+  "request": {
+    "method": "POST",
+    "path": "/responses",
+    "bodyExtra": null,
+    "prefixTokens": 5000,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "devin/gemini-4-argon",
+      "input": [
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "<prefix: about 5000 tokens of words filler, one per sample>"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "Reply with the single word OK."
+            }
+          ]
+        }
+      ],
+      "max_output_tokens": 16,
+      "store": false,
+      "stream": false,
+      "prompt_cache_key": "groundtruth-f90dmjc1-<sample>"
+    }
+  },
+  "runSalt": "f90dmjc1",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000,
+    1200000,
+    1500000,
+    1800000,
+    2400000,
+    3000000,
+    3600000,
+    4500000,
+    5400000,
+    7200000
+  ],
+  "startedAt": "2026-11-17T12:38:07.351Z",
+  "status": "failed",
+  "spent": {
+    "requests": 7,
+    "promptTokens": 35961,
+    "cachedTokens": 3046,
+    "outputTokens": 112,
+    "requestsWithoutOutput": 0
+  },
+  "checks": [],
+  "control": {
+    "prime": {
+      "promptTokens": 5100,
+      "cachedTokens": 0,
+      "outputTokens": 16
+    },
+    "check": {
+      "promptTokens": 5100,
+      "cachedTokens": 3046,
+      "outputTokens": 16
+    },
+    "warm": true
+  },
+  "error": "quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"devin upstream error (resource_exhausted): Reached request rate limit. Please switch to a different model or contact support. Your limit will reset in 19 seconds (at 12:39 UTC).\",\"type\":\"rate_limit_error\",\"code\":\"rate_limit_exceeded\"}}",
+  "finishedAt": "2026-11-17T12:38:31.406Z"
+}
