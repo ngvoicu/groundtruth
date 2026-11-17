@@ -117,6 +117,22 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   12 hours, cold at 24. The run file does not record the request body: the 12-hour setting is known from the owner's
   note on the run and its label, and the result agrees with it (the default run, started the same minute, was cold at
   40 minutes). See its README.
+- `direct-2026-11-17/`: straight to the OpenAI and Anthropic APIs with the owner's keys, no proxy, plain probe with
+  `--usage-log`, 3 samples per age. GPT-6 Luna, GPT-6.1 Terra, GPT-6 Sol and GPT-6 Astra: warm through 30 minutes,
+  cold at 40, OpenAI's documented 30 minutes. `chat-latest`: warm in every check to 2 hours, its first measured
+  lifetime (OpenAI reported cache hits but no cache write). Claude Haiku, Sonnet and Opus 5.5 and Fable 5.2: 5 – 7.5
+  minutes with no ttl, 1 hour – 65 minutes with `ttl: "1h"`, as documented; Haiku with `--filler list` (it refused
+  the default filler again). `gpt-audio-1.5` takes no text request, and the key cannot call `gpt-6-cyber` or the two
+  Daybreak models: nothing measured. Cost $10.01 (`ledger.md`). See its README.
+- `logins-2026-11-17/`: the subscription logins through CLIProxyAPI, probe 0.3.1 with `--stop-on-refusal`. Codex
+  login (LC1 – LC4): the first runs of this route checked at 2.5 minutes, and GPT-6.1 Sol, GPT-6 Astra and GPT-6 Luna
+  miss at random from there on (Sol 2 of 3 at 2.5 minutes, 0 of 3 at 1 hour, 2 of 3 at 2 hours): no age fully warm.
+  Meta login with the 24-hour retention CLIProxyAPI adds: Muse Spark 1.3 warm through 10 minutes, cold at 30 (LM2);
+  Ember and Wonder warm in all 42 checks to 2 hours, left out because they would lower the 4 hours of
+  `meta-24h-2026-11-10` only by ending at 2 hours (LM1, LM3). Antigravity Gemini 3.8 Flash: safe to 2.5 minutes, as
+  A3 (LA1). Claude Fable 5.2 on a Claude login: warm to 1 hour, cold at 65 minutes, with and without `ttl: "1h"`
+  (LF1, LF2); its refusal names a 1,000,000-token window. Narrower input windows (below). Devin and Antigravity's
+  other models refused for request rate: no lifetime. See its README.
 
 ## The limits rows of observed.json (2026-11-17)
 
@@ -134,6 +150,14 @@ is 922,511 tokens (Sol, Astra, Luna). Devin: GPT-6.1 Sol 925,390; GPT-6.1 Terra,
 - The Devin GPT-6.1 Sol rows carry no time. They were added to the `limits-2026-11-08` file on 9 November, so the
   row is dated 2026-11-09. The OpenRouter rows of that file, which carry no time either, are dated 2026-11-08.
 
+**2026-11-17** (`logins-2026-11-17`): one request just over the round number and one just under it closed each gap
+to 800 tokens, and 13 rows were replaced. Codex login, GPT-6.1 Sol, GPT-6 Astra and GPT-6 Luna: 921,500 accepted,
+922,300 refused (documented 922,000). Devin: GPT-6.1 Sol, GPT-6.1 Terra, GPT-6 Astra and Luna the same; Claude Haiku,
+Sonnet and Opus 5.5 999,500 / 1,000,300; DeepSeek V4.1 Flash, DeepSeek V4 Pro and Gemini 4 Argon 1,048,076 /
+1,048,876. GLM-5.3 got no answer under its edge (a 502, then nothing), so its row stays as it was. New row: Claude
+Fable 5.2 on the Claude login, the window named by the refusal (1,000,000), no accepted size. For the models named
+here, the refused sizes in the paragraph above are those of the rows before this day.
+
 ## What this means
 
 - **Claude through CLIProxyAPI caches** on every route except OpenRouter via `openai-compatibility`: subscriptions (1 h,
@@ -145,7 +169,9 @@ is 922,511 tokens (Sol, Astra, Luna). Devin: GPT-6.1 Sol 925,390; GPT-6.1 Terra,
 - **OpenAI's 12-hour lifetime doesn't pass through CPA to OpenRouter** yet (P3): the option is dropped when CPA
   translates Responses to Chat Completions.
 - **Codex keeps the cache for hours when a cache key is sent** (C1). Without a key (C2) checks land on other cache
-  nodes and look cold within minutes.
-- **GPT-6.1 elsewhere lasts 30–40 min**, matching OpenAI's documented ≥ 30 min, through CPA or not.
+  nodes and look cold within minutes. Checked from 2.5 minutes (`logins-2026-11-17`, LC1 – LC4), the same route
+  misses at random at every age, the first included: hours at best, and no age that is safe.
+- **GPT-6.1 elsewhere lasts 30–40 min**, matching OpenAI's documented ≥ 30 min, through CPA or not; so do the GPT-6
+  models on an OpenAI key (`direct-2026-11-17`).
 - Many open-weight routes (GLM, Kimi, Grok, Gemini) are mixed or short: a client should not assume they cache, and
   should stop warming when a warm-up reads nothing from cache.
