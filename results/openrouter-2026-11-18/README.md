@@ -91,8 +91,20 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
   first run ends that way, the dearest first, ahead of the first runs not yet started, with its own worst case (9,000
   prompt tokens per request). Its manifest entry carries `"prefix_tokens": 8000` in its options, as L1b's; no lifetime
   is asked, so it lands in the short profile like the first run (`scratch_build.py`). `manifest-entries-cold-control.json`
-  lists every first run whose control read 0, with its larger-prompt run and what that showed; the first runs stay in
-  `manifest-entries.json` as `summary.py` builds them.
+  lists every first run whose control read 0, with its larger-prompt run and what that showed. Where the larger
+  prompt's control hit, only the larger-prompt run is a manifest run (the chief's ruling, m-10781): the ~2,500-token run
+  is under `excluded` ("no cache read at about 2,500 tokens; the 8,000-token run shows the prompt was under the
+  smallest cacheable size") and the larger run's note says the small prompt read nothing. The site would not keep the
+  two apart by itself: `observed.json` gives them different options (`{}` and `{"prefix_tokens": 8000}`), so both are
+  `latest`, but neither asks a lifetime, so `site/src/core/resolve.ts` puts both in the short profile of the same
+  entry and their results would be pooled. Where both sizes read 0 (ScaleDown Summarize, Perceptron Mk1.5), both runs
+  are listed, each noting it.
+- **Runs that ended on an upstream's rate answer after answered checks** (the chief's ruling, m-10781, as round two's
+  cut-off runs): listed as runs, the answered checks standing, with a note on how and where they ended; the build takes
+  a run file of status `failed` by its checks. `google--gemini-4-carbon-8k` is the one (2.5 and 5 minutes answered,
+  ended at 7.5 on HTTP 504 after Google AI Studio's 429). `inclusionai/ling-3.2-flash:free` stays excluded (its one
+  answered check is at 5 minutes, not 2.5, and the build's rule for an evaluation needs 2.5); the paced Ernie run
+  answered only its control.
 - `scripts/build_observed.py`: commit `83b05bb` accepts a run dated from 14 November whose control missed (no checks);
   `main` carries the same rule from `campaign-1-long` (`f005ffa`, refined by `1444a55`); the assembler puts them
   together.
@@ -179,8 +191,9 @@ Failed runs, kept with their files and in `excluded` of `manifest-entries.json`:
 - `google/gemini-4-carbon`, the run with the larger prompt (`google--gemini-4-carbon-8k`): its control was cached
   (5,474 of 7,528), then at the 7.5-minute check OpenRouter answered HTTP 504 "The operation was aborted" after a 429
   of Google AI Studio ("temporarily rate-limited upstream"). The probe's `--stop-on-refusal` read the upstream's rate
-  wording in that answer and ended the run, not retried: 2.5 min 1/3, 5 min 0/3, four checks crossing upstreams
-  (Google / Google AI Studio). Failed for a reason of its own: kept, excluded, not started again.
+  wording in that answer and ended the run, not retried: 2.5 min 1/3, 5 min 0/3, the four misses all checks crossing
+  from Google to Google AI Studio. Not started again (the chief, m-10781); listed as a run with its answered checks
+  and a note (above).
 - `sakana/fugu-max`, `sakana/fugu-ultra-v2`: HTTP 403 "not available in your region: Sakana AI blocks requests
   originating from your location". Nothing measured.
 

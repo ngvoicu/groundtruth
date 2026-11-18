@@ -599,7 +599,13 @@
   "last_warm_s": 150,
   "first_all_cold_s": 300,
   "probe_version": "0.3.4",
-  "verdict": "none documented"
+  "verdict": "none documented",
+  "crossings": [
+   "5m-r1: primed on Google, answered by Google AI Studio: cold (0/7501 cached)",
+   "5m-r3: primed on Google, answered by Google AI Studio: cold (0/7548 cached)",
+   "2.5m-r2: primed on Google, answered by Google AI Studio: cold (0/7539 cached)",
+   "2.5m-r3~2: primed on Google, answered by Google AI Studio: cold (0/7534 cached)"
+  ]
  },
  {
   "label": "google--gemini-4-hydrogen-8k",
@@ -3938,7 +3944,7 @@
   "model": "~openai/gpt-astra-latest",
   "state": "running",
   "status": null,
-  "usd": 1.0445,
+  "usd": 1.048,
   "site_documented_s": 1800,
   "error": null,
   "upstreams": [
@@ -3946,6 +3952,6 @@
    "OpenAI"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 3
  }
 ]

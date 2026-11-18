@@ -3,14 +3,7 @@
  "runs": [
   {
    "run": {
-    "id": "openrouter-2026-11-18/google--gemini-4-hydrogen",
-    "file": "results/openrouter-2026-11-18/google--gemini-4-hydrogen-2026-11-18T08-42-30.json",
-    "route": "openrouter",
-    "client": "direct",
-    "model": "google/gemini-4-hydrogen",
-    "models_dev": "openrouter/google/gemini-4-hydrogen",
-    "base_model": "google/gemini-4-hydrogen",
-    "options": {}
+    "id": "openrouter-2026-11-18/google--gemini-4-hydrogen"
    },
    "control": "0 of 2345 tokens cached",
    "larger_prompt_run": {
@@ -24,7 +17,8 @@
      "base_model": "google/gemini-4-hydrogen",
      "options": {
       "prefix_tokens": 8000
-     }
+     },
+     "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/google--gemini-4-hydrogen) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
     },
     "status": "stopped-early",
     "control": "5461 of 7515 tokens cached",
@@ -41,7 +35,16 @@
    "larger_prompt_run": {
     "entry": {
      "id": "openrouter-2026-11-18/google--gemini-4-carbon-8k",
-     "excluded": true
+     "file": "results/openrouter-2026-11-18/google--gemini-4-carbon-8k-2026-11-18T11-07-48.json",
+     "route": "openrouter",
+     "client": "direct",
+     "model": "google/gemini-4-carbon",
+     "models_dev": "openrouter/google/gemini-4-carbon",
+     "base_model": "google/gemini-4-carbon",
+     "options": {
+      "prefix_tokens": 8000
+     },
+     "note": "the run ended after its 5m checks, at the next check, on an upstream's answer (HTTP 504 \"The operation was aborted\", after a 429 of Google AI Studio (\"google/gemini-4-carbon is temporarily rate-limited upstream. Please retry shortly, or add \u2026\")), which the probe's --stop-on-refusal read as a rate refusal and did not retry; the checks answered before it stand, later ages untested; OpenRouter's default route: 4 check(s) were answered by another upstream than the one their sample was primed on (5m-r1: primed on Google, answered by Google AI Studio: cold (0/7501 cached); 5m-r3: primed on Google, answered by Google AI Studio: cold (0/7548 cached); 2.5m-r2: primed on Google, answered by Google AI Studio: cold (0/7539 cached); 2.5m-r3~2: primed on Google, answered by Google AI Studio: cold (0/7534 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream; the same request with a ~2,500-token prompt (openrouter-2026-11-18/google--gemini-4-carbon) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
     },
     "status": "failed",
     "control": "5474 of 7528 tokens cached",
@@ -52,15 +55,7 @@
   },
   {
    "run": {
-    "id": "openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free",
-    "file": "results/openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free-2026-11-18T09-29-46.json",
-    "route": "openrouter",
-    "client": "direct",
-    "model": "nvidia/nemotron-3.5-super-vl:free",
-    "models_dev": "openrouter/nvidia/nemotron-3.5-super-vl:free",
-    "base_model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
-    "options": {},
-    "note": "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute)"
+    "id": "openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free"
    },
    "control": "0 of 2829 tokens cached",
    "larger_prompt_run": {
@@ -75,7 +70,7 @@
      "options": {
       "prefix_tokens": 8000
      },
-     "note": "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute)"
+     "note": "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute); the same request with a ~2,500-token prompt (openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
     },
     "status": "completed",
     "control": "8672 of 9163 tokens cached",
@@ -120,14 +115,7 @@
   },
   {
    "run": {
-    "id": "openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b",
-    "file": "results/openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b-2026-11-18T08-50-40.json",
-    "route": "openrouter",
-    "client": "direct",
-    "model": "liquid/lfm-2.5-24b-a2b",
-    "models_dev": "openrouter/liquid/lfm-2.5-24b-a2b",
-    "base_model": null,
-    "options": {}
+    "id": "openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b"
    },
    "control": "0 of 2869 tokens cached",
    "larger_prompt_run": {
@@ -141,7 +129,8 @@
      "base_model": null,
      "options": {
       "prefix_tokens": 8000
-     }
+     },
+     "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
     },
     "status": "stopped-early",
     "control": "8192 of 9015 tokens cached",
@@ -152,14 +141,7 @@
   },
   {
    "run": {
-    "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b",
-    "file": "results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b-2026-11-18T09-07-59.json",
-    "route": "openrouter",
-    "client": "direct",
-    "model": "prism-ml/ternary-bonsai-2-27b",
-    "models_dev": "openrouter/prism-ml/ternary-bonsai-2-27b",
-    "base_model": null,
-    "options": {}
+    "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b"
    },
    "control": "0 of 2942 tokens cached",
    "larger_prompt_run": {
@@ -173,7 +155,8 @@
      "base_model": null,
      "options": {
       "prefix_tokens": 8000
-     }
+     },
+     "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
     },
     "status": "stopped-early",
     "control": "8192 of 9265 tokens cached",
@@ -184,14 +167,7 @@
   },
   {
    "run": {
-    "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b",
-    "file": "results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b-2026-11-18T09-08-14.json",
-    "route": "openrouter",
-    "client": "direct",
-    "model": "prism-ml/ternary-bonsai-2-9b",
-    "models_dev": "openrouter/prism-ml/ternary-bonsai-2-9b",
-    "base_model": null,
-    "options": {}
+    "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b"
    },
    "control": "0 of 2881 tokens cached",
    "larger_prompt_run": {
@@ -205,7 +181,8 @@
      "base_model": null,
      "options": {
       "prefix_tokens": 8000
-     }
+     },
+     "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
     },
     "status": "stopped-early",
     "control": "8192 of 9329 tokens cached",
@@ -216,14 +193,7 @@
   },
   {
    "run": {
-    "id": "openrouter-2026-11-18/liquid--lfm-3-1.7b",
-    "file": "results/openrouter-2026-11-18/liquid--lfm-3-1.7b-2026-11-18T09-08-29.json",
-    "route": "openrouter",
-    "client": "direct",
-    "model": "liquid/lfm-3-1.7b",
-    "models_dev": "openrouter/liquid/lfm-3-1.7b",
-    "base_model": null,
-    "options": {}
+    "id": "openrouter-2026-11-18/liquid--lfm-3-1.7b"
    },
    "control": "0 of 2887 tokens cached",
    "larger_prompt_run": {
@@ -237,7 +207,8 @@
      "base_model": null,
      "options": {
       "prefix_tokens": 8000
-     }
+     },
+     "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/liquid--lfm-3-1.7b) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
     },
     "status": "stopped-early",
     "control": "8960 of 9033 tokens cached",
@@ -282,14 +253,7 @@
   },
   {
    "run": {
-    "id": "openrouter-2026-11-18/kt--midm-k-3.0-pro",
-    "file": "results/openrouter-2026-11-18/kt--midm-k-3.0-pro-2026-11-18T09-37-28.json",
-    "route": "openrouter",
-    "client": "direct",
-    "model": "kt/midm-k-3.0-pro",
-    "models_dev": "openrouter/kt/midm-k-3.0-pro",
-    "base_model": null,
-    "options": {}
+    "id": "openrouter-2026-11-18/kt--midm-k-3.0-pro"
    },
    "control": "0 of 3164 tokens cached",
    "larger_prompt_run": {
@@ -303,7 +267,8 @@
      "base_model": null,
      "options": {
       "prefix_tokens": 8000
-     }
+     },
+     "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/kt--midm-k-3.0-pro) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
     },
     "status": "completed",
     "control": "8768 of 9547 tokens cached",
@@ -314,14 +279,7 @@
   },
   {
    "run": {
-    "id": "openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest",
-    "file": "results/openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest-2026-11-18T11-48-23.json",
-    "route": "openrouter",
-    "client": "direct",
-    "model": "~deepseek/deepseek-flash-latest",
-    "models_dev": "openrouter/~deepseek/deepseek-flash-latest",
-    "base_model": null,
-    "options": {}
+    "id": "openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest"
    },
    "control": "0 of 2520 tokens cached",
    "larger_prompt_run": {
@@ -336,7 +294,7 @@
      "options": {
       "prefix_tokens": 8000
      },
-     "note": "OpenRouter's default route: 2 check(s) were answered by another upstream than the one their sample was primed on (75m-r1: primed on InferenceNet, answered by Wafer: cold (0/7950 cached); 90m-r3: primed on InferenceNet, answered by Morph: cold (0/7962 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
+     "note": "OpenRouter's default route: 2 check(s) were answered by another upstream than the one their sample was primed on (75m-r1: primed on InferenceNet, answered by Wafer: cold (0/7950 cached); 90m-r3: primed on InferenceNet, answered by Morph: cold (0/7962 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream; the same request with a ~2,500-token prompt (openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
     },
     "status": "completed",
     "control": "7936 of 7972 tokens cached",

@@ -100,4 +100,4 @@ Written by `summary.py` from the run files, `logs/*.usage.jsonl`, `upstreams.jso
 | `openai--gpt-6.2-sol-pro` | `openai/gpt-6.2-sol-pro` | stopped-early | warm (8673/9056) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 2/3, 20m 3/3, 25m 3/3, 30m 2/3, 40m 0/3, 50m 0/3 | 10m | 40m | Azure, OpenAI | 15m-r2: Azure → OpenAI | 0.7713 | none documented |
 | `alias-openai--gpt-sol-latest` | `~openai/gpt-sol-latest` | stopped-early | warm (2392/2392) | 2.5m 3/3, 5m 2/3, 7.5m 3/3, 10m 3/3, 15m 2/3, 20m 3/3, 25m 3/3, 30m 2/3, 40m 0/3, 50m 0/3 | 2.5m | 40m | Amazon Bedrock, Azure, OpenAI | 5m-r2: Azure → Amazon Bedrock; 15m-r1: Amazon Bedrock → OpenAI | 0.3199 | 30m documented: 2 of 3 at 5m; all warm through 2.5m |
 | `openai--gpt-6.2-astra-pro` | `openai/gpt-6.2-astra-pro` | left out | | worst case $7.94 did not fit: committed $15.10 of $18.0 | | | | | 0.0000 | |
-| `alias-openai--gpt-astra-latest` | `~openai/gpt-astra-latest` | running |  |  | – | – | Amazon Bedrock, OpenAI | none | 1.0445 |  |
+| `alias-openai--gpt-astra-latest` | `~openai/gpt-astra-latest` | running |  |  | – | – | Amazon Bedrock, OpenAI | none | 1.0480 |  |

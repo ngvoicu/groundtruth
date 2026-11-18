@@ -59,6 +59,21 @@ def verdict(doc, through, first_cold, checks):
     return f"{fmt_s(doc)} documented: not reached by the run"
 
 
+def upstream_answer(error):
+    """'HTTP 504 "The operation was aborted", after Google AI Studio's 429 "…rate-limited upstream…"' from a probe error."""
+    import re
+    code = re.search(r"HTTP (\d+)", error)
+    msgs = re.findall(r'"message":"([^"]+)"', error)
+    raw = re.search(r'"raw":"([^"]{0,90})', error)
+    prev = re.search(r'"previous_errors":\[\{"code":(\d+),"message":"[^"]*","provider_name":"([^"]+)"', error)
+    out = f"HTTP {code.group(1) if code else '?'} \"{msgs[0] if msgs else ''}\""
+    if prev:
+        out += f", after a {prev.group(1)} of {prev.group(2)}"
+    if raw:
+        out += f" (\"{raw.group(1)}…\")"
+    return out
+
+
 rows, entries, excluded, separate = [], [], [], []
 for r in S.runs:
     st = S.state(r)
@@ -90,8 +105,14 @@ for r in S.runs:
         if unknown and st["status"] != "failed":
             # OpenRouter's generation record of a reply comes some minutes late: the run waits for the next batch.
             row["pending"] = f"{unknown} reply(ies) whose upstream OpenRouter has not recorded yet: no entry until known"
-        elif st["status"] == "failed":
-            excluded.append({"id": rid, "reason": f"failed: {(st.get('error') or '')[:300]}"})
+        elif st["status"] == "failed" and not (
+                "quota or rate refusal" in (st.get("error") or "") and data["control"] == [True] and data["checks"]
+                and min(data["checks"]) == 150):
+            reason = f"failed: {(st.get('error') or '')[:300]}"
+            if "quota or rate refusal" in (st.get("error") or "") and data["checks"]:
+                reason += (f" (its answered checks begin at {B.age_label(min(data['checks']))}, not 2.5 minutes, so the "
+                           "build's rule for an evaluation leaves it out)")
+            excluded.append({"id": rid, "reason": reason})
         elif st["status"] == "no-observable-cache" and (ctl.get("cachedTokens") or 0) > 0:
             # As main's AG1 - AG3 (round two): a control cached in part, under the probe's criterion, with no timed
             # check, is neither an expired cache nor none.
@@ -102,6 +123,13 @@ for r in S.runs:
                    "models_dev": e.get("ref"), "base_model": e.get("canonical_id"), "options": r["options"]}
             if r["group"] == "free":
                 ent["note"] = "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute)"
+            if st["status"] == "failed":
+                # The chief's ruling (m-10781), as round two's cut-off runs: the answered checks stand.
+                last = max(data["checks"])
+                ent["note"] = ((ent.get("note") + "; ") if ent.get("note") else "") + (
+                    f"the run ended after its {B.age_label(last)} checks, at the next check, on an upstream's answer "
+                    f"({upstream_answer(st.get('error') or '')}), which the probe's --stop-on-refusal "
+                    "read as a rate refusal and did not retry; the checks answered before it stand, later ages untested")
             outcome = {c["sampleId"]: c for c in j.get("checks", [])}
             crossings, control_crossed = [], False
             for c in changed:
@@ -168,6 +196,25 @@ json.dump({"comment": f"Empty since the reviewer's rulings on batch 1 (m-10767):
 # The reviewer's ruling 5 (m-10767): a first run and its larger-prompt run that both read 0 with a valid control and
 # known upstream are both published, with that said in their notes.
 ent_by_id = {e["id"]: e for e in entries}
+
+# The chief's ruling (m-10781): where the ~2,500-token run read 0 and the ~8,000-token run's control hit, only the
+# larger-prompt run is a manifest run; the small one goes under excluded, and the large one's note says so.
+for r in S.runs:
+    if not r.get("larger_prompt_of"):
+        continue
+    fid, bid = f"{FOLDER}/{r['larger_prompt_of']}", f"{FOLDER}/{r['label']}"
+    fx = next((x for x in rows if x["label"] == r["larger_prompt_of"]), {})
+    bx = next((x for x in rows if x["label"] == r["label"]), {})
+    small_zero = fx.get("status") == "no-observable-cache" and not (fx.get("control_tokens") or {}).get("cachedTokens")
+    if small_zero and bx.get("control") == "warm" and bid in ent_by_id:
+        big = ent_by_id[bid]
+        big["note"] = ((big["note"] + "; ") if big.get("note") else "") + (
+            f"the same request with a ~2,500-token prompt ({fid}) read no cached token at its control: that prompt was "
+            "under the smallest cacheable size; this run with ~8,000 tokens is the measurement")
+        if fid in ent_by_id:
+            entries.remove(ent_by_id.pop(fid))
+            excluded.append({"id": fid, "reason": "no cache read at about 2,500 tokens (the control read 0 cached "
+                             f"tokens); the 8,000-token run ({bid}) shows the prompt was under the smallest cacheable size"})
 
 
 def zero(x):
