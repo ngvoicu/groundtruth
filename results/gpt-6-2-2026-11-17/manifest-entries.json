@@ -1,0 +1,26 @@
+{
+ "comment": "Entries for observed/manifest.json from results/gpt-6-2-2026-11-17 (branch campaign/gpt-6-2): add runs to runs. Not applied here; a later task assembles the manifest. No limits row: both window refusals (refusal.jsonl) name no figure and no request near the limit was sent, so there is nothing a limits row may hold.",
+ "runs": [
+  {
+   "id": "gpt-6-2-2026-11-17/oa-sol62",
+   "file": "results/gpt-6-2-2026-11-17/oa-sol62-2026-11-17T20-49-21.json",
+   "route": "openai-api",
+   "client": "direct",
+   "model": "gpt-6.2-sol",
+   "models_dev": "openai/gpt-6.2-sol",
+   "base_model": "openai/gpt-6.2-sol",
+   "options": {}
+  },
+  {
+   "id": "gpt-6-2-2026-11-17/oa-astra62",
+   "file": "results/gpt-6-2-2026-11-17/oa-astra62-2026-11-17T20-49-26.json",
+   "route": "openai-api",
+   "client": "direct",
+   "model": "gpt-6.2-astra",
+   "models_dev": "openai/gpt-6.2-astra",
+   "base_model": "openai/gpt-6.2-astra",
+   "options": {}
+  }
+ ],
+ "excluded": []
+}
