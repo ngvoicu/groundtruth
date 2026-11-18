@@ -1,0 +1,98 @@
+{
+ "comment": "Runs of results/openrouter-2026-11-18 kept apart from manifest-entries.json for the reviewer (the chief's decision, m-10723): runs on OpenRouter's default route in which a check was answered by another upstream than the one its sample was primed on, and runs pinned to one upstream. Each has the entry it would have and a note naming the checks that crossed upstreams and their outcome. Not applied anywhere.",
+ "runs": [
+  {
+   "entry": {
+    "id": "openrouter-2026-11-18/openai--gpt-6.2-sol",
+    "file": "results/openrouter-2026-11-18/openai--gpt-6.2-sol-2026-11-18T08-40-45.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "openai/gpt-6.2-sol",
+    "models_dev": "openrouter/openai/gpt-6.2-sol",
+    "base_model": "openai/gpt-6.2-sol",
+    "options": {}
+   },
+   "why": "OpenRouter's default route: the upstream changed between a sample's priming and its check",
+   "crossings": [
+    "15m-r3: primed on Amazon Bedrock, answered by OpenAI: cold (0/2406 cached)",
+    "15m-r2: primed on Amazon Bedrock, answered by OpenAI: cold (0/2396 cached)",
+    "20m-r2: primed on Amazon Bedrock, answered by OpenAI: cold (0/2405 cached)",
+    "20m-r3: primed on Amazon Bedrock, answered by OpenAI: cold (0/2356 cached)"
+   ],
+   "note": "4 check(s) answered by another upstream than the one primed: 15m-r3: primed on Amazon Bedrock, answered by OpenAI: cold (0/2406 cached); 15m-r2: primed on Amazon Bedrock, answered by OpenAI: cold (0/2396 cached); 20m-r2: primed on Amazon Bedrock, answered by OpenAI: cold (0/2405 cached); 20m-r3: primed on Amazon Bedrock, answered by OpenAI: cold (0/2356 cached)"
+  },
+  {
+   "entry": {
+    "id": "openrouter-2026-11-18/google--gemini-4-carbon",
+    "file": "results/openrouter-2026-11-18/google--gemini-4-carbon-2026-11-18T08-42-45.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "google/gemini-4-carbon",
+    "models_dev": "openrouter/google/gemini-4-carbon",
+    "base_model": "google/gemini-4-carbon",
+    "options": {}
+   },
+   "why": "OpenRouter's default route: the upstream changed between a sample's priming and its check",
+   "crossings": [
+    "control: primed on Google, answered by Google AI Studio (replies Google \u2192 Google \u2192 Google AI Studio): cold (0/2384 cached)"
+   ],
+   "note": "1 check(s) answered by another upstream than the one primed: control: primed on Google, answered by Google AI Studio (replies Google \u2192 Google \u2192 Google AI Studio): cold (0/2384 cached)"
+  },
+  {
+   "entry": {
+    "id": "openrouter-2026-11-18/meta--muse-ember",
+    "file": "results/openrouter-2026-11-18/meta--muse-ember-2026-11-18T08-43-15.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "meta/muse-ember",
+    "models_dev": "openrouter/meta/muse-ember",
+    "base_model": null,
+    "options": {}
+   },
+   "why": "OpenRouter's default route: the upstream changed between a sample's priming and its check",
+   "crossings": [
+    "2h-r3: primed on Google, answered by Meta: cold (0/2632 cached)"
+   ],
+   "note": "1 check(s) answered by another upstream than the one primed: 2h-r3: primed on Google, answered by Meta: cold (0/2632 cached)"
+  },
+  {
+   "entry": {
+    "id": "openrouter-2026-11-18/openai--gpt-6.2-sol-pinned-openai",
+    "file": "results/openrouter-2026-11-18/openai--gpt-6.2-sol-pinned-openai-2026-11-18T09-12-15.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "openai/gpt-6.2-sol",
+    "models_dev": "openrouter/openai/gpt-6.2-sol",
+    "base_model": "openai/gpt-6.2-sol",
+    "options": {
+     "provider": {
+      "order": [
+       "openai"
+      ],
+      "allow_fallbacks": false
+     }
+    }
+   },
+   "why": "pinned to one upstream (provider.order, allow_fallbacks false): evidence whether the lifetime holds when the upstream cannot change",
+   "crossings": [],
+   "note": "no check crossed upstreams"
+  },
+  {
+   "entry": {
+    "id": "openrouter-2026-11-18/deepseek--deepseek-v4.1-flash-1017",
+    "file": "results/openrouter-2026-11-18/deepseek--deepseek-v4.1-flash-1017-2026-11-18T08-44-45.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "deepseek/deepseek-v4.1-flash-1017",
+    "models_dev": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+    "base_model": "deepseek/deepseek-v4.1-flash-1017",
+    "options": {}
+   },
+   "why": "OpenRouter's default route: the upstream changed between a sample's priming and its check",
+   "crossings": [
+    "20m-r2: primed on PrimeIntellect, answered by Morph: cold (0/2528 cached)"
+   ],
+   "note": "1 check(s) answered by another upstream than the one primed: 20m-r2: primed on PrimeIntellect, answered by Morph: cold (0/2528 cached)"
+  }
+ ]
+}

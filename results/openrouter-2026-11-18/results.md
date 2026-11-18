@@ -1,0 +1,65 @@
+# Results, run by run
+
+Written by `summary.py` from the run files, `logs/*.usage.jsonl`, `upstreams.jsonl` and `sources/providers-dev-entries.json`. Checks: warm of total per age. Upstream: the providers that answered the run's replies (OpenRouter's generation records).
+
+| Run | Model | Status | Control | Checks (warm/total per age) | Warm through | First all cold | Upstreams | Upstream changed | USD | providers.dev 2026-11-18 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `openai--gpt-6.2-sol` | `openai/gpt-6.2-sol` | stopped-early | warm (2421/2421) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 1/3, 20m 1/3, 25m 3/3, 30m 0/3, 40m 0/3 | 10m | 30m | Amazon Bedrock, OpenAI | 15m-r3: Amazon Bedrock → OpenAI; 15m-r2: Amazon Bedrock → OpenAI; 20m-r2: Amazon Bedrock → OpenAI; 20m-r3: Amazon Bedrock → OpenAI | 0.3245 | none documented |
+| `google--gemini-4-hydrogen` | `google/gemini-4-hydrogen` | no-observable-cache | cold (0/2345) |  | – | – | Google | none | 0.0109 | none documented |
+| `google--gemini-4-carbon` | `google/gemini-4-carbon` | no-observable-cache | cold (0/2384) |  | – | – | Google, Google AI Studio | control: Google → Google → Google AI Studio | 0.0145 | none documented |
+| `qwen--qwen4-max` | `qwen/qwen4-max` | stopped-early | warm (2816/2918) | 2.5m 2/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 3/3, 20m 3/3, 25m 1/3, 30m 2/3, 40m 0/3, 50m 0/3 | – | 40m | Alibaba | none | 0.2289 | none documented |
+| `meta--muse-ember` | `meta/muse-ember` | completed | warm (2548/2600) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 3/3, 20m 2/3, 25m 3/3, 30m 3/3, 40m 0/3, 50m 1/3, 1h 1/3, 75m 1/3, 90m 3/3, 2h 2/3 | 15m | 40m | Google, Meta | 2h-r3: Google → Meta | 0.0155 | none documented |
+| `anthropic--claude-fable-5.2` | `anthropic/claude-fable-5.2` | stopped-early | warm (4280/4284) | 2.5m 3/3, 5m 3/3, 7.5m 0/3, 10m 0/3 | 5m | 7.5m | Anthropic, Azure, Google | none | 2.1277 | none documented |
+| `openai--gpt-6.2-astra` | `openai/gpt-6.2-astra` | stopped-early | warm (2402/2405) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 3/3, 20m 3/3, 25m 3/3, 30m 2/3, 40m 0/3, 50m 0/3 | 25m | 40m | Azure, OpenAI | none | 1.2324 | 30m documented: contradicted, a check cold at 30m |
+| `openai--gpt-6.2-sol-pinned-openai` | `openai/gpt-6.2-sol` | stopped-early | warm (2372/2375) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 3/3, 20m 3/3, 25m 3/3, 30m 3/3, 40m 0/3, 50m 0/3 | 30m | 40m | OpenAI | none | 0.3029 | none documented |
+| `baidu--ernie-5.5-flash-preview-free` | `baidu/ernie-5.5-flash-preview:free` | failed: quota or rate refusal, not retried: HTTP 429: {"error":{"message":"Rate limit exceeded: free-models-per-min. ","code":429,"metadata":{"heade | warm (2304/2424) |  | – | – | Baidu | none | 0.0000 | none documented |
+| `inclusionai--ling-3.2-flash-free` | `inclusionai/ling-3.2-flash:free` | failed: quota or rate refusal, not retried: HTTP 429: {"error":{"message":"Provider returned error","code":429,"metadata":{"raw":"inclusionai/ling-3 | warm (2688/2744) | 5m 0/1 | – | 5m | Ant Digital | none | 0.0000 | none documented |
+| `liquid--lfm-3-1.7b-free` | `liquid/lfm-3-1.7b:free` | failed: quota or rate refusal, not retried: HTTP 429: {"error":{"message":"Provider returned error","code":429,"metadata":{"raw":"liquid/lfm-3-1.7b: | none |  | – | – |  | none | 0.0000 | none documented |
+| `nvidia--nemotron-3.5-super-vl-free` | `nvidia/nemotron-3.5-super-vl:free` | no-observable-cache | cold (0/2829) |  | – | – | Nvidia | none | 0.0000 | none documented |
+| `particle-ai--particle-1-free` | `particle-ai/particle-1:free` | stopped-early | warm (2304/2553) | 2.5m 0/3, 5m 1/3, 7.5m 0/3, 10m 0/3 | – | 2.5m | Particle AI | none | 0.0000 | none documented |
+| `recursive--flint-v1.0-free` | `recursive/flint-v1.0:free` | running |  |  | – | – | Recursive | none | 0.0000 |  |
+| `nex-agi--nex-n2.5-mini` | `nex-agi/nex-n2.5-mini` | completed | warm (2816/2880) | 2.5m 3/3, 5m 1/3, 7.5m 3/3, 10m 2/3, 15m 3/3, 20m 3/3, 25m 2/3, 30m 2/3, 40m 1/3, 50m 2/3, 1h 2/3, 75m 2/3, 90m 0/3, 2h 1/3 | 2.5m | 90m | Nex AGI | none | 0.0045 | none documented |
+| `tencent--hy4-flash` | `tencent/hy4-flash` | stopped-early | warm (2560/2693) | 2.5m 3/3, 5m 3/3, 7.5m 2/3, 10m 0/3, 15m 0/3 | 5m | 10m | Tencent | none | 0.0049 | none documented |
+| `deepseek--deepseek-v4.1-flash-1017` | `deepseek/deepseek-v4.1-flash-1017` | stopped-early | warm (2432/2548) | 2.5m 3/3, 5m 2/3, 7.5m 2/3, 10m 2/3, 15m 2/3, 20m 0/3, 25m 0/3 | 2.5m | 20m | InferenceNet, Morph, Nebius, PrimeIntellect, Relace, StepFun, Wafer | 20m-r2: PrimeIntellect → Morph | 0.0056 | none documented |
+| `scaledown--extract` | `scaledown/extract` | failed: HTTP 400: {"error":{"message":"extract requires a response_format of type \"json_schema\" whose schema properties describe the entities to e | none |  | – | – |  | none | 0.0000 | none documented |
+| `scaledown--summarize` | `scaledown/summarize` | no-observable-cache | cold (0/3093) |  | – | – | ScaleDown | none | 0.0004 | none documented |
+| `inclusionai--ling-3.1-flash` | `inclusionai/ling-3.1-flash` | stopped-early | warm (2752/2776) | 2.5m 3/3, 5m 3/3, 7.5m 2/3, 10m 3/3, 15m 2/3, 20m 2/3, 25m 1/3, 30m 3/3, 40m 2/3, 50m 2/3, 1h 0/3, 75m 0/3 | 5m | 1h | Novita | none | 0.0078 | none documented |
+| `upstage--solar-mini4` | `upstage/solar-mini4` | stopped-early | warm (2048/2666) | 2.5m 0/3, 5m 0/3 | – | 2.5m | Upstage | none | 0.0067 | none documented |
+| `liquid--lfm-2.5-24b-a2b` | `liquid/lfm-2.5-24b-a2b` | no-observable-cache | cold (0/2869) |  | – | – | Liquid | none | 0.0005 | none documented |
+| `ibm-granite--granite-4.2-8b` | `ibm-granite/granite-4.2-8b` | stopped-early | warm (2816/2819) | 2.5m 3/3, 5m 2/3, 7.5m 0/3, 10m 0/3 | 2.5m | 7.5m | CoreWeave, DeepInfra | none | 0.0087 | none documented |
+| `inclusionai--ling-3.0-flash-vl` | `inclusionai/ling-3.0-flash-vl` | stopped-early | warm (2752/2783) | 2.5m 0/3, 5m 0/3 | – | 2.5m | DeepInfra | none | 0.0084 | none documented |
+| `particle-ai--particle-1` | `particle-ai/particle-1` | stopped-early | warm (2560/2590) | 2.5m 2/3, 5m 0/3, 7.5m 3/3, 10m 1/3, 15m 1/3, 20m 0/3, 25m 0/3 | – | 5m | Particle AI | none | 0.0092 | none documented |
+| `nex-agi--nex-n2.5-pro` | `nex-agi/nex-n2.5-pro` | stopped-early | warm (2880/2920) | 2.5m 0/3, 5m 0/3 | – | 2.5m | Nex AGI | none | 0.0110 | none documented |
+| `prism-ml--ternary-bonsai-2-27b` | `prism-ml/ternary-bonsai-2-27b` | no-observable-cache | cold (0/2942) |  | – | – | Darkbloom | none | 0.0007 | none documented |
+| `prism-ml--ternary-bonsai-2-9b` | `prism-ml/ternary-bonsai-2-9b` | no-observable-cache | cold (0/2881) |  | – | – | Darkbloom | none | 0.0007 | none documented |
+| `liquid--lfm-3-1.7b` | `liquid/lfm-3-1.7b` | no-observable-cache | cold (0/2887) |  | – | – | Liquid | none | 0.0007 | none documented |
+| `meta--muse-spark-1.2-contributor` | `meta/muse-spark-1.2-contributor` | failed: HTTP 404: {"error":{"message":"0 endpoints out of 1 requested are available matching your guardrail restrictions and data policy. We removed | none |  | – | – |  | none | 0.0000 | none documented |
+| `meta--muse-spark-1.3-contributor` | `meta/muse-spark-1.3-contributor` | failed: HTTP 404: {"error":{"message":"0 endpoints out of 1 requested are available matching your guardrail restrictions and data policy. We removed | none |  | – | – |  | none | 0.0000 | none documented |
+| `ricursiveai--ripple-65b-preview` | `ricursiveai/ripple-65b-preview` | running |  |  | – | – | GMICloud | none | 0.0143 |  |
+| `nex-agi--nex-n2.6` | `nex-agi/nex-n2.6` | running |  |  | – | – | Nex AGI | none | 0.0172 |  |
+| `xiaomi--mimo-v2.6-flash` | `xiaomi/mimo-v2.6-flash` | running |  |  | – | – | Cohere, GMICloud, Makora, Xiaomi | 1h-r3: Xiaomi → Cohere; 50m-r1: Xiaomi → Cohere; 75m-r2: Xiaomi → Cohere | 0.0280 |  |
+| `qwen--qwen3.8-flash` | `qwen/qwen3.8-flash` | stopped-early | warm (2048/2938) | 2.5m 3/3, 5m 3/3, 7.5m 1/3, 10m 2/3, 15m 1/3, 20m 1/3, 25m 0/3, 30m 2/3, 40m 0/3, 50m 2/3, 1h 1/3, 75m 0/3, 90m 0/3 | 5m | 25m | Alibaba | none | 0.0328 | none documented |
+| `qwen--qwen3.8-omni-flash` | `qwen/qwen3.8-omni-flash` | stopped-early | warm (1792/2902) | 2.5m 1/3, 5m 0/3, 7.5m 0/3 | – | 5m | Alibaba | none | 0.0235 | none documented |
+| `nvidia--nemotron-3.5-super-vl` | `nvidia/nemotron-3.5-super-vl` | running |  |  | – | – | CoreWeave, Crusoe, Darkbloom, DeepInfra, Venice | 30m-r1: Venice → CoreWeave; 1h-r2: DeepInfra → CoreWeave; 75m-r3: DeepInfra → Darkbloom | 0.0275 |  |
+| `minimax--minimax-m3.1-flash` | `minimax/minimax-m3.1-flash` | stopped-early | warm (2472/2473) | 2.5m 3/3, 5m 1/3, 7.5m 2/3, 10m 1/3, 15m 1/3, 20m 0/3, 25m 0/3 | 2.5m | 20m | Fireworks, Inferact vLLM, Makora, ModelRun, Together, Wafer | none | 0.0210 | none documented |
+| `perceptron--perceptron-mk1.5` | `perceptron/perceptron-mk1.5` | no-observable-cache | cold (0/2874) |  | – | – | Perceptron | none | 0.0013 | none documented |
+| `kt--midm-k-3.0-pro` | `kt/midm-k-3.0-pro` | no-observable-cache | cold (0/3164) |  | – | – | KT | none | 0.0019 | none documented |
+| `reflection--beam-1.0-501b-a23b` | `reflection/beam-1.0-501b-a23b` | running |  |  | – | – | BaseTen, CoreWeave | none | 0.0462 |  |
+| `thinkingmachines--inkling-2-small` | `thinkingmachines/inkling-2-small` | stopped-early | warm (3072/3158) | 2.5m 0/3, 5m 0/3 | – | 2.5m | Cloudflare, DeepInfra, Nebius | none | 0.0483 | none documented |
+| `motif-technologies--motif-3` | `motif-technologies/motif-3` | running |  |  | – | – | KT | none | 0.0364 |  |
+| `moondream--moondream3-preview` | `moondream/moondream3-preview` | stopped-early | warm (2668/2669) | 2.5m 3/3, 5m 0/3, 7.5m 0/3 | 2.5m | 5m | PrimeIntellect | none | 0.0426 | none documented |
+| `moondream--moondream3.1-9b-a2b` | `moondream/moondream3.1-9b-a2b` | stopped-early | warm (2615/2616) | 2.5m 0/3, 5m 0/3 | – | 2.5m | PrimeIntellect | none | 0.0403 | none documented |
+| `z-ai--glm-5.3-flashx` | `z-ai/glm-5.3-flashx` | running |  |  | – | – | Z.AI | none | 0.0501 |  |
+| `z-ai--glm-5.3-flashx-legal` | `z-ai/glm-5.3-flashx-legal` | running |  |  | – | – | Z.AI | none | 0.0496 |  |
+| `tencent--hy4` | `tencent/hy4` | running |  |  | – | – | Tencent | none | 0.0517 |  |
+| `xiaomi--mimo-v2.6-pro` | `xiaomi/mimo-v2.6-pro` | running |  |  | – | – | DeepInfra, Xiaomi | none | 0.0609 |  |
+| `deepseek--deepseek-v4-flash-vision-exp` | `deepseek/deepseek-v4-flash-vision-exp` | running |  |  | – | – | GMICloud | none | 0.0546 |  |
+| `elorian--glimpse` | `elorian/glimpse` | stopped-early | warm (1600/2898) | 2.5m 1/3, 5m 0/3, 7.5m 0/3 | – | 5m | Together | none | 0.0940 | none documented |
+| `aion-labs--aion-3.5-mini` | `aion-labs/aion-3.5-mini` | running |  |  | – | – | AionLabs | none | 0.0916 |  |
+| `unbiased--pareto-26.10` | `unbiased/pareto-26.10` | running |  |  | – | – | Unbiased | none | 0.0913 |  |
+| `unbiased--pareto-26.10-preview` | `unbiased/pareto-26.10-preview` | running |  |  | – | – | Unbiased | none | 0.0911 |  |
+| `tencent--hy4-preview` | `tencent/hy4-preview` | running |  |  | – | – | DeepInfra, GMICloud, SiliconFlow, Tencent, Venice | none | 0.1021 |  |
+| `stepfun--step-5-preview` | `stepfun/step-5-preview` | running |  |  | – | – | StepFun | none | 0.1198 |  |
+| `baidu--ernie-light-dt-1.0-intl` | `baidu/ernie-light-dt-1.0-intl` | running |  |  | – | – | Baidu | none | 0.1574 |  |
+| `meta--muse-spark-open` | `meta/muse-spark-open` | running |  |  | – | – | BaseTen, Fireworks, Modal, Nebius, Together | none | 0.1536 |  |
+| `z-ai--glm-5.3-prime` | `z-ai/glm-5.3-prime` | running |  |  | – | – | Alibaba | none | 0.1981 |  |

@@ -1,0 +1,29 @@
+{
+ "halt": false,
+ "left_out": {},
+ "refusals_seen": {
+  "baidu--ernie-5.5-flash-preview-free": {
+   "status": 429,
+   "error": {
+    "code": 429,
+    "message": "Rate limit exceeded: free-models-per-min. "
+   }
+  },
+  "inclusionai--ling-3.2-flash-free": {
+   "status": 429,
+   "error": {
+    "code": 429,
+    "message": "Provider returned error"
+   }
+  },
+  "liquid--lfm-3-1.7b-free": {
+   "status": 429,
+   "error": {
+    "code": 429,
+    "message": "Provider returned error"
+   }
+  }
+ },
+ "free_closed": false,
+ "free_note": "09:18: the paced run of inclusionai/ling-3.2-flash:free ended on HTTP 429 'Provider returned error' (the upstream's refusal, not OpenRouter's free limit); status.py first closed the free runs on it, reopened by hand at 09:23: only a refusal naming OpenRouter's free limit ('free-models-\u2026') closes them"
+}

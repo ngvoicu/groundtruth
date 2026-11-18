@@ -1,0 +1,318 @@
+{
+ "comment": "Entries for observed/manifest.json from results/openrouter-2026-11-18 (branch campaign/openrouter): add runs to runs and excluded to excluded. Finished runs only; not applied here; a later task assembles the manifest.",
+ "runs": [
+  {
+   "id": "openrouter-2026-11-18/google--gemini-4-hydrogen",
+   "file": "results/openrouter-2026-11-18/google--gemini-4-hydrogen-2026-11-18T08-42-30.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "google/gemini-4-hydrogen",
+   "models_dev": "openrouter/google/gemini-4-hydrogen",
+   "base_model": "google/gemini-4-hydrogen",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/qwen--qwen4-max",
+   "file": "results/openrouter-2026-11-18/qwen--qwen4-max-2026-11-18T08-43-00.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "qwen/qwen4-max",
+   "models_dev": "openrouter/qwen/qwen4-max",
+   "base_model": "alibaba/qwen4-max",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/anthropic--claude-fable-5.2",
+   "file": "results/openrouter-2026-11-18/anthropic--claude-fable-5.2-2026-11-18T08-43-30.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "anthropic/claude-fable-5.2",
+   "models_dev": "openrouter/anthropic/claude-fable-5.2",
+   "base_model": "anthropic/claude-fable-5-2",
+   "options": {
+    "cache_control": {
+     "type": "ephemeral"
+    },
+    "session_id": true
+   }
+  },
+  {
+   "id": "openrouter-2026-11-18/openai--gpt-6.2-astra",
+   "file": "results/openrouter-2026-11-18/openai--gpt-6.2-astra-2026-11-18T08-43-45.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "openai/gpt-6.2-astra",
+   "models_dev": "openrouter/openai/gpt-6.2-astra",
+   "base_model": "openai/gpt-6.2-astra",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free",
+   "file": "results/openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free-2026-11-18T09-29-46.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "nvidia/nemotron-3.5-super-vl:free",
+   "models_dev": "openrouter/nvidia/nemotron-3.5-super-vl:free",
+   "base_model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+   "options": {},
+   "note": "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute)"
+  },
+  {
+   "id": "openrouter-2026-11-18/particle-ai--particle-1-free",
+   "file": "results/openrouter-2026-11-18/particle-ai--particle-1-free-2026-11-18T09-33-29.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "particle-ai/particle-1:free",
+   "models_dev": "openrouter/particle-ai/particle-1:free",
+   "base_model": null,
+   "options": {},
+   "note": "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute)"
+  },
+  {
+   "id": "openrouter-2026-11-18/nex-agi--nex-n2.5-mini",
+   "file": "results/openrouter-2026-11-18/nex-agi--nex-n2.5-mini-2026-11-18T08-44-15.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "nex-agi/nex-n2.5-mini",
+   "models_dev": "openrouter/nex-agi/nex-n2.5-mini",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/tencent--hy4-flash",
+   "file": "results/openrouter-2026-11-18/tencent--hy4-flash-2026-11-18T08-44-30.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "tencent/hy4-flash",
+   "models_dev": "openrouter/tencent/hy4-flash",
+   "base_model": "tencent/hy4-flash",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/scaledown--summarize",
+   "file": "results/openrouter-2026-11-18/scaledown--summarize-2026-11-18T08-45-16.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "scaledown/summarize",
+   "models_dev": "openrouter/scaledown/summarize",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/inclusionai--ling-3.1-flash",
+   "file": "results/openrouter-2026-11-18/inclusionai--ling-3.1-flash-2026-11-18T08-50-10.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "inclusionai/ling-3.1-flash",
+   "models_dev": "openrouter/inclusionai/ling-3.1-flash",
+   "base_model": "inclusionai/ling-3.1-flash",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/upstage--solar-mini4",
+   "file": "results/openrouter-2026-11-18/upstage--solar-mini4-2026-11-18T08-50-25.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "upstage/solar-mini4",
+   "models_dev": "openrouter/upstage/solar-mini4",
+   "base_model": "upstage/solar-mini4",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b",
+   "file": "results/openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b-2026-11-18T08-50-40.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "liquid/lfm-2.5-24b-a2b",
+   "models_dev": "openrouter/liquid/lfm-2.5-24b-a2b",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/ibm-granite--granite-4.2-8b",
+   "file": "results/openrouter-2026-11-18/ibm-granite--granite-4.2-8b-2026-11-18T08-50-55.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "ibm-granite/granite-4.2-8b",
+   "models_dev": "openrouter/ibm-granite/granite-4.2-8b",
+   "base_model": "ibm/granite-4.2-8b",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/inclusionai--ling-3.0-flash-vl",
+   "file": "results/openrouter-2026-11-18/inclusionai--ling-3.0-flash-vl-2026-11-18T08-57-21.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "inclusionai/ling-3.0-flash-vl",
+   "models_dev": "openrouter/inclusionai/ling-3.0-flash-vl",
+   "base_model": "inclusionai/ling-3.0-flash-vl",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/particle-ai--particle-1",
+   "file": "results/openrouter-2026-11-18/particle-ai--particle-1-2026-11-18T08-57-36.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "particle-ai/particle-1",
+   "models_dev": "openrouter/particle-ai/particle-1",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/nex-agi--nex-n2.5-pro",
+   "file": "results/openrouter-2026-11-18/nex-agi--nex-n2.5-pro-2026-11-18T08-57-51.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "nex-agi/nex-n2.5-pro",
+   "models_dev": "openrouter/nex-agi/nex-n2.5-pro",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b",
+   "file": "results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b-2026-11-18T09-07-59.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "prism-ml/ternary-bonsai-2-27b",
+   "models_dev": "openrouter/prism-ml/ternary-bonsai-2-27b",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b",
+   "file": "results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b-2026-11-18T09-08-14.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "prism-ml/ternary-bonsai-2-9b",
+   "models_dev": "openrouter/prism-ml/ternary-bonsai-2-9b",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/liquid--lfm-3-1.7b",
+   "file": "results/openrouter-2026-11-18/liquid--lfm-3-1.7b-2026-11-18T09-08-29.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "liquid/lfm-3-1.7b",
+   "models_dev": "openrouter/liquid/lfm-3-1.7b",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/qwen--qwen3.8-flash",
+   "file": "results/openrouter-2026-11-18/qwen--qwen3.8-flash-2026-11-18T09-17-59.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "qwen/qwen3.8-flash",
+   "models_dev": "openrouter/qwen/qwen3.8-flash",
+   "base_model": "alibaba/qwen3.8-flash",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/qwen--qwen3.8-omni-flash",
+   "file": "results/openrouter-2026-11-18/qwen--qwen3.8-omni-flash-2026-11-18T09-21-49.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "qwen/qwen3.8-omni-flash",
+   "models_dev": "openrouter/qwen/qwen3.8-omni-flash",
+   "base_model": "alibaba/qwen3.8-omni-flash",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/minimax--minimax-m3.1-flash",
+   "file": "results/openrouter-2026-11-18/minimax--minimax-m3.1-flash-2026-11-18T09-30-01.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "minimax/minimax-m3.1-flash",
+   "models_dev": "openrouter/minimax/minimax-m3.1-flash",
+   "base_model": "minimax/MiniMax-M3.1-Flash",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/perceptron--perceptron-mk1.5",
+   "file": "results/openrouter-2026-11-18/perceptron--perceptron-mk1.5-2026-11-18T09-37-13.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "perceptron/perceptron-mk1.5",
+   "models_dev": "openrouter/perceptron/perceptron-mk1.5",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/kt--midm-k-3.0-pro",
+   "file": "results/openrouter-2026-11-18/kt--midm-k-3.0-pro-2026-11-18T09-37-28.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "kt/midm-k-3.0-pro",
+   "models_dev": "openrouter/kt/midm-k-3.0-pro",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/thinkingmachines--inkling-2-small",
+   "file": "results/openrouter-2026-11-18/thinkingmachines--inkling-2-small-2026-11-18T09-41-18.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "thinkingmachines/inkling-2-small",
+   "models_dev": "openrouter/thinkingmachines/inkling-2-small",
+   "base_model": "thinkingmachines/inkling-2-small",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/moondream--moondream3-preview",
+   "file": "results/openrouter-2026-11-18/moondream--moondream3-preview-2026-11-18T09-55-27.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "moondream/moondream3-preview",
+   "models_dev": "openrouter/moondream/moondream3-preview",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/moondream--moondream3.1-9b-a2b",
+   "file": "results/openrouter-2026-11-18/moondream--moondream3.1-9b-a2b-2026-11-18T10-05-26.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "moondream/moondream3.1-9b-a2b",
+   "models_dev": "openrouter/moondream/moondream3.1-9b-a2b",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/elorian--glimpse",
+   "file": "results/openrouter-2026-11-18/elorian--glimpse-2026-11-18T10-23-49.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "elorian/glimpse",
+   "models_dev": "openrouter/elorian/glimpse",
+   "base_model": null,
+   "options": {}
+  }
+ ],
+ "excluded": [
+  {
+   "id": "openrouter-2026-11-18/baidu--ernie-5.5-flash-preview-free",
+   "reason": "failed: quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-min. \",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"20\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1794991500000\"},\"limit_source\":\"openrouter_free_tier_per_minute\",\"remedy_hint\":\"S"
+  },
+  {
+   "id": "openrouter-2026-11-18/inclusionai--ling-3.2-flash-free",
+   "reason": "failed: quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"inclusionai/ling-3.2-flash:free is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/"
+  },
+  {
+   "id": "openrouter-2026-11-18/liquid--lfm-3-1.7b-free",
+   "reason": "failed: quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"liquid/lfm-3-1.7b:free is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/b"
+  },
+  {
+   "id": "openrouter-2026-11-18/scaledown--extract",
+   "reason": "failed: HTTP 400: {\"error\":{\"message\":\"extract requires a response_format of type \\\"json_schema\\\" whose schema properties describe the entities to extract, or provider.options.scaledown.entities mapping each entity name to its definition. If entities were sent, check that the key is spelled \\\"scaledown\\\" an"
+  },
+  {
+   "id": "openrouter-2026-11-18/meta--muse-spark-1.2-contributor",
+   "reason": "failed: HTTP 404: {\"error\":{\"message\":\"0 endpoints out of 1 requested are available matching your guardrail restrictions and data policy. We removed them for the following reasons (an endpoint may have matched multiple reasons):\\nPaid model training violation (account settings): 1 endpoint excluded; configu"
+  },
+  {
+   "id": "openrouter-2026-11-18/meta--muse-spark-1.3-contributor",
+   "reason": "failed: HTTP 404: {\"error\":{\"message\":\"0 endpoints out of 1 requested are available matching your guardrail restrictions and data policy. We removed them for the following reasons (an endpoint may have matched multiple reasons):\\nPaid model training violation (account settings): 1 endpoint excluded; configu"
+  }
+ ]
+}
