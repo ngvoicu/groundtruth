@@ -162,7 +162,7 @@ export interface Spent {
   requestsWithoutOutput: number;
 }
 
-export const PROBE_VERSION = "0.3.3";
+export const PROBE_VERSION = "0.3.4";
 
 /** How long after its planned age a check may still run: 30 s, or 10 % of the age when longer. */
 export function lateAfterMs(ageMs: number): number {

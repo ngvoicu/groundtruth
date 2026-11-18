@@ -88,10 +88,10 @@ share them. `harness/probe.py` (the same evaluation through a real coding tool) 
 Options: `--schedule std|long|quick`, `--ages 30m,65m`, `--replicas 3`, `--prefix-tokens 2500`, `--filler words|list`, `--max-output 16`,
 `--stream`, `--ttl`, `--beta`, `--header k:v`, `--body-extra '<json>'`, `--label`, `--salt`, `--out`,
 `--stop-on-refusal`, `--prime-pause <ms>`, `--usage-log <file>` (one JSON line per reply with the usage as reported,
-for a cost ledger; from 0.3.3 also the upstream an aggregator such as OpenRouter names in its reply (`reply_provider`),
+for a cost ledger; from 0.3.4 also the upstream an aggregator such as OpenRouter names in its reply (`reply_provider`),
 the reply's id and the sample's cache key or session id (`sample`), so that a check can be paired with its priming). See `--help`.
 
-`--stop-on-refusal` (from 0.3.1) ends a run at the first quota or rate refusal (HTTP 429, from 0.3.3 also HTTP 402,
+`--stop-on-refusal` (from 0.3.1) ends a run at the first quota or rate refusal (HTTP 429, from 0.3.4 also HTTP 402,
 OpenRouter's answer when the credit or a key's limit is used up, or an answer that names a quota, usage, credit or key
 limit) instead of retrying it: for a subscription whose quota must not be pressed again. From 0.3.1
 every run file also sums what its answered requests used (`spent`: requests, prompt, cached and output tokens as the
