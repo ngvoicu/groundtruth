@@ -209,12 +209,13 @@ for r in S.runs:
     if small_zero and bx.get("control") == "warm" and bid in ent_by_id:
         big = ent_by_id[bid]
         big["note"] = ((big["note"] + "; ") if big.get("note") else "") + (
-            f"the same request with a ~2,500-token prompt ({fid}) read no cached token at its control: that prompt was "
-            "under the smallest cacheable size; this run with ~8,000 tokens is the measurement")
+            f"the same request with a ~2,500-token prompt ({fid}) read no cached token at its control; this run with "
+            "~8,000 tokens read from cache at its control and is the measurement")
         if fid in ent_by_id:
             entries.remove(ent_by_id.pop(fid))
-            excluded.append({"id": fid, "reason": "no cache read at about 2,500 tokens (the control read 0 cached "
-                             f"tokens); the 8,000-token run ({bid}) shows the prompt was under the smallest cacheable size"})
+            excluded.append({"id": fid, "reason": "its control read no cached token with a ~2,500-token prompt; the "
+                             f"~8,000-token run ({bid}) read from cache at its control and is the manifest run; why the "
+                             "small prompt read nothing is not established"})
 
 
 def zero(x):

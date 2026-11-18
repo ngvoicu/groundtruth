@@ -83,7 +83,8 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
   the usage log; HTTP 402 as a refusal) are commit `e0d1afb`, first named 0.3.3; `campaign-1-long` already had another
   0.3.3, so the version was renamed 0.3.4 (commit `5977b0b`, code unchanged). The run files that recorded "0.3.3" with this code (started before `5977b0b`, 09:07 UTC): `anthropic--claude-fable-5.2`, `baidu--ernie-5.5-flash-preview-free`, `deepseek--deepseek-v4.1-flash-1017`, `google--gemini-4-carbon`, `google--gemini-4-hydrogen`, `ibm-granite--granite-4.2-8b`, `inclusionai--ling-3.0-flash-vl`, `inclusionai--ling-3.1-flash`, `liquid--lfm-2.5-24b-a2b`, `meta--muse-ember`, `nex-agi--nex-n2.5-mini`, `nex-agi--nex-n2.5-pro`, `openai--gpt-6.2-astra`, `openai--gpt-6.2-sol`, `particle-ai--particle-1`, `qwen--qwen4-max`, `scaledown--extract`, `scaledown--summarize`, `tencent--hy4-flash`, `upstage--solar-mini4`; every later run records "0.3.4". The run files are not edited.
 - **A larger prompt where the control read nothing** (the chief's decision, m-10759): a control that read 0 cached
-  tokens at about 2,500 tokens may only mean the prompt is under that upstream's smallest cacheable size. Every model
+  tokens at about 2,500 tokens may only mean the prompt is under that upstream's smallest cacheable size (the reason
+  for the second run; the runs do not establish it either way). Every model
   whose first run's control read 0 cached tokens gets one more run of its own (label `…-8k`) with
   `--prefix-tokens 8000`, the size of the repository's earlier larger-prompt Gemini row
   (`../cpa-latest-2026-11-06`, L1b, after L1's ~2.3k prompt was not cached; the older O4 / O5 used 5,000);
@@ -93,8 +94,9 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
   is asked, so it lands in the short profile like the first run (`scratch_build.py`). `manifest-entries-cold-control.json`
   lists every first run whose control read 0, with its larger-prompt run and what that showed. Where the larger
   prompt's control hit, only the larger-prompt run is a manifest run (the chief's ruling, m-10781): the ~2,500-token run
-  is under `excluded` ("no cache read at about 2,500 tokens; the 8,000-token run shows the prompt was under the
-  smallest cacheable size") and the larger run's note says the small prompt read nothing. The site would not keep the
+  is under `excluded` ("its control read no cached token with a ~2,500-token prompt; the ~8,000-token run read from
+  cache at its control and is the manifest run; why the small prompt read nothing is not established", the wording of
+  m-10805) and the larger run's note says the small prompt's control read no cached token and its own did. The site would not keep the
   two apart by itself: `observed.json` gives them different options (`{}` and `{"prefix_tokens": 8000}`), so both are
   `latest`, but neither asks a lifetime, so `site/src/core/resolve.ts` puts both in the short profile of the same
   entry and their results would be pooled. Where both sizes read 0 (ScaleDown Summarize, Perceptron Mk1.5), both runs
@@ -147,7 +149,7 @@ with about 2,500- and 8,000-token prompts" (ruling 5, m-10767).
 **Batch 3** adds 30 finished runs. The larger-prompt runs of MiDM K 3.0 Pro (warm in every check to 2 hours at
 ~9,500 tokens), LFM 2.5 24B (through 1 hour), Nemotron 3.5 Super VL free (through 90 minutes) and
 `~deepseek/deepseek-flash-latest` (2.5 minutes, then hit-or-miss to 2 hours over 9 upstreams, 2 crossings) all read
-the cache: their first runs' zeros were the prompt size. OpenAI's models on OpenRouter hold OpenAI's 30 minutes when
+the cache at their controls, where their ~2,500-token first runs had read nothing (why is not established). OpenAI's models on OpenRouter hold OpenAI's 30 minutes when
 OpenAI answers (GPT-6 Sol, the Luna, Terra and Sol `-pro` variants, `~gpt-luna-latest`, `~gpt-terra-latest`: warm
 through 30, cold at 40); where Azure or Bedrock also answered (GPT-6.2 Sol Pro, `~gpt-sol-latest`) checks crossed and
 missed. Long lifetimes: Hy4 and MiMo v2.6 Pro Ultraspeed warm to 2 hours (the latter one miss at 15 minutes), GLM 5.3
