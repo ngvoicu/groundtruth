@@ -1,0 +1,94 @@
+{
+  "probeVersion": "0.3.3",
+  "label": "baidu--ernie-5.5-flash-preview-free",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "format": "responses",
+  "model": "baidu/ernie-5.5-flash-preview:free",
+  "request": {
+    "method": "POST",
+    "path": "/responses",
+    "bodyExtra": null,
+    "prefixTokens": 2500,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "baidu/ernie-5.5-flash-preview:free",
+      "input": [
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "<prefix: about 2500 tokens of words filler, one per sample>"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "Reply with the single word OK."
+            }
+          ]
+        }
+      ],
+      "max_output_tokens": 16,
+      "store": false,
+      "stream": false,
+      "prompt_cache_key": "groundtruth-estoswo8-<sample>"
+    }
+  },
+  "runSalt": "estoswo8",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000,
+    1200000,
+    1500000,
+    1800000,
+    2400000,
+    3000000,
+    3600000,
+    4500000,
+    5400000,
+    7200000
+  ],
+  "startedAt": "2026-11-18T08:44:00.686Z",
+  "status": "failed",
+  "spent": {
+    "requests": 27,
+    "promptTokens": 65365,
+    "cachedTokens": 2304,
+    "outputTokens": 432,
+    "requestsWithoutOutput": 0
+  },
+  "checks": [],
+  "control": {
+    "prime": {
+      "promptTokens": 2424,
+      "cachedTokens": 0,
+      "outputTokens": 16
+    },
+    "check": {
+      "promptTokens": 2424,
+      "cachedTokens": 2304,
+      "outputTokens": 16
+    },
+    "warm": true
+  },
+  "error": "quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-min. \",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"20\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1794991500000\"},\"limit_source\":\"openrouter_free_tier_per_minute\",\"remedy_hint\":\"Slow down requests to free models, or retry aft",
+  "finishedAt": "2026-11-18T08:44:16.259Z"
+}

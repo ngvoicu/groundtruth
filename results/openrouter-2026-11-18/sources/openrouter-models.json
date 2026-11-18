@@ -1,0 +1,4205 @@
+{
+ "read_at": "2026-11-18T08:39:02Z",
+ "models": {
+  "aion-labs/aion-3.5": {
+   "id": "aion-labs/aion-3.5",
+   "canonical_slug": "aion-labs/aion-3.5-20260923",
+   "name": "AionLabs: Aion 3.5",
+   "created": 1790170961,
+   "context_length": 262144,
+   "pricing": {
+    "prompt": "0.000003",
+    "completion": "0.000006",
+    "input_cache_read": "0.00000075"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 32768,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "low"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "aion-labs/aion-3.5-mini": {
+   "id": "aion-labs/aion-3.5-mini",
+   "canonical_slug": "aion-labs/aion-3.5-mini-20260923",
+   "name": "AionLabs: Aion 3.5 Mini",
+   "created": 1790170962,
+   "context_length": 262144,
+   "pricing": {
+    "prompt": "0.0000007",
+    "completion": "0.0000014",
+    "input_cache_read": "0.00000018"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 32768,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "low"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "anthropic/claude-fable-5.2": {
+   "id": "anthropic/claude-fable-5.2",
+   "canonical_slug": "anthropic/claude-fable-5.2-20261109",
+   "name": "Anthropic: Claude Fable 5.2",
+   "created": 1794253781,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.000008",
+    "completion": "0.00004",
+    "web_search": "0.01",
+    "input_cache_read": "0.0000002",
+    "input_cache_write": "0.00001",
+    "input_cache_write_1h": "0.000016"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "stop",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "anthropic/claude-sonnet-5.5": {
+   "id": "anthropic/claude-sonnet-5.5",
+   "canonical_slug": "anthropic/claude-sonnet-5.5-20260928",
+   "name": "Anthropic: Claude Sonnet 5.5",
+   "created": 1790618686,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.000002",
+    "completion": "0.00001",
+    "web_search": "0.01",
+    "input_cache_read": "0.0000001",
+    "input_cache_write": "0.0000025",
+    "input_cache_write_1h": "0.000004"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "stop",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "baidu/ernie-5.5-flash-preview:free": {
+   "id": "baidu/ernie-5.5-flash-preview:free",
+   "canonical_slug": "baidu/ernie-5.5-flash-preview-20261110",
+   "name": "Baidu: ERNIE-5.5-Flash-Preview (free)",
+   "created": 1794333533,
+   "context_length": 1024000,
+   "pricing": {
+    "prompt": "0",
+    "completion": "0"
+   },
+   "top_provider": {
+    "context_length": 1024000,
+    "max_completion_tokens": 921600,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "high"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "baidu/ernie-light-dt-1.0-intl": {
+   "id": "baidu/ernie-light-dt-1.0-intl",
+   "canonical_slug": "baidu/ernie-light-dt-1.0-intl-20261110",
+   "name": "Baidu: ERNIE-Light-DT-1.0",
+   "created": 1794331260,
+   "context_length": 1024000,
+   "pricing": {
+    "prompt": "0.00000113",
+    "completion": "0.00000394",
+    "input_cache_read": "0.000000113"
+   },
+   "top_provider": {
+    "context_length": 1024000,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "low",
+     "none"
+    ],
+    "default_effort": "max"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "deepseek/deepseek-v4-flash-vision-exp": {
+   "id": "deepseek/deepseek-v4-flash-vision-exp",
+   "canonical_slug": "deepseek/deepseek-v4-flash-vision-exp-20260821",
+   "name": "DeepSeek: DeepSeek V4 Flash Vision Exp",
+   "created": 1787311563,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.00000044",
+    "completion": "0.00000132",
+    "input_cache_read": "0.000000014"
+   },
+   "top_provider": {
+    "context_length": 1048575,
+    "max_completion_tokens": 943717,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "low",
+     "none"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "deepseek/deepseek-v4.1-flash-1017": {
+   "id": "deepseek/deepseek-v4.1-flash-1017",
+   "canonical_slug": "deepseek/deepseek-v4.1-flash-20261017",
+   "name": "DeepSeek: DeepSeek V4.1 Flash 1017",
+   "created": 1792225624,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.000000036",
+    "completion": "0.0000005",
+    "input_cache_read": "0.00000001"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "low",
+     "none"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_completion_tokens",
+    "max_tokens",
+    "min_p",
+    "parallel_tool_calls",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "elorian/glimpse": {
+   "id": "elorian/glimpse",
+   "canonical_slug": "elorian/glimpse-20261016",
+   "name": "Elorian: Glimpse",
+   "created": 1792206629,
+   "context_length": 262144,
+   "pricing": {
+    "prompt": "0.0000006",
+    "completion": "0.000003",
+    "input_cache_read": "0.00000006"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 256000,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "response_format",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "fireworks/ember-1": {
+   "id": "fireworks/ember-1",
+   "canonical_slug": "fireworks/ember-1-20260923",
+   "name": "Fireworks: Ember-1",
+   "created": 1790208461,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.000003",
+    "completion": "0.000015",
+    "input_cache_read": "0.0000003"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "low",
+     "none"
+    ],
+    "default_effort": "max"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "google/gemini-4-carbon": {
+   "id": "google/gemini-4-carbon",
+   "canonical_slug": "google/gemini-4-carbon-20261110",
+   "name": "Google: Gemini 4 Carbon",
+   "created": 1794326871,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.000002",
+    "completion": "0.00001",
+    "image": "0.000002",
+    "audio": "0.000002",
+    "input_audio_cache": "0.0000001",
+    "web_search": "0.014",
+    "internal_reasoning": "0.00001",
+    "input_cache_read": "0.0000001",
+    "input_cache_write": "0.0000001875"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "google/gemini-4-hydrogen": {
+   "id": "google/gemini-4-hydrogen",
+   "canonical_slug": "google/gemini-4-hydrogen-20261112",
+   "name": "Google: Gemini 4 Hydrogen",
+   "created": 1794506460,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.0000015",
+    "completion": "0.0000075",
+    "image": "0.0000015",
+    "audio": "0.0000015",
+    "input_audio_cache": "0.000000075",
+    "web_search": "0.014",
+    "internal_reasoning": "0.0000075",
+    "input_cache_read": "0.000000075",
+    "input_cache_write": "0.0000000833333333333333"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "ibm-granite/granite-4.2-8b": {
+   "id": "ibm-granite/granite-4.2-8b",
+   "canonical_slug": "ibm-granite/granite-4.2-8b-20260831",
+   "name": "IBM: Granite 4.2 8B",
+   "created": 1788206780,
+   "context_length": 131072,
+   "pricing": {
+    "prompt": "0.00000006",
+    "completion": "0.00000015",
+    "input_cache_read": "0.000000015"
+   },
+   "top_provider": {
+    "context_length": 131072,
+    "max_completion_tokens": 117964,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "high",
+     "low",
+     "none"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "inclusionai/ling-3.0-flash-vl": {
+   "id": "inclusionai/ling-3.0-flash-vl",
+   "canonical_slug": "inclusionai/ling-3.0-flash-vl-20260910",
+   "name": "inclusionAI: Ling 3.0 Flash VL",
+   "created": 1789056114,
+   "context_length": 131072,
+   "pricing": {
+    "prompt": "0.00000006",
+    "completion": "0.00000018",
+    "input_cache_read": "0.000000012"
+   },
+   "top_provider": {
+    "context_length": 131072,
+    "max_completion_tokens": 32768,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_p"
+   ]
+  },
+  "inclusionai/ling-3.1-flash": {
+   "id": "inclusionai/ling-3.1-flash",
+   "canonical_slug": "inclusionai/ling-3.1-flash-20261002",
+   "name": "inclusionAI: Ling 3.1 Flash",
+   "created": 1790950024,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.000000045",
+    "completion": "0.000000135",
+    "input_cache_read": "0.000000009"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 262144,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "seed",
+    "stop",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "inclusionai/ling-3.2-flash:free": {
+   "id": "inclusionai/ling-3.2-flash:free",
+   "canonical_slug": "inclusionai/ling-3.2-flash-20261113",
+   "name": "inclusionAI: Ling 3.2 Flash (free)",
+   "created": 1794591958,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0",
+    "completion": "0"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 262144,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_p"
+   ]
+  },
+  "kt/midm-k-3.0-pro": {
+   "id": "kt/midm-k-3.0-pro",
+   "canonical_slug": "kt/midm-k-3.0-pro",
+   "name": "KT: Mi:dm K 3.0 Pro",
+   "created": 1793897701,
+   "context_length": 261795,
+   "pricing": {
+    "prompt": "0.0000002",
+    "completion": "0.0000008",
+    "input_cache_read": "0.00000004"
+   },
+   "top_provider": {
+    "context_length": 261795,
+    "max_completion_tokens": 235615,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "response_format",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "liquid/lfm-2.5-24b-a2b": {
+   "id": "liquid/lfm-2.5-24b-a2b",
+   "canonical_slug": "liquid/lfm-2.5-24b-a2b-20261012",
+   "name": "LiquidAI: LFM2.5-24B-A2B",
+   "created": 1791912025,
+   "context_length": 128000,
+   "pricing": {
+    "prompt": "0.00000005",
+    "completion": "0.0000007",
+    "input_cache_read": "0.000000025"
+   },
+   "top_provider": {
+    "context_length": 128000,
+    "max_completion_tokens": 8192,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_completion_tokens",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "liquid/lfm-3-1.7b": {
+   "id": "liquid/lfm-3-1.7b",
+   "canonical_slug": "liquid/lfm-3-1.7b-20261106",
+   "name": "LiquidAI: LFM3-1.7B",
+   "created": 1794009477,
+   "context_length": 262144,
+   "pricing": {
+    "prompt": "0.00000008",
+    "completion": "0.0000002",
+    "input_cache_read": "0.00000002"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 8192,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_completion_tokens",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "liquid/lfm-3-1.7b:free": {
+   "id": "liquid/lfm-3-1.7b:free",
+   "canonical_slug": "liquid/lfm-3-1.7b-20261106",
+   "name": "LiquidAI: LFM3-1.7B (free)",
+   "created": 1794009477,
+   "context_length": 262144,
+   "pricing": {
+    "prompt": "0",
+    "completion": "0"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 8192,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_completion_tokens",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "meta/muse-ember": {
+   "id": "meta/muse-ember",
+   "canonical_slug": "meta/muse-ember-20261109",
+   "name": "Meta: Muse Ember",
+   "created": 1794247648,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.0000001",
+    "completion": "0.0000005",
+    "web_search": "0.0025",
+    "input_cache_read": "0.000000004",
+    "input_cache_write": "0.000000125"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low",
+     "minimal"
+    ],
+    "default_effort": "max"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_p"
+   ]
+  },
+  "meta/muse-spark-1.2-contributor": {
+   "id": "meta/muse-spark-1.2-contributor",
+   "canonical_slug": "meta/muse-spark-1.2-contributor-20260805",
+   "name": "Meta: Muse Spark 1.2 Contributor",
+   "created": 1787336476,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.0000001",
+    "completion": "0.0000002",
+    "web_search": "0.0025",
+    "input_cache_read": "0.000000002"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "xhigh",
+     "high",
+     "medium",
+     "low",
+     "minimal"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_p"
+   ]
+  },
+  "meta/muse-spark-1.3-contributor": {
+   "id": "meta/muse-spark-1.3-contributor",
+   "canonical_slug": "meta/muse-spark-1.3-contributor-20260902",
+   "name": "Meta: Muse Spark 1.3 Contributor",
+   "created": 1788381519,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.0000001",
+    "completion": "0.0000002",
+    "web_search": "0.0025",
+    "input_cache_read": "0.000000002"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low",
+     "minimal"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_p"
+   ]
+  },
+  "meta/muse-spark-open": {
+   "id": "meta/muse-spark-open",
+   "canonical_slug": "meta/muse-spark-open-20261015",
+   "name": "Meta: Muse Spark Open",
+   "created": 1792087069,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.00000125",
+    "completion": "0.00000425",
+    "input_cache_read": "0.00000015"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "minimax/minimax-m3.1-flash": {
+   "id": "minimax/minimax-m3.1-flash",
+   "canonical_slug": "minimax/minimax-m3.1-flash-20261019",
+   "name": "MiniMax: MiniMax M3.1 Flash",
+   "created": 1792379569,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.00000015",
+    "completion": "0.0000006",
+    "input_cache_read": "0.000000015",
+    "overrides": [
+     {
+      "utc_start": 1500,
+      "utc_end": 100,
+      "prompt": "0.000000075",
+      "completion": "0.0000003",
+      "input_cache_read": "0.0000000075"
+     },
+     {
+      "utc_start": 100,
+      "utc_end": 1500,
+      "prompt": "0.00000015",
+      "completion": "0.0000006",
+      "input_cache_read": "0.000000015"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 524288,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "max"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "moondream/moondream3-preview": {
+   "id": "moondream/moondream3-preview",
+   "canonical_slug": "moondream/moondream3-preview-20261013",
+   "name": "Moondream: Moondream 3 Preview",
+   "created": 1792102385,
+   "context_length": 32000,
+   "pricing": {
+    "prompt": "0.0000003",
+    "completion": "0.0000025"
+   },
+   "top_provider": {
+    "context_length": 32000,
+    "max_completion_tokens": 4096,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": false
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "temperature",
+    "top_p"
+   ]
+  },
+  "moondream/moondream3.1-9b-a2b": {
+   "id": "moondream/moondream3.1-9b-a2b",
+   "canonical_slug": "moondream/moondream3.1-9b-a2b-20261013",
+   "name": "Moondream: Moondream 3.1",
+   "created": 1792102373,
+   "context_length": 32000,
+   "pricing": {
+    "prompt": "0.0000003",
+    "completion": "0.0000025"
+   },
+   "top_provider": {
+    "context_length": 32000,
+    "max_completion_tokens": 4096,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": false
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "temperature",
+    "top_p"
+   ]
+  },
+  "motif-technologies/motif-3": {
+   "id": "motif-technologies/motif-3",
+   "canonical_slug": "motif-technologies/motif-3",
+   "name": "Motif Technologies: Motif 3",
+   "created": 1793655334,
+   "context_length": 262144,
+   "pricing": {
+    "prompt": "0.0000003",
+    "completion": "0.0000012",
+    "input_cache_read": "0.00000006"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 235929,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "response_format",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "nex-agi/nex-n2.5-mini": {
+   "id": "nex-agi/nex-n2.5-mini",
+   "canonical_slug": "nex-agi/nex-n2.5-mini-20260908",
+   "name": "Nex AGI: Nex-N2.5-Mini",
+   "created": 1788890061,
+   "context_length": 262144,
+   "pricing": {
+    "prompt": "0.000000025",
+    "completion": "0.0000001",
+    "input_cache_read": "0.0000000025"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 235929,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "supported_efforts": [
+     "high",
+     "medium",
+     "none"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "structured_outputs",
+    "temperature",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "nex-agi/nex-n2.5-pro": {
+   "id": "nex-agi/nex-n2.5-pro",
+   "canonical_slug": "nex-agi/nex-n2.5-pro-20260907",
+   "name": "Nex AGI: Nex-N2.5-Pro",
+   "created": 1788890050,
+   "context_length": 262144,
+   "pricing": {
+    "prompt": "0.000000075",
+    "completion": "0.00000025",
+    "input_cache_read": "0.000000015"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 235929,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "supported_efforts": [
+     "high",
+     "medium",
+     "none"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "nex-agi/nex-n2.6": {
+   "id": "nex-agi/nex-n2.6",
+   "canonical_slug": "nex-agi/nex-n2.6-20261110",
+   "name": "Nex AGI: Nex-N2.6",
+   "created": 1794282379,
+   "context_length": 262144,
+   "pricing": {
+    "prompt": "0.00000012",
+    "completion": "0.0000004",
+    "input_cache_read": "0.000000024"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 235929,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "high",
+     "medium"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "nvidia/nemotron-3.5-super-vl": {
+   "id": "nvidia/nemotron-3.5-super-vl",
+   "canonical_slug": "nvidia/nemotron-3.5-super-vl-20261015",
+   "name": "NVIDIA: Nemotron 3.5 Super VL",
+   "created": 1792076662,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.00000015",
+    "completion": "0.0000005",
+    "input_cache_read": "0.00000002"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 235929,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "nvidia/nemotron-3.5-super-vl:free": {
+   "id": "nvidia/nemotron-3.5-super-vl:free",
+   "canonical_slug": "nvidia/nemotron-3.5-super-vl-20261015",
+   "name": "NVIDIA: Nemotron 3.5 Super VL (free)",
+   "created": 1792076662,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0",
+    "completion": "0"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "openai/gpt-6-astra-pro": {
+   "id": "openai/gpt-6-astra-pro",
+   "canonical_slug": "openai/gpt-6-astra-pro-20260903",
+   "name": "OpenAI: GPT-6 Astra Pro",
+   "created": 1788552835,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.00001",
+    "completion": "0.00005",
+    "web_search": "0.01",
+    "input_cache_read": "0.000001",
+    "input_cache_write": "0.0000125",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.00002",
+      "completion": "0.000075",
+      "input_cache_read": "0.000002",
+      "input_cache_write": "0.000025"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "openai/gpt-6-luna-pro": {
+   "id": "openai/gpt-6-luna-pro",
+   "canonical_slug": "openai/gpt-6-luna-pro-20260922",
+   "name": "OpenAI: GPT-6 Luna Pro",
+   "created": 1790100791,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.0000001",
+    "completion": "0.0000005",
+    "web_search": "0.01",
+    "input_cache_read": "0.00000001",
+    "input_cache_write": "0.000000125",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.0000002",
+      "completion": "0.00000075",
+      "input_cache_read": "0.00000002",
+      "input_cache_write": "0.00000025"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low",
+     "none"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "openai/gpt-6-sol": {
+   "id": "openai/gpt-6-sol",
+   "canonical_slug": "openai/gpt-6-sol-20260922",
+   "name": "OpenAI: GPT-6 Sol",
+   "created": 1790100775,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.000002",
+    "completion": "0.00001",
+    "web_search": "0.01",
+    "input_cache_read": "0.0000002",
+    "input_cache_write": "0.0000025",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.000004",
+      "completion": "0.000015",
+      "input_cache_read": "0.0000004",
+      "input_cache_write": "0.000005"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low",
+     "none"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "openai/gpt-6-sol-pro": {
+   "id": "openai/gpt-6-sol-pro",
+   "canonical_slug": "openai/gpt-6-sol-pro-20260922",
+   "name": "OpenAI: GPT-6 Sol Pro",
+   "created": 1790100781,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.000002",
+    "completion": "0.00001",
+    "web_search": "0.01",
+    "input_cache_read": "0.0000002",
+    "input_cache_write": "0.0000025",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.000004",
+      "completion": "0.000015",
+      "input_cache_read": "0.0000004",
+      "input_cache_write": "0.000005"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low",
+     "none"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "openai/gpt-6.1-sol-pro": {
+   "id": "openai/gpt-6.1-sol-pro",
+   "canonical_slug": "openai/gpt-6.1-sol-pro-20260929",
+   "name": "OpenAI: GPT-6.1 Sol Pro",
+   "created": 1790702886,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.000002",
+    "completion": "0.00001",
+    "web_search": "0.01",
+    "input_cache_read": "0.0000001",
+    "input_cache_write": "0.0000025",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.000004",
+      "completion": "0.000015",
+      "input_cache_read": "0.0000002",
+      "input_cache_write": "0.000005"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "openai/gpt-6.1-terra-pro": {
+   "id": "openai/gpt-6.1-terra-pro",
+   "canonical_slug": "openai/gpt-6.1-terra-pro-20261026",
+   "name": "OpenAI: GPT-6.1 Terra Pro",
+   "created": 1793038556,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.000001",
+    "completion": "0.000005",
+    "web_search": "0.01",
+    "input_cache_read": "0.00000005",
+    "input_cache_write": "0.00000125",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.000002",
+      "completion": "0.0000075",
+      "input_cache_read": "0.0000001",
+      "input_cache_write": "0.0000025"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "openai/gpt-6.2-astra": {
+   "id": "openai/gpt-6.2-astra",
+   "canonical_slug": "openai/gpt-6.2-astra-20261117",
+   "name": "OpenAI: GPT-6.2 Astra",
+   "created": 1794938423,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.000008",
+    "completion": "0.00004",
+    "web_search": "0.01",
+    "input_cache_read": "0.0000004",
+    "input_cache_write": "0.00001",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.000016",
+      "completion": "0.00006",
+      "input_cache_read": "0.0000008",
+      "input_cache_write": "0.00002"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "openai/gpt-6.2-astra-pro": {
+   "id": "openai/gpt-6.2-astra-pro",
+   "canonical_slug": "openai/gpt-6.2-astra-pro-20261117",
+   "name": "OpenAI: GPT-6.2 Astra Pro",
+   "created": 1794938432,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.000008",
+    "completion": "0.00004",
+    "web_search": "0.01",
+    "input_cache_read": "0.0000004",
+    "input_cache_write": "0.00001",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.000016",
+      "completion": "0.00006",
+      "input_cache_read": "0.0000008",
+      "input_cache_write": "0.00002"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "openai/gpt-6.2-sol": {
+   "id": "openai/gpt-6.2-sol",
+   "canonical_slug": "openai/gpt-6.2-sol-20261117",
+   "name": "OpenAI: GPT-6.2 Sol",
+   "created": 1794938371,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.000002",
+    "completion": "0.00001",
+    "web_search": "0.01",
+    "input_cache_read": "0.0000001",
+    "input_cache_write": "0.0000025",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.000004",
+      "completion": "0.000015",
+      "input_cache_read": "0.0000002",
+      "input_cache_write": "0.000005"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "openai/gpt-6.2-sol-pro": {
+   "id": "openai/gpt-6.2-sol-pro",
+   "canonical_slug": "openai/gpt-6.2-sol-pro-20261117",
+   "name": "OpenAI: GPT-6.2 Sol Pro",
+   "created": 1794938409,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.000002",
+    "completion": "0.00001",
+    "web_search": "0.01",
+    "input_cache_read": "0.0000001",
+    "input_cache_write": "0.0000025",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.000004",
+      "completion": "0.000015",
+      "input_cache_read": "0.0000002",
+      "input_cache_write": "0.000005"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "particle-ai/particle-1": {
+   "id": "particle-ai/particle-1",
+   "canonical_slug": "particle-ai/particle-1-20261027",
+   "name": "Particle AI: Particle-1",
+   "created": 1793207893,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.00000006",
+    "completion": "0.0000005",
+    "input_cache_read": "0.000000003"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low",
+     "minimal",
+     "none"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "particle-ai/particle-1:free": {
+   "id": "particle-ai/particle-1:free",
+   "canonical_slug": "particle-ai/particle-1-20261027",
+   "name": "Particle AI: Particle-1 (free)",
+   "created": 1793207893,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0",
+    "completion": "0"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low",
+     "minimal",
+     "none"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "perceptron/perceptron-mk1.5": {
+   "id": "perceptron/perceptron-mk1.5",
+   "canonical_slug": "perceptron/perceptron-mk1.5-20260925",
+   "name": "Perceptron: Perceptron Mk1.5",
+   "created": 1790352661,
+   "context_length": 36864,
+   "pricing": {
+    "prompt": "0.00000015",
+    "completion": "0.0000015"
+   },
+   "top_provider": {
+    "context_length": 36864,
+    "max_completion_tokens": 8192,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "supported_efforts": [
+     "high",
+     "medium",
+     "low",
+     "minimal",
+     "none"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_p"
+   ]
+  },
+  "prism-ml/ternary-bonsai-2-27b": {
+   "id": "prism-ml/ternary-bonsai-2-27b",
+   "canonical_slug": "prism-ml/ternary-bonsai-2-27b-20260918",
+   "name": "PrismML: Ternary Bonsai 2 27B",
+   "created": 1789754046,
+   "context_length": 262144,
+   "pricing": {
+    "prompt": "0.000000075",
+    "completion": "0.0000005",
+    "input_cache_read": "0.0000000375"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 32768,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "xhigh",
+     "medium",
+     "none"
+    ],
+    "default_effort": "xhigh"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "prism-ml/ternary-bonsai-2-9b": {
+   "id": "prism-ml/ternary-bonsai-2-9b",
+   "canonical_slug": "prism-ml/ternary-bonsai-2-9b-20261015",
+   "name": "PrismML: Ternary Bonsai 2 9B",
+   "created": 1792130995,
+   "context_length": 262144,
+   "pricing": {
+    "prompt": "0.00000008",
+    "completion": "0.00000013",
+    "input_cache_read": "0.00000004"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 65536,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "qwen/qwen3.8-flash": {
+   "id": "qwen/qwen3.8-flash",
+   "canonical_slug": "qwen/qwen3.8-flash-20260826",
+   "name": "Qwen: Qwen3.8 Flash",
+   "created": 1787773060,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.00000015",
+    "completion": "0.00000047",
+    "input_cache_read": "0.000000016"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supports_max_tokens": true
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "qwen/qwen3.8-max-0902": {
+   "id": "qwen/qwen3.8-max-0902",
+   "canonical_slug": "qwen/qwen3.8-max-20260902",
+   "name": "Qwen: Qwen3.8 Max (0902)",
+   "created": 1788469704,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.000002",
+    "completion": "0.000006",
+    "input_cache_read": "0.00000025"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "xhigh",
+     "high",
+     "medium",
+     "low",
+     "minimal"
+    ],
+    "default_effort": "xhigh"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "qwen/qwen3.8-max-prime": {
+   "id": "qwen/qwen3.8-max-prime",
+   "canonical_slug": "qwen/qwen3.8-max-prime-20260923",
+   "name": "Qwen: Qwen3.8 Max Prime",
+   "created": 1790191228,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.000004",
+    "completion": "0.000012",
+    "input_cache_read": "0.0000005"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "xhigh",
+     "high",
+     "medium",
+     "low",
+     "minimal"
+    ],
+    "default_effort": "xhigh"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "qwen/qwen3.8-omni-flash": {
+   "id": "qwen/qwen3.8-omni-flash",
+   "canonical_slug": "qwen/qwen3.8-omni-flash-20260918",
+   "name": "Qwen: Qwen3.8 Omni Flash",
+   "created": 1789959954,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.00000015",
+    "completion": "0.00000047",
+    "input_cache_read": "0.000000016"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supports_max_tokens": true
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "qwen/qwen4-max": {
+   "id": "qwen/qwen4-max",
+   "canonical_slug": "qwen/qwen4-max-20261115",
+   "name": "Qwen: Qwen4 Max",
+   "created": 1794795526,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.000001425",
+    "completion": "0.000004275",
+    "input_cache_read": "0.00000007125",
+    "input_cache_write": "0.00000178125"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "xhigh",
+     "high",
+     "low",
+     "none"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "recursive/flint-v1.0:free": {
+   "id": "recursive/flint-v1.0:free",
+   "canonical_slug": "recursive/flint-v1.0-20261021",
+   "name": "Recursive: Flint (free)",
+   "created": 1792622765,
+   "context_length": 262144,
+   "pricing": {
+    "prompt": "0",
+    "completion": "0"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 235929,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "reasoning",
+    "response_format",
+    "seed",
+    "stop",
+    "temperature",
+    "tools",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "reflection/beam-1.0-501b-a23b": {
+   "id": "reflection/beam-1.0-501b-a23b",
+   "canonical_slug": "reflection/beam-1.0-501b-a23b-20261016",
+   "name": "Reflection: Beam 1.0 501B A23B",
+   "created": 1792160499,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.0000003",
+    "completion": "0.000001",
+    "input_cache_read": "0.00000004"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "max"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "ricursiveai/ripple-65b-preview": {
+   "id": "ricursiveai/ripple-65b-preview",
+   "canonical_slug": "ricursiveai/ripple-65b-preview-20261104",
+   "name": "Ricursive: Ripple 65B Preview",
+   "created": 1793818990,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.0000001",
+    "completion": "0.0000003",
+    "input_cache_read": "0.000000025"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": false
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "sakana/fugu-max": {
+   "id": "sakana/fugu-max",
+   "canonical_slug": "sakana/fugu-max-20260911",
+   "name": "Sakana: Fugu Max",
+   "created": 1789104771,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.000002",
+    "completion": "0.000006",
+    "web_search": "0.01",
+    "input_cache_read": "0.00000025"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 128000,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "reasoning",
+    "reasoning_effort",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "web_search_options"
+   ]
+  },
+  "sakana/fugu-ultra-v2": {
+   "id": "sakana/fugu-ultra-v2",
+   "canonical_slug": "sakana/fugu-ultra-v2-20260911",
+   "name": "Sakana: Fugu Ultra v2",
+   "created": 1789105383,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.000005",
+    "completion": "0.00003",
+    "web_search": "0.01",
+    "input_cache_read": "0.0000005",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.00001",
+      "completion": "0.000045",
+      "input_cache_read": "0.000001"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 128000,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high"
+    ],
+    "default_effort": "xhigh"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "reasoning",
+    "reasoning_effort",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "web_search_options"
+   ]
+  },
+  "scaledown/extract": {
+   "id": "scaledown/extract",
+   "canonical_slug": "scaledown/extract-20260928",
+   "name": "ScaleDown: Extract",
+   "created": 1791893351,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.00000004",
+    "completion": "0"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 900000,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses",
+    "/api/alpha/extractions"
+   ],
+   "reasoning": null,
+   "supported_parameters": [
+    "max_tokens"
+   ]
+  },
+  "scaledown/summarize": {
+   "id": "scaledown/summarize",
+   "canonical_slug": "scaledown/summarize-20260928",
+   "name": "ScaleDown: Summarize",
+   "created": 1791893360,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.00000004",
+    "completion": "0"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 4000,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": null,
+   "supported_parameters": [
+    "max_tokens"
+   ]
+  },
+  "stepfun/step-5-preview": {
+   "id": "stepfun/step-5-preview",
+   "canonical_slug": "stepfun/step-5-preview-20261008",
+   "name": "StepFun: Step 5 Preview",
+   "created": 1791462849,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.000001",
+    "completion": "0.0000027",
+    "input_cache_read": "0.0000001"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 64000,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "supported_efforts": [
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "tencent/hy4": {
+   "id": "tencent/hy4",
+   "canonical_slug": "tencent/hy4-20261104",
+   "name": "Tencent: Hy4",
+   "created": 1793766031,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.000000417",
+    "completion": "0.0000012505",
+    "input_cache_read": "0.000000021"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 65536,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "high",
+     "low",
+     "none"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools"
+   ]
+  },
+  "tencent/hy4-flash": {
+   "id": "tencent/hy4-flash",
+   "canonical_slug": "tencent/hy4-flash-20261116",
+   "name": "Tencent: Hy4 flash",
+   "created": 1794838706,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.000000035",
+    "completion": "0.0000001405",
+    "input_cache_read": "0.0000000015"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 65536,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "response_format",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools"
+   ]
+  },
+  "tencent/hy4-preview": {
+   "id": "tencent/hy4-preview",
+   "canonical_slug": "tencent/hy4-preview-20260827",
+   "name": "Tencent: Hy4 preview",
+   "created": 1787897375,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.000000834",
+    "completion": "0.000002501",
+    "input_cache_read": "0.000000042",
+    "overrides": [
+     {
+      "utc_start": 0,
+      "utc_end": 1600,
+      "prompt": "0.000000834",
+      "completion": "0.000002501",
+      "input_cache_read": "0.000000042"
+     },
+     {
+      "utc_start": 1600,
+      "utc_end": 0,
+      "prompt": "0.0000007506",
+      "completion": "0.0000022509",
+      "input_cache_read": "0.0000000378"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 64000,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "high",
+     "low",
+     "none"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_completion_tokens",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "thinkingmachines/inkling-2-small": {
+   "id": "thinkingmachines/inkling-2-small",
+   "canonical_slug": "thinkingmachines/inkling-2-small-20261107",
+   "name": "Thinking Machines: Inkling 2 Small",
+   "created": 1794261847,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.0000003",
+    "completion": "0.000001",
+    "input_cache_read": "0.00000003"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "medium",
+     "low",
+     "minimal"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "thinkingmachines/inkling-2-small:free": {
+   "id": "thinkingmachines/inkling-2-small:free",
+   "canonical_slug": "thinkingmachines/inkling-2-small-20261107",
+   "name": "Thinking Machines: Inkling 2 Small (free)",
+   "created": 1794261847,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0",
+    "completion": "0"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "medium",
+     "low",
+     "minimal"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "seed",
+    "stop",
+    "temperature",
+    "tools",
+    "top_p"
+   ]
+  },
+  "unbiased/pareto-26.10": {
+   "id": "unbiased/pareto-26.10",
+   "canonical_slug": "unbiased/pareto-26.10-20261015",
+   "name": "Pareto 26.10",
+   "created": 1792073620,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.0000008",
+    "completion": "0.0000032",
+    "input_cache_read": "0.00000003"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": null,
+   "supported_parameters": [
+    "max_tokens",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "unbiased/pareto-26.10-preview": {
+   "id": "unbiased/pareto-26.10-preview",
+   "canonical_slug": "unbiased/pareto-26.10-preview-20260929",
+   "name": "Pareto 26.10 Preview",
+   "created": 1790863623,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.0000008",
+    "completion": "0.0000032",
+    "input_cache_read": "0.00000003"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": null,
+   "supported_parameters": [
+    "max_tokens",
+    "response_format",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "unbiased/pareto-26.9": {
+   "id": "unbiased/pareto-26.9",
+   "canonical_slug": "unbiased/pareto-26.9-20260917",
+   "name": "Pareto 26.9",
+   "created": 1791930537,
+   "context_length": 262144,
+   "pricing": {
+    "prompt": "0.0000025",
+    "completion": "0.0000075",
+    "input_cache_read": "0.00000025"
+   },
+   "top_provider": {
+    "context_length": 262144,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": null,
+   "supported_parameters": [
+    "max_tokens",
+    "response_format",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "upstage/solar-mini4": {
+   "id": "upstage/solar-mini4",
+   "canonical_slug": "upstage/solar-mini4-20260922",
+   "name": "Upstage: Solar Mini 4",
+   "created": 1790160358,
+   "context_length": 524288,
+   "pricing": {
+    "prompt": "0.00000005",
+    "completion": "0.0000002",
+    "input_cache_read": "0.000000005"
+   },
+   "top_provider": {
+    "context_length": 524288,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": false,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low",
+     "minimal",
+     "none"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "max_tokens",
+    "parallel_tool_calls",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "xiaomi/mimo-v2.6-flash": {
+   "id": "xiaomi/mimo-v2.6-flash",
+   "canonical_slug": "xiaomi/mimo-v2.6-flash-20260921",
+   "name": "Xiaomi: MiMo-V2.6-Flash",
+   "created": 1790021264,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.00000014",
+    "completion": "0.00000028",
+    "input_cache_read": "0.0000000028"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "parallel_tool_calls",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "xiaomi/mimo-v2.6-pro": {
+   "id": "xiaomi/mimo-v2.6-pro",
+   "canonical_slug": "xiaomi/mimo-v2.6-pro-20260921",
+   "name": "Xiaomi: MiMo-V2.6-Pro",
+   "created": 1790021259,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.000000435",
+    "completion": "0.00000087",
+    "input_cache_read": "0.0000000036"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "xiaomi/mimo-v2.6-pro-ultraspeed": {
+   "id": "xiaomi/mimo-v2.6-pro-ultraspeed",
+   "canonical_slug": "xiaomi/mimo-v2.6-pro-ultraspeed-20260921",
+   "name": "Xiaomi: MiMo-V2.6-Pro-UltraSpeed",
+   "created": 1790021267,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.00000435",
+    "completion": "0.0000087",
+    "input_cache_read": "0.000000036"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "response_format",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "z-ai/glm-5.3-flashx": {
+   "id": "z-ai/glm-5.3-flashx",
+   "canonical_slug": "z-ai/glm-5.3-flashx-20260918",
+   "name": "Z.ai: GLM 5.3 FlashX",
+   "created": 1789744020,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.00000037",
+    "completion": "0.00000125",
+    "input_cache_read": "0.000000075"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "low"
+    ],
+    "default_effort": "max"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_p"
+   ]
+  },
+  "z-ai/glm-5.3-flashx-legal": {
+   "id": "z-ai/glm-5.3-flashx-legal",
+   "canonical_slug": "z-ai/glm-5.3-flashx-legal-20261102",
+   "name": "Z.ai: GLM 5.3 FlashX Legal",
+   "created": 1793626154,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.00000037",
+    "completion": "0.00000125",
+    "input_cache_read": "0.000000075"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "low"
+    ],
+    "default_effort": "max"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_p"
+   ]
+  },
+  "z-ai/glm-5.3-prime": {
+   "id": "z-ai/glm-5.3-prime",
+   "canonical_slug": "z-ai/glm-5.3-prime-20260921",
+   "name": "Z.ai: GLM 5.3 Prime",
+   "created": 1790199651,
+   "context_length": 1000000,
+   "pricing": {
+    "prompt": "0.00000168",
+    "completion": "0.00000528",
+    "input_cache_read": "0.000000336"
+   },
+   "top_provider": {
+    "context_length": 1000000,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "low"
+    ],
+    "default_effort": "max"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logprobs",
+    "max_tokens",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "stop",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "~deepseek/deepseek-flash-latest": {
+   "id": "~deepseek/deepseek-flash-latest",
+   "canonical_slug": "~deepseek/deepseek-flash-latest",
+   "name": "DeepSeek: DeepSeek Flash Latest",
+   "created": 1789399150,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.000000036",
+    "completion": "0.0000005",
+    "input_cache_read": "0.00000001"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "low",
+     "none"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_completion_tokens",
+    "max_tokens",
+    "min_p",
+    "parallel_tool_calls",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "~deepseek/deepseek-pro-latest": {
+   "id": "~deepseek/deepseek-pro-latest",
+   "canonical_slug": "~deepseek/deepseek-pro-latest",
+   "name": "DeepSeek: DeepSeek Pro Latest",
+   "created": 1789399174,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.0000000999",
+    "completion": "0.000008",
+    "input_cache_read": "0.0000000999"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 393216,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "supported_efforts": [
+     "max",
+     "high",
+     "low",
+     "none"
+    ],
+    "default_effort": "high"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "~openai/gpt-astra-latest": {
+   "id": "~openai/gpt-astra-latest",
+   "canonical_slug": "~openai/gpt-astra-latest",
+   "name": "OpenAI: GPT Astra Latest",
+   "created": 1789130932,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.000008",
+    "completion": "0.00004",
+    "web_search": "0.01",
+    "input_cache_read": "0.0000004",
+    "input_cache_write": "0.00001",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.000016",
+      "completion": "0.00006",
+      "input_cache_read": "0.0000008",
+      "input_cache_write": "0.00002"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "~openai/gpt-luna-latest": {
+   "id": "~openai/gpt-luna-latest",
+   "canonical_slug": "~openai/gpt-luna-latest",
+   "name": "OpenAI: GPT Luna Latest",
+   "created": 1789130922,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.0000001",
+    "completion": "0.0000005",
+    "web_search": "0.01",
+    "input_cache_read": "0.00000001",
+    "input_cache_write": "0.000000125",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.0000002",
+      "completion": "0.00000075",
+      "input_cache_read": "0.00000002",
+      "input_cache_write": "0.00000025"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low",
+     "none"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "~openai/gpt-sol-latest": {
+   "id": "~openai/gpt-sol-latest",
+   "canonical_slug": "~openai/gpt-sol-latest",
+   "name": "OpenAI: GPT Sol Latest",
+   "created": 1789130928,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.000002",
+    "completion": "0.00001",
+    "web_search": "0.01",
+    "input_cache_read": "0.0000001",
+    "input_cache_write": "0.0000025",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.000004",
+      "completion": "0.000015",
+      "input_cache_read": "0.0000002",
+      "input_cache_write": "0.000005"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": true
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "~openai/gpt-terra-latest": {
+   "id": "~openai/gpt-terra-latest",
+   "canonical_slug": "~openai/gpt-terra-latest",
+   "name": "OpenAI: GPT Terra Latest",
+   "created": 1789130925,
+   "context_length": 1050000,
+   "pricing": {
+    "prompt": "0.000001",
+    "completion": "0.000005",
+    "web_search": "0.01",
+    "input_cache_read": "0.00000005",
+    "input_cache_write": "0.00000125",
+    "overrides": [
+     {
+      "min_prompt_tokens": 272000,
+      "prompt": "0.000002",
+      "completion": "0.0000075",
+      "input_cache_read": "0.0000001",
+      "input_cache_write": "0.0000025"
+     }
+    ]
+   },
+   "top_provider": {
+    "context_length": 1050000,
+    "max_completion_tokens": 128000,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": false,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "xhigh",
+     "high",
+     "medium",
+     "low",
+     "none"
+    ],
+    "default_effort": "medium"
+   },
+   "supported_parameters": [
+    "include_reasoning",
+    "max_completion_tokens",
+    "max_tokens",
+    "reasoning",
+    "reasoning_effort",
+    "response_format",
+    "seed",
+    "structured_outputs",
+    "tool_choice",
+    "tools",
+    "verbosity"
+   ]
+  },
+  "~unbiased/pareto-latest": {
+   "id": "~unbiased/pareto-latest",
+   "canonical_slug": "~unbiased/pareto-latest",
+   "name": "Pareto Latest",
+   "created": 1791933050,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.0000008",
+    "completion": "0.0000032",
+    "input_cache_read": "0.00000003"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": null,
+   "supported_parameters": [
+    "max_tokens",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_p"
+   ]
+  },
+  "~z-ai/glm-flash-latest": {
+   "id": "~z-ai/glm-flash-latest",
+   "canonical_slug": "~z-ai/glm-flash-latest",
+   "name": "Z.ai: GLM Flash Latest",
+   "created": 1787817633,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.0000000399",
+    "completion": "0.0000000784",
+    "input_cache_read": "0.00000003"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 131072,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "low"
+    ],
+    "default_effort": "max"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "parallel_tool_calls",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  },
+  "~z-ai/glm-latest": {
+   "id": "~z-ai/glm-latest",
+   "canonical_slug": "~z-ai/glm-latest",
+   "name": "Z.ai: GLM Latest",
+   "created": 1787151053,
+   "context_length": 1048576,
+   "pricing": {
+    "prompt": "0.0000000699",
+    "completion": "0.0000014",
+    "input_cache_read": "0.0000000689"
+   },
+   "top_provider": {
+    "context_length": 1048576,
+    "max_completion_tokens": 943718,
+    "is_moderated": false
+   },
+   "endpoints": [
+    "/api/v1/chat/completions",
+    "/api/v1/completions",
+    "/api/v1/messages",
+    "/api/v1/responses"
+   ],
+   "reasoning": {
+    "mandatory": true,
+    "default_enabled": true,
+    "supported_efforts": [
+     "max",
+     "high",
+     "low"
+    ],
+    "default_effort": "max"
+   },
+   "supported_parameters": [
+    "frequency_penalty",
+    "include_reasoning",
+    "logit_bias",
+    "logprobs",
+    "max_tokens",
+    "min_p",
+    "parallel_tool_calls",
+    "presence_penalty",
+    "reasoning",
+    "reasoning_effort",
+    "repetition_penalty",
+    "response_format",
+    "seed",
+    "stop",
+    "structured_outputs",
+    "temperature",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_logprobs",
+    "top_p"
+   ]
+  }
+ }
+}

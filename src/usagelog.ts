@@ -1,6 +1,8 @@
 // --usage-log: one line per reply with the usage the provider reported, for a cost ledger. Never a header (the key is
 // in the headers), never the prompt or the answer: only the model, the status, the usage object as returned, the stop
 // reason, and for a refused request the error's type and code and its message with anything key-shaped masked.
+// For an aggregator (OpenRouter) also which upstream answered (the reply's `provider`) and the reply's id, and the
+// request's per-sample cache key or session id (`sample`), so that each check can be paired with its priming.
 
 /** Masks anything shaped like a key in an error message (OpenAI names part of a wrong key in its 401). */
 export function maskKeys(text: string): string {
@@ -19,7 +21,14 @@ export function usageLogLine(label: string, body: string, status: number, text: 
   } catch {
     model = undefined;
   }
-  const line: Record<string, unknown> = { at: at.toISOString(), label, model, status };
+  let sample: unknown;
+  try {
+    const sent = obj(JSON.parse(body));
+    sample = sent?.prompt_cache_key ?? sent?.session_id;
+  } catch {
+    sample = undefined;
+  }
+  const line: Record<string, unknown> = { at: at.toISOString(), label, model, ...(typeof sample === "string" ? { sample } : {}), status };
   let reply: Record<string, unknown> | undefined;
   try {
     reply = obj(JSON.parse(text));
@@ -34,6 +43,9 @@ export function usageLogLine(label: string, body: string, status: number, text: 
   const usage = obj(reply.usage) ?? obj(obj(reply.response)?.usage);
   if (usage) line.usage = usage;
   if (reply.model !== undefined) line.reply_model = reply.model;
+  // OpenRouter names the upstream that served the request in `provider`; its id can be looked up later.
+  if (typeof reply.provider === "string") line.reply_provider = reply.provider;
+  if (typeof reply.id === "string") line.reply_id = reply.id;
   for (const key of ["stop_reason", "status"]) if (typeof reply[key] === "string") line[`reply_${key}`] = reply[key];
   const incomplete = obj(reply.incomplete_details);
   if (incomplete) line.reply_incomplete = incomplete;

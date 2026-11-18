@@ -1,0 +1,81 @@
+{
+  "probeVersion": "0.3.3",
+  "label": "scaledown--extract",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "format": "responses",
+  "model": "scaledown/extract",
+  "request": {
+    "method": "POST",
+    "path": "/responses",
+    "bodyExtra": null,
+    "prefixTokens": 2500,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "scaledown/extract",
+      "input": [
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "<prefix: about 2500 tokens of words filler, one per sample>"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "Reply with the single word OK."
+            }
+          ]
+        }
+      ],
+      "max_output_tokens": 16,
+      "store": false,
+      "stream": false,
+      "prompt_cache_key": "groundtruth-84wqms0c-<sample>"
+    }
+  },
+  "runSalt": "84wqms0c",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000,
+    1200000,
+    1500000,
+    1800000,
+    2400000,
+    3000000,
+    3600000,
+    4500000,
+    5400000,
+    7200000
+  ],
+  "startedAt": "2026-11-18T08:45:00.948Z",
+  "status": "failed",
+  "spent": {
+    "requests": 0,
+    "promptTokens": 0,
+    "cachedTokens": 0,
+    "outputTokens": 0,
+    "requestsWithoutOutput": 0
+  },
+  "checks": [],
+  "error": "HTTP 400: {\"error\":{\"message\":\"extract requires a response_format of type \\\"json_schema\\\" whose schema properties describe the entities to extract, or provider.options.scaledown.entities mapping each entity name to its definition. If entities were sent, check that the key is spelled \\\"scaledown\\\" and that thi",
+  "finishedAt": "2026-11-18T08:45:01.121Z"
+}

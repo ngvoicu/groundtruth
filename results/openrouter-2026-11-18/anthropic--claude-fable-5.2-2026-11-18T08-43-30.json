@@ -1,0 +1,198 @@
+{
+  "probeVersion": "0.3.3",
+  "label": "anthropic--claude-fable-5.2",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "format": "responses",
+  "model": "anthropic/claude-fable-5.2",
+  "request": {
+    "method": "POST",
+    "path": "/responses",
+    "bodyExtra": {
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    },
+    "prefixTokens": 2500,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "per-sample",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "anthropic/claude-fable-5.2",
+      "input": [
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "<prefix: about 2500 tokens of words filler, one per sample>"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "Reply with the single word OK."
+            }
+          ]
+        }
+      ],
+      "max_output_tokens": 16,
+      "store": false,
+      "stream": false,
+      "prompt_cache_key": "groundtruth-01sg0hgq-<sample>",
+      "session_id": "groundtruth-01sg0hgq-<sample>",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  },
+  "runSalt": "01sg0hgq",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000,
+    1200000,
+    1500000,
+    1800000,
+    2400000,
+    3000000,
+    3600000,
+    4500000,
+    5400000,
+    7200000
+  ],
+  "startedAt": "2026-11-18T08:43:30.565Z",
+  "status": "stopped-early",
+  "spent": {
+    "requests": 56,
+    "promptTokens": 241480,
+    "cachedTokens": 30165,
+    "outputTokens": 224,
+    "requestsWithoutOutput": 0
+  },
+  "checks": [
+    {
+      "sampleId": "2.5m-r1",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 150001,
+      "promptTokens": 4350,
+      "cachedTokens": 4346,
+      "warm": true
+    },
+    {
+      "sampleId": "2.5m-r2",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 152754,
+      "promptTokens": 4302,
+      "cachedTokens": 4298,
+      "warm": true
+    },
+    {
+      "sampleId": "2.5m-r3",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 156202,
+      "promptTokens": 4334,
+      "cachedTokens": 4330,
+      "warm": true
+    },
+    {
+      "sampleId": "5m-r1",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300000,
+      "promptTokens": 4310,
+      "cachedTokens": 4306,
+      "warm": true
+    },
+    {
+      "sampleId": "5m-r2",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300135,
+      "promptTokens": 4293,
+      "cachedTokens": 4289,
+      "warm": true
+    },
+    {
+      "sampleId": "5m-r3",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 302835,
+      "promptTokens": 4320,
+      "cachedTokens": 4316,
+      "warm": true
+    },
+    {
+      "sampleId": "7.5m-r1",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450000,
+      "promptTokens": 4353,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "7.5m-r2",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 452029,
+      "promptTokens": 4333,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "7.5m-r3",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 453953,
+      "promptTokens": 4299,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "10m-r1",
+      "targetAgeMs": 600000,
+      "actualAgeMs": 600002,
+      "promptTokens": 4289,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "10m-r2",
+      "targetAgeMs": 600000,
+      "actualAgeMs": 601499,
+      "promptTokens": 4338,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "10m-r3",
+      "targetAgeMs": 600000,
+      "actualAgeMs": 603527,
+      "promptTokens": 4263,
+      "cachedTokens": 0,
+      "warm": false
+    }
+  ],
+  "control": {
+    "prime": {
+      "promptTokens": 4284,
+      "cachedTokens": 0,
+      "outputTokens": 4
+    },
+    "check": {
+      "promptTokens": 4284,
+      "cachedTokens": 4280,
+      "outputTokens": 4
+    },
+    "warm": true
+  },
+  "finishedAt": "2026-11-18T08:53:50.974Z"
+}

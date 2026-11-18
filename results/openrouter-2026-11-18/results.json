@@ -1,0 +1,1659 @@
+[
+ {
+  "label": "openai--gpt-6.2-sol",
+  "model": "openai/gpt-6.2-sol",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.3245,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Amazon Bedrock",
+   "OpenAI"
+  ],
+  "upstream_changed": [
+   {
+    "sample": "15m-r3",
+    "upstreams": [
+     "Amazon Bedrock",
+     "OpenAI"
+    ]
+   },
+   {
+    "sample": "15m-r2",
+    "upstreams": [
+     "Amazon Bedrock",
+     "OpenAI"
+    ]
+   },
+   {
+    "sample": "20m-r2",
+    "upstreams": [
+     "Amazon Bedrock",
+     "OpenAI"
+    ]
+   },
+   {
+    "sample": "20m-r3",
+    "upstreams": [
+     "Amazon Bedrock",
+     "OpenAI"
+    ]
+   }
+  ],
+  "upstream_unknown": 0,
+  "file": "openai--gpt-6.2-sol-2026-11-18T08-40-45.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2421,
+   "cachedTokens": 2421,
+   "outputTokens": 5
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "1/3",
+   "20m": "1/3",
+   "25m": "3/3",
+   "30m": "0/3",
+   "40m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 600,
+  "last_warm_s": 1500,
+  "first_all_cold_s": 1800,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "google--gemini-4-hydrogen",
+  "model": "google/gemini-4-hydrogen",
+  "state": "finished",
+  "status": "no-observable-cache",
+  "usd": 0.0109,
+  "site_documented_s": null,
+  "error": "an immediate re-send was not served from cache",
+  "upstreams": [
+   "Google"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "google--gemini-4-hydrogen-2026-11-18T08-42-30.json",
+  "control": "cold",
+  "control_tokens": {
+   "promptTokens": 2345,
+   "cachedTokens": 0,
+   "outputTokens": 16
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "google--gemini-4-carbon",
+  "model": "google/gemini-4-carbon",
+  "state": "finished",
+  "status": "no-observable-cache",
+  "usd": 0.0145,
+  "site_documented_s": null,
+  "error": "an immediate re-send was not served from cache",
+  "upstreams": [
+   "Google",
+   "Google AI Studio"
+  ],
+  "upstream_changed": [
+   {
+    "sample": "control",
+    "upstreams": [
+     "Google",
+     "Google",
+     "Google AI Studio"
+    ]
+   }
+  ],
+  "upstream_unknown": 0,
+  "file": "google--gemini-4-carbon-2026-11-18T08-42-45.json",
+  "control": "cold",
+  "control_tokens": {
+   "promptTokens": 2384,
+   "cachedTokens": 0,
+   "outputTokens": 5
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "qwen--qwen4-max",
+  "model": "qwen/qwen4-max",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.2289,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Alibaba"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "qwen--qwen4-max-2026-11-18T08-43-00.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2918,
+   "cachedTokens": 2816,
+   "outputTokens": 10
+  },
+  "checks": {
+   "2.5m": "2/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "1/3",
+   "30m": "2/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "meta--muse-ember",
+  "model": "meta/muse-ember",
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.0155,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Google",
+   "Meta"
+  ],
+  "upstream_changed": [
+   {
+    "sample": "2h-r3",
+    "upstreams": [
+     "Google",
+     "Meta"
+    ]
+   }
+  ],
+  "upstream_unknown": 0,
+  "file": "meta--muse-ember-2026-11-18T08-43-15.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2600,
+   "cachedTokens": 2548,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "2/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "0/3",
+   "50m": "1/3",
+   "1h": "1/3",
+   "75m": "1/3",
+   "90m": "3/3",
+   "2h": "2/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 900,
+  "last_warm_s": 7200,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "anthropic--claude-fable-5.2",
+  "model": "anthropic/claude-fable-5.2",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 2.1277,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Anthropic",
+   "Azure",
+   "Google"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "anthropic--claude-fable-5.2-2026-11-18T08-43-30.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 4284,
+   "cachedTokens": 4280,
+   "outputTokens": 4
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "0/3",
+   "10m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 300,
+  "last_warm_s": 300,
+  "first_all_cold_s": 450,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "openai--gpt-6.2-astra",
+  "model": "openai/gpt-6.2-astra",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 1.2324,
+  "site_documented_s": 1800,
+  "error": null,
+  "upstreams": [
+   "Azure",
+   "OpenAI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "openai--gpt-6.2-astra-2026-11-18T08-43-45.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2405,
+   "cachedTokens": 2402,
+   "outputTokens": 5
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "2/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1500,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.3",
+  "verdict": "30m documented: contradicted, a check cold at 30m"
+ },
+ {
+  "label": "openai--gpt-6.2-sol-pinned-openai",
+  "model": "openai/gpt-6.2-sol",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.3029,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "OpenAI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "openai--gpt-6.2-sol-pinned-openai-2026-11-18T09-12-15.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2375,
+   "cachedTokens": 2372,
+   "outputTokens": 5
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1800,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "baidu--ernie-5.5-flash-preview-free",
+  "model": "baidu/ernie-5.5-flash-preview:free",
+  "state": "finished",
+  "status": "failed",
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": "quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-min. \",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"20\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1794991500000\"},\"limit_source\":\"openrouter_free_tier_per_minute\",\"remedy_hint\":\"Slow down requests to free models, or retry aft",
+  "upstreams": [
+   "Baidu"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "baidu--ernie-5.5-flash-preview-free-2026-11-18T08-44-00.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2424,
+   "cachedTokens": 2304,
+   "outputTokens": 16
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "inclusionai--ling-3.2-flash-free",
+  "model": "inclusionai/ling-3.2-flash:free",
+  "state": "finished",
+  "status": "failed",
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": "quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"inclusionai/ling-3.2-flash:free is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/byok\",\"provider_name\":\"Ant Digital\",\"i",
+  "upstreams": [
+   "Ant Digital"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "inclusionai--ling-3.2-flash-free-2026-11-18T09-07-44.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2744,
+   "cachedTokens": 2688,
+   "outputTokens": 16
+  },
+  "checks": {
+   "5m": "0/1"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": 300,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "liquid--lfm-3-1.7b-free",
+  "model": "liquid/lfm-3-1.7b:free",
+  "state": "finished",
+  "status": "failed",
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": "quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"liquid/lfm-3-1.7b:free is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/byok\",\"provider_name\":\"Liquid\",\"is_byok\":false,",
+  "upstreams": [],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "liquid--lfm-3-1.7b-free-2026-11-18T09-25-45.json",
+  "control": "none",
+  "control_tokens": null,
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "nvidia--nemotron-3.5-super-vl-free",
+  "model": "nvidia/nemotron-3.5-super-vl:free",
+  "state": "finished",
+  "status": "no-observable-cache",
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": "an immediate re-send was not served from cache",
+  "upstreams": [
+   "Nvidia"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "nvidia--nemotron-3.5-super-vl-free-2026-11-18T09-29-46.json",
+  "control": "cold",
+  "control_tokens": {
+   "promptTokens": 2829,
+   "cachedTokens": 0,
+   "outputTokens": 16
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "particle-ai--particle-1-free",
+  "model": "particle-ai/particle-1:free",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Particle AI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "particle-ai--particle-1-free-2026-11-18T09-33-29.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2553,
+   "cachedTokens": 2304,
+   "outputTokens": 13
+  },
+  "checks": {
+   "2.5m": "0/3",
+   "5m": "1/3",
+   "7.5m": "0/3",
+   "10m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": 300,
+  "first_all_cold_s": 150,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "recursive--flint-v1.0-free",
+  "model": "recursive/flint-v1.0:free",
+  "state": "running",
+  "status": null,
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Recursive"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "nex-agi--nex-n2.5-mini",
+  "model": "nex-agi/nex-n2.5-mini",
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.0045,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Nex AGI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "nex-agi--nex-n2.5-mini-2026-11-18T08-44-15.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2880,
+   "cachedTokens": 2816,
+   "outputTokens": 5
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "1/3",
+   "7.5m": "3/3",
+   "10m": "2/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "2/3",
+   "30m": "2/3",
+   "40m": "1/3",
+   "50m": "2/3",
+   "1h": "2/3",
+   "75m": "2/3",
+   "90m": "0/3",
+   "2h": "1/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 150,
+  "last_warm_s": 7200,
+  "first_all_cold_s": 5400,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "tencent--hy4-flash",
+  "model": "tencent/hy4-flash",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0049,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Tencent"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "tencent--hy4-flash-2026-11-18T08-44-30.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2693,
+   "cachedTokens": 2560,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "2/3",
+   "10m": "0/3",
+   "15m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 300,
+  "last_warm_s": 450,
+  "first_all_cold_s": 600,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "deepseek--deepseek-v4.1-flash-1017",
+  "model": "deepseek/deepseek-v4.1-flash-1017",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0056,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "InferenceNet",
+   "Morph",
+   "Nebius",
+   "PrimeIntellect",
+   "Relace",
+   "StepFun",
+   "Wafer"
+  ],
+  "upstream_changed": [
+   {
+    "sample": "20m-r2",
+    "upstreams": [
+     "PrimeIntellect",
+     "Morph"
+    ]
+   }
+  ],
+  "upstream_unknown": 0,
+  "file": "deepseek--deepseek-v4.1-flash-1017-2026-11-18T08-44-45.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2548,
+   "cachedTokens": 2432,
+   "outputTokens": 15
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "2/3",
+   "7.5m": "2/3",
+   "10m": "2/3",
+   "15m": "2/3",
+   "20m": "0/3",
+   "25m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 150,
+  "last_warm_s": 900,
+  "first_all_cold_s": 1200,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "scaledown--extract",
+  "model": "scaledown/extract",
+  "state": "finished",
+  "status": "failed",
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": "HTTP 400: {\"error\":{\"message\":\"extract requires a response_format of type \\\"json_schema\\\" whose schema properties describe the entities to extract, or provider.options.scaledown.entities mapping each entity name to its definition. If entities were sent, check that the key is spelled \\\"scaledown\\\" and that thi",
+  "upstreams": [],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "scaledown--extract-2026-11-18T08-45-00.json",
+  "control": "none",
+  "control_tokens": null,
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "scaledown--summarize",
+  "model": "scaledown/summarize",
+  "state": "finished",
+  "status": "no-observable-cache",
+  "usd": 0.0004,
+  "site_documented_s": null,
+  "error": "an immediate re-send was not served from cache",
+  "upstreams": [
+   "ScaleDown"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "scaledown--summarize-2026-11-18T08-45-16.json",
+  "control": "cold",
+  "control_tokens": {
+   "promptTokens": 3093,
+   "cachedTokens": 0,
+   "outputTokens": 1
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "inclusionai--ling-3.1-flash",
+  "model": "inclusionai/ling-3.1-flash",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0078,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Novita"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "inclusionai--ling-3.1-flash-2026-11-18T08-50-10.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2776,
+   "cachedTokens": 2752,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "2/3",
+   "10m": "3/3",
+   "15m": "2/3",
+   "20m": "2/3",
+   "25m": "1/3",
+   "30m": "3/3",
+   "40m": "2/3",
+   "50m": "2/3",
+   "1h": "0/3",
+   "75m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 300,
+  "last_warm_s": 3000,
+  "first_all_cold_s": 3600,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "upstage--solar-mini4",
+  "model": "upstage/solar-mini4",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0067,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Upstage"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "upstage--solar-mini4-2026-11-18T08-50-25.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2666,
+   "cachedTokens": 2048,
+   "outputTokens": 2
+  },
+  "checks": {
+   "2.5m": "0/3",
+   "5m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": 150,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "liquid--lfm-2.5-24b-a2b",
+  "model": "liquid/lfm-2.5-24b-a2b",
+  "state": "finished",
+  "status": "no-observable-cache",
+  "usd": 0.0005,
+  "site_documented_s": null,
+  "error": "an immediate re-send was not served from cache",
+  "upstreams": [
+   "Liquid"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "liquid--lfm-2.5-24b-a2b-2026-11-18T08-50-40.json",
+  "control": "cold",
+  "control_tokens": {
+   "promptTokens": 2869,
+   "cachedTokens": 0,
+   "outputTokens": 16
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "ibm-granite--granite-4.2-8b",
+  "model": "ibm-granite/granite-4.2-8b",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0087,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "CoreWeave",
+   "DeepInfra"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "ibm-granite--granite-4.2-8b-2026-11-18T08-50-55.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2819,
+   "cachedTokens": 2816,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "2/3",
+   "7.5m": "0/3",
+   "10m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 150,
+  "last_warm_s": 300,
+  "first_all_cold_s": 450,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "inclusionai--ling-3.0-flash-vl",
+  "model": "inclusionai/ling-3.0-flash-vl",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0084,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "DeepInfra"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "inclusionai--ling-3.0-flash-vl-2026-11-18T08-57-21.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2783,
+   "cachedTokens": 2752,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "0/3",
+   "5m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": 150,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "particle-ai--particle-1",
+  "model": "particle-ai/particle-1",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0092,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Particle AI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "particle-ai--particle-1-2026-11-18T08-57-36.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2590,
+   "cachedTokens": 2560,
+   "outputTokens": 13
+  },
+  "checks": {
+   "2.5m": "2/3",
+   "5m": "0/3",
+   "7.5m": "3/3",
+   "10m": "1/3",
+   "15m": "1/3",
+   "20m": "0/3",
+   "25m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": 900,
+  "first_all_cold_s": 300,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "nex-agi--nex-n2.5-pro",
+  "model": "nex-agi/nex-n2.5-pro",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.011,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Nex AGI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "nex-agi--nex-n2.5-pro-2026-11-18T08-57-51.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2920,
+   "cachedTokens": 2880,
+   "outputTokens": 5
+  },
+  "checks": {
+   "2.5m": "0/3",
+   "5m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": 150,
+  "probe_version": "0.3.3",
+  "verdict": "none documented"
+ },
+ {
+  "label": "prism-ml--ternary-bonsai-2-27b",
+  "model": "prism-ml/ternary-bonsai-2-27b",
+  "state": "finished",
+  "status": "no-observable-cache",
+  "usd": 0.0007,
+  "site_documented_s": null,
+  "error": "an immediate re-send was not served from cache",
+  "upstreams": [
+   "Darkbloom"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "prism-ml--ternary-bonsai-2-27b-2026-11-18T09-07-59.json",
+  "control": "cold",
+  "control_tokens": {
+   "promptTokens": 2942,
+   "cachedTokens": 0,
+   "outputTokens": 16
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "prism-ml--ternary-bonsai-2-9b",
+  "model": "prism-ml/ternary-bonsai-2-9b",
+  "state": "finished",
+  "status": "no-observable-cache",
+  "usd": 0.0007,
+  "site_documented_s": null,
+  "error": "an immediate re-send was not served from cache",
+  "upstreams": [
+   "Darkbloom"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "prism-ml--ternary-bonsai-2-9b-2026-11-18T09-08-14.json",
+  "control": "cold",
+  "control_tokens": {
+   "promptTokens": 2881,
+   "cachedTokens": 0,
+   "outputTokens": 16
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "liquid--lfm-3-1.7b",
+  "model": "liquid/lfm-3-1.7b",
+  "state": "finished",
+  "status": "no-observable-cache",
+  "usd": 0.0007,
+  "site_documented_s": null,
+  "error": "an immediate re-send was not served from cache",
+  "upstreams": [
+   "Liquid"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "liquid--lfm-3-1.7b-2026-11-18T09-08-29.json",
+  "control": "cold",
+  "control_tokens": {
+   "promptTokens": 2887,
+   "cachedTokens": 0,
+   "outputTokens": 16
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "meta--muse-spark-1.2-contributor",
+  "model": "meta/muse-spark-1.2-contributor",
+  "state": "finished",
+  "status": "failed",
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": "HTTP 404: {\"error\":{\"message\":\"0 endpoints out of 1 requested are available matching your guardrail restrictions and data policy. We removed them for the following reasons (an endpoint may have matched multiple reasons):\\nPaid model training violation (account settings): 1 endpoint excluded; configurable at h",
+  "upstreams": [],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "meta--muse-spark-1.2-contributor-2026-11-18T09-08-44.json",
+  "control": "none",
+  "control_tokens": null,
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "meta--muse-spark-1.3-contributor",
+  "model": "meta/muse-spark-1.3-contributor",
+  "state": "finished",
+  "status": "failed",
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": "HTTP 404: {\"error\":{\"message\":\"0 endpoints out of 1 requested are available matching your guardrail restrictions and data policy. We removed them for the following reasons (an endpoint may have matched multiple reasons):\\nPaid model training violation (account settings): 1 endpoint excluded; configurable at h",
+  "upstreams": [],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "meta--muse-spark-1.3-contributor-2026-11-18T09-12-31.json",
+  "control": "none",
+  "control_tokens": null,
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "ricursiveai--ripple-65b-preview",
+  "model": "ricursiveai/ripple-65b-preview",
+  "state": "running",
+  "status": null,
+  "usd": 0.0143,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "GMICloud"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "nex-agi--nex-n2.6",
+  "model": "nex-agi/nex-n2.6",
+  "state": "running",
+  "status": null,
+  "usd": 0.0172,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Nex AGI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "xiaomi--mimo-v2.6-flash",
+  "model": "xiaomi/mimo-v2.6-flash",
+  "state": "running",
+  "status": null,
+  "usd": 0.028,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Cohere",
+   "GMICloud",
+   "Makora",
+   "Xiaomi"
+  ],
+  "upstream_changed": [
+   {
+    "sample": "1h-r3",
+    "upstreams": [
+     "Xiaomi",
+     "Cohere"
+    ]
+   },
+   {
+    "sample": "50m-r1",
+    "upstreams": [
+     "Xiaomi",
+     "Cohere"
+    ]
+   },
+   {
+    "sample": "75m-r2",
+    "upstreams": [
+     "Xiaomi",
+     "Cohere"
+    ]
+   }
+  ],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "qwen--qwen3.8-flash",
+  "model": "qwen/qwen3.8-flash",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0328,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Alibaba"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "qwen--qwen3.8-flash-2026-11-18T09-17-59.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2938,
+   "cachedTokens": 2048,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "1/3",
+   "10m": "2/3",
+   "15m": "1/3",
+   "20m": "1/3",
+   "25m": "0/3",
+   "30m": "2/3",
+   "40m": "0/3",
+   "50m": "2/3",
+   "1h": "1/3",
+   "75m": "0/3",
+   "90m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 300,
+  "last_warm_s": 3600,
+  "first_all_cold_s": 1500,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "qwen--qwen3.8-omni-flash",
+  "model": "qwen/qwen3.8-omni-flash",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0235,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Alibaba"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "qwen--qwen3.8-omni-flash-2026-11-18T09-21-49.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2902,
+   "cachedTokens": 1792,
+   "outputTokens": 29
+  },
+  "checks": {
+   "2.5m": "1/3",
+   "5m": "0/3",
+   "7.5m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": 150,
+  "first_all_cold_s": 300,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "nvidia--nemotron-3.5-super-vl",
+  "model": "nvidia/nemotron-3.5-super-vl",
+  "state": "running",
+  "status": null,
+  "usd": 0.0275,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "CoreWeave",
+   "Crusoe",
+   "Darkbloom",
+   "DeepInfra",
+   "Venice"
+  ],
+  "upstream_changed": [
+   {
+    "sample": "30m-r1",
+    "upstreams": [
+     "Venice",
+     "CoreWeave"
+    ]
+   },
+   {
+    "sample": "1h-r2",
+    "upstreams": [
+     "DeepInfra",
+     "CoreWeave"
+    ]
+   },
+   {
+    "sample": "75m-r3",
+    "upstreams": [
+     "DeepInfra",
+     "Darkbloom"
+    ]
+   }
+  ],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "minimax--minimax-m3.1-flash",
+  "model": "minimax/minimax-m3.1-flash",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.021,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Fireworks",
+   "Inferact vLLM",
+   "Makora",
+   "ModelRun",
+   "Together",
+   "Wafer"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "minimax--minimax-m3.1-flash-2026-11-18T09-30-01.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2473,
+   "cachedTokens": 2472,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "1/3",
+   "7.5m": "2/3",
+   "10m": "1/3",
+   "15m": "1/3",
+   "20m": "0/3",
+   "25m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 150,
+  "last_warm_s": 900,
+  "first_all_cold_s": 1200,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "perceptron--perceptron-mk1.5",
+  "model": "perceptron/perceptron-mk1.5",
+  "state": "finished",
+  "status": "no-observable-cache",
+  "usd": 0.0013,
+  "site_documented_s": null,
+  "error": "an immediate re-send was not served from cache",
+  "upstreams": [
+   "Perceptron"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "perceptron--perceptron-mk1.5-2026-11-18T09-37-13.json",
+  "control": "cold",
+  "control_tokens": {
+   "promptTokens": 2874,
+   "cachedTokens": 0,
+   "outputTokens": 5
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "kt--midm-k-3.0-pro",
+  "model": "kt/midm-k-3.0-pro",
+  "state": "finished",
+  "status": "no-observable-cache",
+  "usd": 0.0019,
+  "site_documented_s": null,
+  "error": "an immediate re-send was not served from cache",
+  "upstreams": [
+   "KT"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "kt--midm-k-3.0-pro-2026-11-18T09-37-28.json",
+  "control": "cold",
+  "control_tokens": {
+   "promptTokens": 3164,
+   "cachedTokens": 0,
+   "outputTokens": 16
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "reflection--beam-1.0-501b-a23b",
+  "model": "reflection/beam-1.0-501b-a23b",
+  "state": "running",
+  "status": null,
+  "usd": 0.0462,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "BaseTen",
+   "CoreWeave"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "thinkingmachines--inkling-2-small",
+  "model": "thinkingmachines/inkling-2-small",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0483,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Cloudflare",
+   "DeepInfra",
+   "Nebius"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "thinkingmachines--inkling-2-small-2026-11-18T09-41-18.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 3158,
+   "cachedTokens": 3072,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "0/3",
+   "5m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": 150,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "motif-technologies--motif-3",
+  "model": "motif-technologies/motif-3",
+  "state": "running",
+  "status": null,
+  "usd": 0.0364,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "KT"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "moondream--moondream3-preview",
+  "model": "moondream/moondream3-preview",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0426,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "PrimeIntellect"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "moondream--moondream3-preview-2026-11-18T09-55-27.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2669,
+   "cachedTokens": 2668,
+   "outputTokens": 2
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "0/3",
+   "7.5m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 150,
+  "last_warm_s": 150,
+  "first_all_cold_s": 300,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "moondream--moondream3.1-9b-a2b",
+  "model": "moondream/moondream3.1-9b-a2b",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0403,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "PrimeIntellect"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "moondream--moondream3.1-9b-a2b-2026-11-18T10-05-26.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2616,
+   "cachedTokens": 2615,
+   "outputTokens": 2
+  },
+  "checks": {
+   "2.5m": "0/3",
+   "5m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": 150,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "z-ai--glm-5.3-flashx",
+  "model": "z-ai/glm-5.3-flashx",
+  "state": "running",
+  "status": null,
+  "usd": 0.0501,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Z.AI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "z-ai--glm-5.3-flashx-legal",
+  "model": "z-ai/glm-5.3-flashx-legal",
+  "state": "running",
+  "status": null,
+  "usd": 0.0496,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Z.AI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "tencent--hy4",
+  "model": "tencent/hy4",
+  "state": "running",
+  "status": null,
+  "usd": 0.0517,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Tencent"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "xiaomi--mimo-v2.6-pro",
+  "model": "xiaomi/mimo-v2.6-pro",
+  "state": "running",
+  "status": null,
+  "usd": 0.0609,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "DeepInfra",
+   "Xiaomi"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "deepseek--deepseek-v4-flash-vision-exp",
+  "model": "deepseek/deepseek-v4-flash-vision-exp",
+  "state": "running",
+  "status": null,
+  "usd": 0.0546,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "GMICloud"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "elorian--glimpse",
+  "model": "elorian/glimpse",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.094,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Together"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "elorian--glimpse-2026-11-18T10-23-49.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2898,
+   "cachedTokens": 1600,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "1/3",
+   "5m": "0/3",
+   "7.5m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": 150,
+  "first_all_cold_s": 300,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "aion-labs--aion-3.5-mini",
+  "model": "aion-labs/aion-3.5-mini",
+  "state": "running",
+  "status": null,
+  "usd": 0.0916,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "AionLabs"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "unbiased--pareto-26.10",
+  "model": "unbiased/pareto-26.10",
+  "state": "running",
+  "status": null,
+  "usd": 0.0913,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Unbiased"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "unbiased--pareto-26.10-preview",
+  "model": "unbiased/pareto-26.10-preview",
+  "state": "running",
+  "status": null,
+  "usd": 0.0911,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Unbiased"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "tencent--hy4-preview",
+  "model": "tencent/hy4-preview",
+  "state": "running",
+  "status": null,
+  "usd": 0.1021,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "DeepInfra",
+   "GMICloud",
+   "SiliconFlow",
+   "Tencent",
+   "Venice"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "stepfun--step-5-preview",
+  "model": "stepfun/step-5-preview",
+  "state": "running",
+  "status": null,
+  "usd": 0.1198,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "StepFun"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "baidu--ernie-light-dt-1.0-intl",
+  "model": "baidu/ernie-light-dt-1.0-intl",
+  "state": "running",
+  "status": null,
+  "usd": 0.1574,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Baidu"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 2
+ },
+ {
+  "label": "meta--muse-spark-open",
+  "model": "meta/muse-spark-open",
+  "state": "running",
+  "status": null,
+  "usd": 0.1536,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "BaseTen",
+   "Fireworks",
+   "Modal",
+   "Nebius",
+   "Together"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 1
+ },
+ {
+  "label": "z-ai--glm-5.3-prime",
+  "model": "z-ai/glm-5.3-prime",
+  "state": "running",
+  "status": null,
+  "usd": 0.1981,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Alibaba"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 3
+ }
+]

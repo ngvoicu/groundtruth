@@ -1,0 +1,94 @@
+{
+  "probeVersion": "0.3.4",
+  "label": "prism-ml--ternary-bonsai-2-27b",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "format": "responses",
+  "model": "prism-ml/ternary-bonsai-2-27b",
+  "request": {
+    "method": "POST",
+    "path": "/responses",
+    "bodyExtra": null,
+    "prefixTokens": 2500,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "prism-ml/ternary-bonsai-2-27b",
+      "input": [
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "<prefix: about 2500 tokens of words filler, one per sample>"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "Reply with the single word OK."
+            }
+          ]
+        }
+      ],
+      "max_output_tokens": 16,
+      "store": false,
+      "stream": false,
+      "prompt_cache_key": "groundtruth-vkrei6sj-<sample>"
+    }
+  },
+  "runSalt": "vkrei6sj",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000,
+    1200000,
+    1500000,
+    1800000,
+    2400000,
+    3000000,
+    3600000,
+    4500000,
+    5400000,
+    7200000
+  ],
+  "startedAt": "2026-11-18T09:07:59.291Z",
+  "status": "no-observable-cache",
+  "spent": {
+    "requests": 3,
+    "promptTokens": 8826,
+    "cachedTokens": 0,
+    "outputTokens": 48,
+    "requestsWithoutOutput": 0
+  },
+  "checks": [],
+  "control": {
+    "prime": {
+      "promptTokens": 2942,
+      "cachedTokens": 0,
+      "outputTokens": 16
+    },
+    "check": {
+      "promptTokens": 2942,
+      "cachedTokens": 0,
+      "outputTokens": 16
+    },
+    "warm": false
+  },
+  "error": "an immediate re-send was not served from cache",
+  "finishedAt": "2026-11-18T09:08:27.277Z"
+}
