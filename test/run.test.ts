@@ -101,6 +101,18 @@ test("with stopOnRefusal a 429 is not retried and ends the run, during priming a
   assert.match(r.error ?? "", /not retried/);
 });
 
+test("with stopOnRefusal a 402 (no credit, or a key's limit) ends the run too", async () => {
+  const { deps } = fakeUpstream(60 * MIN);
+  let n = 0;
+  deps.send = async () => {
+    n++;
+    return { status: 402, text: JSON.stringify({ error: { code: 402, message: "Key limit exceeded" } }) };
+  };
+  const r = await runProbe({ ...opts([5 * MIN], 1), stopOnRefusal: true }, deps);
+  assert.match(r.error ?? "", /not retried: HTTP 402/);
+  assert.equal(n, 1);
+});
+
 test("primePauseMs waits after each priming request", async () => {
   const { deps } = fakeUpstream(60 * MIN);
   const sleeps: number[] = [];

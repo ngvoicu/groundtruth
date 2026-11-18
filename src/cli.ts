@@ -43,13 +43,14 @@ Options:
   --session-id            send a per-sample session_id (OpenRouter sticky routing)
   --concurrency <n>       parallel priming requests (default: 4)
   --prime-pause <ms>      wait this long after each priming request (default 0), for a request-rate limit
-  --stop-on-refusal       end the run at the first quota or rate refusal (HTTP 429, or an answer naming a quota or
-                          usage limit) instead of retrying it: for a subscription's quota
+  --stop-on-refusal       end the run at the first quota or rate refusal (HTTP 429, HTTP 402, or an answer naming a
+                          quota, usage, credit or key limit) instead of retrying it: for a subscription's quota
   --label <text>          run label used in file names and the report (default: <model>-<format>)
   --salt <text>           run salt (default: random)
   --out <dir>             output directory (default: results)
   --usage-log <file>      append one JSON line per reply: model, status and the usage as reported (for a cost
-                          ledger); never a header, the prompt or the answer
+                          ledger), the upstream an aggregator names, the reply id and the sample's cache key or
+                          session id; never a header, the prompt or the answer
   --dry-run               print the plan and one request body, send nothing
   -h, --help              show this help
 `;

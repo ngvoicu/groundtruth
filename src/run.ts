@@ -162,7 +162,7 @@ export interface Spent {
   requestsWithoutOutput: number;
 }
 
-export const PROBE_VERSION = "0.3.2";
+export const PROBE_VERSION = "0.3.3";
 
 /** How long after its planned age a check may still run: 30 s, or 10 % of the age when longer. */
 export function lateAfterMs(ageMs: number): number {
@@ -187,10 +187,11 @@ function retryable(err: unknown): boolean {
 
 /** A quota or rate refusal, with `stopOnRefusal`: never retried, it ends the run. */
 export class RefusalStop extends HttpError {}
-const QUOTA = /quota|rate.?limit|usage.?limit|resource.?exhausted|too many requests|model_cooldown|exceeded your/i;
+const QUOTA = /quota|rate.?limit|usage.?limit|resource.?exhausted|too many requests|model_cooldown|exceeded your|insufficient credits|more credits|key limit/i;
 
+/** HTTP 429, or 402 (payment required: no credit left, or a key's spending limit, as OpenRouter answers), or a 4xx naming a quota. */
 export function isRefusal(err: unknown): boolean {
-  return err instanceof HttpError && (err.status === 429 || (err.status >= 400 && QUOTA.test(err.message)));
+  return err instanceof HttpError && (err.status === 429 || err.status === 402 || (err.status >= 400 && QUOTA.test(err.message)));
 }
 
 /** Sends one request for a prefix and returns its usage, retrying transient failures. */
