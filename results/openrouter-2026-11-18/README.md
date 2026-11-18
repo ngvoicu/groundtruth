@@ -1,7 +1,8 @@
 # OpenRouter's chat models released since 2026-08-17: cache lifetimes, straight with a key of its own, 2026-11-18
 
-**State of this folder: batch 2, pushed 2026-11-18 about 12:05 UTC while the measuring goes on** (batch 1 was
-`f1cca4d`, 10:51 UTC). Runs still running or not yet started are listed as such in `results.md`; a run gets its entry
+**State of this folder: batch 3, pushed 2026-11-18 about 14:00 UTC; one run still going** (batch 1 `f1cca4d`,
+batch 2 `6abf96d`, the reviewer's rulings `c40cc28`). Runs still running or not yet started are listed as such in
+`results.md`; a run gets its entry
 only once it has finished. The folder is complete in
 itself at every pushed commit.
 
@@ -65,6 +66,15 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
   3500` (one priming request every ~3.5 s), one free run at a time, after the big releases; Ernie got a new paced run
   (`…-paced`). Only a refusal that names OpenRouter's free limit leaves the remaining free ones; an upstream's 429
   ("Provider returned error") ends that run only.
+- **OpenAI's `-pro` variants answer with ~8,900-token prompts** where the same request to the plain model counts
+  ~2,400 (OpenRouter's reply; the probe sent the same ~2,500-token prefix): something in front of the model adds
+  about 6,300 tokens. Their checks count as warm on the cached share of that whole prompt (e.g. 8,670 of 8,878 at the
+  control). From 12:38 UTC the `-pro` runs not yet started were planned with 9,000 prompt tokens per request.
+- **The money guard**, changed twice during the day (`status.py`): from 12:28 UTC `--enforce` stops runs only when
+  the money spent comes within $0.75 of the stop, not when reservations alone pass it (a `-pro` run's grown worst
+  case would otherwise have stopped it); from 12:50 UTC a running run reserves its worst case for its requests not
+  yet sent, not its whole worst case less its spending; and the spent figure is the highest of the ledger,
+  OpenRouter's per-reply figure and the key's usage. No run was stopped for money.
 - **Runs at once**: up to 12 paid runs (20 from 10:21 UTC, when the money committed stayed far under the stop and runs that stay warm to 2 hours were holding the slots) and 1 free run (`status.py`, `MAX_PAID`), started 15 s apart so that their
   priming bursts (4 requests at a time) do not overlap. A run mostly waits; the number is held down by the money (below)
   and by the load on this Mac (the owner's working machine), not by OpenRouter's rate limit, which never refused a paid
@@ -122,6 +132,15 @@ through 30 minutes, Flint v1.0 free through 40 minutes); and three models spread
 larger-prompt run read 0 again (ScaleDown Summarize, Perceptron Mk1.5), both runs' notes say "no cache read observed
 with about 2,500- and 8,000-token prompts" (ruling 5, m-10767).
 
+**Batch 3** adds 30 finished runs. The larger-prompt runs of MiDM K 3.0 Pro (warm in every check to 2 hours at
+~9,500 tokens), LFM 2.5 24B (through 1 hour), Nemotron 3.5 Super VL free (through 90 minutes) and
+`~deepseek/deepseek-flash-latest` (2.5 minutes, then hit-or-miss to 2 hours over 9 upstreams, 2 crossings) all read
+the cache: their first runs' zeros were the prompt size. OpenAI's models on OpenRouter hold OpenAI's 30 minutes when
+OpenAI answers (GPT-6 Sol, the Luna, Terra and Sol `-pro` variants, `~gpt-luna-latest`, `~gpt-terra-latest`: warm
+through 30, cold at 40); where Azure or Bedrock also answered (GPT-6.2 Sol Pro, `~gpt-sol-latest`) checks crossed and
+missed. Long lifetimes: Hy4 and MiMo v2.6 Pro Ultraspeed warm to 2 hours (the latter one miss at 15 minutes), GLM 5.3
+FlashX Legal, Pareto 26.10 and `~unbiased/pareto-latest` through 1 hour, Aion 3.5 through 50 minutes.
+
 ## Input windows, from a refusal only
 
 For the four models whose two OpenRouter figures disagree (`context_length` / `top_provider.context_length`:
@@ -138,7 +157,7 @@ the endpoint's window; `manifest-entries.json` has a limits row for each (the wi
 | `xiaomi/mimo-v2.6-flash` | 1,050,000 / 1,048,576 | "This endpoint's maximum context length is 1050000 tokens. However, you requested about 1800021 tokens (1800005 of text input, 16 in the output)" |
 | `nvidia/nemotron-3.5-super-vl` | 1,048,576 / 262,144 | "… maximum context length is 1048576 tokens …" |
 | `deepseek/deepseek-v4-flash-vision-exp` | 1,048,576 / 1,048,575 | "… maximum context length is 1048576 tokens …" |
-| `xiaomi/mimo-v2.6-pro` | 1,050,000 / 1,048,576 | not sent yet (its cache run is running) |
+| `xiaomi/mimo-v2.6-pro` | 1,050,000 / 1,048,576 | "… maximum context length is 1050000 tokens …" |
 
 OpenRouter counted the 1.2 million " hello" as about 1.8 million tokens (its own estimate before tokenizing).
 
@@ -165,8 +184,16 @@ Failed runs, kept with their files and in `excluded` of `manifest-entries.json`:
 - `sakana/fugu-max`, `sakana/fugu-ultra-v2`: HTTP 403 "not available in your region: Sakana AI blocks requests
   originating from your location". Nothing measured.
 
+- `thinkingmachines/inkling-2-small:free`: HTTP 403 "This model is not available in your region" (the paid
+  `inkling-2-small` was measured). `baidu/ernie-5.5-flash-preview:free`, paced: HTTP 429 "…temporarily rate-limited
+  upstream" after its control (warm, 2,304 of 2,413): the upstream's limit, as for Ling and LFM; no free runs are left.
+- **Left out for money**: `openai/gpt-6.2-astra-pro` (worst case $7.94 with its ~9,000-token prompts; at 13:54 UTC
+  nothing else ran and $15.10 was committed of $18) and `openai/gpt-6-astra-pro` (worst case $9.93: it cannot fit
+  either; it is listed as left out when the last run has ended). `~openai/gpt-astra-latest` (worst case $2.72) did
+  fit and runs.
+
 Runs whose entry waits for OpenRouter's generation record of their last replies (a few minutes late) are marked
-"entry pending" in `results.md`. Nothing was left out for money up to batch 2.
+"entry pending" in `results.md`. Nothing was left out for money up to batch 2; see above for batch 3.
 
 ## Money
 
@@ -185,6 +212,10 @@ At batch 2 (12:02 UTC, runs still going): ledger **$11.39**, OpenRouter's own pe
 **$11.47**. The difference is mostly the `~…-latest` aliases and `ricursiveai/ripple-65b-preview`, which OpenRouter
 billed above the price its model list gives for them (the alias at the price of the model it resolved to); the stop
 takes the higher figure. The larger-prompt runs of the two Gemini cost $0.75 (Carbon) and $0.61 (Hydrogen).
+
+At batch 3 (13:57 UTC, one run still going): ledger **$16.05**, OpenRouter's own figure **$16.15**, the key's usage
+**$16.15**. `~openai/gpt-astra-latest`, still running, spent $1.04 of it on its priming; what it may still cost is
+reserved (about $1.4 at most).
 
 ## Picking up
 

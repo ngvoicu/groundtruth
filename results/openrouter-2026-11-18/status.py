@@ -15,7 +15,8 @@ reading to offered.jsonl (offered or gone, the price), then starts a run when
   - spent (the higher of the ledger and the key's usage) + what the running runs may still cost + its own worst
     case + the window requests still owed fit in the $18 stop. A run that does not fit blocks the ones after it
     until room frees; when nothing runs and it still does not fit, it is left out (decisions.json).
---enforce stops (by its own pid only) the newest running run while the money committed is above the stop.
+--enforce stops (by its own pid only) the running runs, newest first, when the money spent comes within $0.75 of
+the stop (until 12:28 UTC it acted on the money committed, reservations included).
 """
 import glob
 import json
@@ -141,11 +142,14 @@ def report():
         used = led["per_run"].get(r["label"], {"usd": 0.0})
         s["usd"] = round(used["usd"], 4)
         if s["state"] == "running":
-            s["reserve"] = max(0.0, worst_now(r, used) - used["usd"])
+            # What it may still cost: its requests not yet sent (the plan's 87, 5 more for samples primed again, less
+            # those sent), each at its full worst price (from 12:50 UTC; before, its whole worst case less its spending).
+            left = max(0, plan["requests"] + 5 - used.get("requests", 0))
+            s["reserve"] = worst_now(r, used) * left / plan["requests"]
             reserved += s["reserve"]
         if r["window"] and r["model"] not in wd and s["state"] not in ("left out",):
             reserved += window_worst(r)
-    spent = max(led["total"], ku)
+    spent = max(led["total"], led["reported"], ku)  # OpenRouter's per-reply figure too (it runs above the ledger)
     return led, ku, kat, states, spent, reserved
 
 
@@ -231,13 +235,17 @@ def main():
         print(f"  {s['label']:44} {s['state']:9} {s.get('status') or s.get('partial_status') or '':20} ${s['usd']:.4f}"
               f"{' reserve $%.3f' % s['reserve'] if 'reserve' in s else ''}{extra}{' REFUSAL ' + json.dumps(s['refusals'][0]) if s['refusals'] else ''}"
               f"{' ERROR ' + s['error'][:100] if s.get('error') else ''}")
-    if "--enforce" in sys.argv and spent + reserved > STOP:
+    # --enforce acts on money spent, not on reservations: a running run whose worst case grew (the -pro variants answer
+    # with ~8,900-token prompts, OpenRouter adding its own) is not stopped for that; the newest runs are stopped when
+    # what was spent comes within ENFORCE_MARGIN of the stop. Launches still need the whole worst case to fit.
+    ENFORCE_MARGIN = 0.75
+    if "--enforce" in sys.argv and spent > STOP - ENFORCE_MARGIN:
         running = sorted((s for s in states if s["state"] == "running"), key=lambda s: os.path.getmtime(os.path.join(HERE, "logs", s["label"] + ".pid")))
-        while running and spent + reserved > STOP:
+        while running:
             s = running.pop()
             os.kill(s["pid"], signal.SIGTERM)
             reserved -= s["reserve"]
-            dec["left_out"][s["label"]] = f"stopped by hand at {time.strftime('%H:%M:%SZ', time.gmtime())}: the money committed passed the stop"
+            dec["left_out"][s["label"]] = f"stopped at {time.strftime('%H:%M:%SZ', time.gmtime())}: the money spent came within ${ENFORCE_MARGIN} of the ${STOP:.0f} stop"
             save_dec()
             print("STOPPED", s["label"], s["pid"])
     if not launch:

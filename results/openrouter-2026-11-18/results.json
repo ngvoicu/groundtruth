@@ -639,16 +639,46 @@
  {
   "label": "kt--midm-k-3.0-pro-8k",
   "model": "kt/midm-k-3.0-pro",
-  "state": "running",
-  "status": null,
-  "usd": 0.0988,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.1051,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "KT"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "kt--midm-k-3.0-pro-8k-2026-11-18T11-15-02.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 9547,
+   "cachedTokens": 8768,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "3/3",
+   "75m": "3/3",
+   "90m": "3/3",
+   "2h": "3/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 7200,
+  "last_warm_s": 7200,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
  },
  {
   "label": "perceptron--perceptron-mk1.5-8k",
@@ -781,16 +811,45 @@
  {
   "label": "liquid--lfm-2.5-24b-a2b-8k",
   "model": "liquid/lfm-2.5-24b-a2b",
-  "state": "running",
-  "status": null,
-  "usd": 0.0268,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0322,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Liquid"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "liquid--lfm-2.5-24b-a2b-8k-2026-11-18T11-27-45.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 9015,
+   "cachedTokens": 8192,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "3/3",
+   "75m": "0/3",
+   "90m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 3600,
+  "last_warm_s": 3600,
+  "first_all_cold_s": 4500,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
  },
  {
   "label": "scaledown--summarize-8k",
@@ -824,8 +883,8 @@
  {
   "label": "nvidia--nemotron-3.5-super-vl-free-8k",
   "model": "nvidia/nemotron-3.5-super-vl:free",
-  "state": "running",
-  "status": null,
+  "state": "finished",
+  "status": "completed",
   "usd": 0.0,
   "site_documented_s": null,
   "error": null,
@@ -833,14 +892,44 @@
    "Nvidia"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "nvidia--nemotron-3.5-super-vl-free-8k-2026-11-18T11-28-15.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 9163,
+   "cachedTokens": 8672,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "3/3",
+   "75m": "3/3",
+   "90m": "3/3",
+   "2h": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 5400,
+  "last_warm_s": 5400,
+  "first_all_cold_s": 7200,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
  },
  {
   "label": "alias-deepseek--deepseek-flash-latest-8k",
   "model": "~deepseek/deepseek-flash-latest",
-  "state": "running",
-  "status": null,
-  "usd": 0.0141,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.0191,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
@@ -854,8 +943,106 @@
    "Together",
    "Wafer"
   ],
+  "upstream_changed": [
+   {
+    "sample": "75m-r1",
+    "upstreams": [
+     "InferenceNet",
+     "Wafer"
+    ]
+   },
+   {
+    "sample": "90m-r3",
+    "upstreams": [
+     "InferenceNet",
+     "Morph"
+    ]
+   }
+  ],
+  "upstream_unknown": 0,
+  "file": "alias-deepseek--deepseek-flash-latest-8k-2026-11-18T11-52-05.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 7972,
+   "cachedTokens": 7936,
+   "outputTokens": 14
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "2/3",
+   "7.5m": "3/3",
+   "10m": "2/3",
+   "15m": "3/3",
+   "20m": "2/3",
+   "25m": "2/3",
+   "30m": "3/3",
+   "40m": "2/3",
+   "50m": "2/3",
+   "1h": "1/3",
+   "75m": "1/3",
+   "90m": "2/3",
+   "2h": "1/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 150,
+  "last_warm_s": 7200,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": [
+   "75m-r1: primed on InferenceNet, answered by Wafer: cold (0/7950 cached)",
+   "90m-r3: primed on InferenceNet, answered by Morph: cold (0/7962 cached)"
+  ]
+ },
+ {
+  "label": "thinkingmachines--inkling-2-small-free",
+  "model": "thinkingmachines/inkling-2-small:free",
+  "state": "finished",
+  "status": "failed",
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": "HTTP 403: {\"error\":{\"message\":\"This model is not available in your region.\",\"code\":403,\"metadata\":{\"routing_funnel\":[{\"step\":\"Initial Endpoints\",\"endpoint_count\":1}],\"failed_routing_step\":\"Gate Thinking Machines Endpoints with Geo Restrictions\"}}}",
+  "upstreams": [],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "thinkingmachines--inkling-2-small-free-2026-11-18T13-32-19.json",
+  "control": "none",
+  "control_tokens": null,
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "baidu--ernie-5.5-flash-preview-free-paced",
+  "model": "baidu/ernie-5.5-flash-preview:free",
+  "state": "finished",
+  "status": "failed",
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": "quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"baidu/ernie-5.5-flash-preview:free is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/byok\",\"provider_name\":\"Baidu\",\"is_b",
+  "upstreams": [
+   "Baidu"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "baidu--ernie-5.5-flash-preview-free-paced-2026-11-18T13-35-37.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2413,
+   "cachedTokens": 2304,
+   "outputTokens": 16
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
  },
  {
   "label": "nex-agi--nex-n2.5-mini",
@@ -2134,37 +2321,97 @@
  {
   "label": "z-ai--glm-5.3-flashx-legal",
   "model": "z-ai/glm-5.3-flashx-legal",
-  "state": "running",
-  "status": null,
-  "usd": 0.0562,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.0592,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Z.AI"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "z-ai--glm-5.3-flashx-legal-2026-11-18T10-09-48.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2634,
+   "cachedTokens": 2624,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "3/3",
+   "75m": "0/3",
+   "90m": "1/3",
+   "2h": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 3600,
+  "last_warm_s": 5400,
+  "first_all_cold_s": 4500,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
  },
  {
   "label": "tencent--hy4",
   "model": "tencent/hy4",
-  "state": "running",
-  "status": null,
-  "usd": 0.0535,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.0538,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Tencent"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "tencent--hy4-2026-11-18T10-13-11.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2642,
+   "cachedTokens": 2560,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "3/3",
+   "75m": "3/3",
+   "90m": "3/3",
+   "2h": "3/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 7200,
+  "last_warm_s": 7200,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
  },
  {
   "label": "xiaomi--mimo-v2.6-pro",
   "model": "xiaomi/mimo-v2.6-pro",
-  "state": "running",
-  "status": null,
-  "usd": 0.0736,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.0761,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
@@ -2172,7 +2419,51 @@
    "Xiaomi"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "xiaomi--mimo-v2.6-pro-2026-11-18T10-23-19.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2775,
+   "cachedTokens": 2752,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "1/3",
+   "20m": "1/3",
+   "25m": "1/3",
+   "30m": "1/3",
+   "40m": "1/3",
+   "50m": "2/3",
+   "1h": "2/3",
+   "75m": "0/3",
+   "90m": "2/3",
+   "2h": "1/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 600,
+  "last_warm_s": 7200,
+  "first_all_cold_s": 4500,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": [],
+  "window": {
+   "kind": "context",
+   "model": "xiaomi/mimo-v2.6-pro",
+   "n": 1200000,
+   "status": 400,
+   "seconds": 0.3,
+   "promptTokens": null,
+   "message": "This endpoint's maximum context length is 1050000 tokens. However, you requested about 1800021 tokens (1800005 of text input, 16 in the output). Please reduce the length of the input, or use the context-compression plugin to compress your prompt automatically.",
+   "metadata": {
+    "provider_name": null
+   },
+   "upstream": null,
+   "at": "2026-11-18T12:25:48Z"
+  }
  },
  {
   "label": "deepseek--deepseek-v4-flash-vision-exp",
@@ -2309,16 +2600,46 @@
  {
   "label": "unbiased--pareto-26.10",
   "model": "unbiased/pareto-26.10",
-  "state": "running",
-  "status": null,
-  "usd": 0.1034,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.1098,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Unbiased"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "unbiased--pareto-26.10-2026-11-18T10-24-19.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2668,
+   "cachedTokens": 2663,
+   "outputTokens": 2
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "3/3",
+   "75m": "0/3",
+   "90m": "1/3",
+   "2h": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 3600,
+  "last_warm_s": 5400,
+  "first_all_cold_s": 4500,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
  },
  {
   "label": "unbiased--pareto-26.10-preview",
@@ -2366,9 +2687,9 @@
  {
   "label": "tencent--hy4-preview",
   "model": "tencent/hy4-preview",
-  "state": "running",
-  "status": null,
-  "usd": 0.112,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.1167,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
@@ -2399,9 +2720,59 @@
      "SiliconFlow",
      "Venice"
     ]
+   },
+   {
+    "sample": "2h-r1",
+    "upstreams": [
+     "SiliconFlow",
+     "Venice"
+    ]
+   },
+   {
+    "sample": "2h-r3",
+    "upstreams": [
+     "GMICloud",
+     "Venice"
+    ]
    }
   ],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "tencent--hy4-preview-2026-11-18T10-24-49.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2656,
+   "cachedTokens": 2624,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "3/3",
+   "75m": "2/3",
+   "90m": "1/3",
+   "2h": "1/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 3600,
+  "last_warm_s": 7200,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": [
+   "75m-r3: primed on SiliconFlow, answered by Venice: cold (0/2643 cached)",
+   "90m-r2: primed on SiliconFlow, answered by Venice: cold (0/2690 cached)",
+   "90m-r1: primed on SiliconFlow, answered by Venice: cold (0/2670 cached)",
+   "2h-r1: primed on SiliconFlow, answered by Venice: cold (0/2709 cached)",
+   "2h-r3: primed on GMICloud, answered by Venice: cold (0/2681 cached)"
+  ]
  },
  {
   "label": "stepfun--step-5-preview",
@@ -2446,16 +2817,46 @@
  {
   "label": "baidu--ernie-light-dt-1.0-intl",
   "model": "baidu/ernie-light-dt-1.0-intl",
-  "state": "running",
-  "status": null,
-  "usd": 0.2072,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.2112,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Baidu"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "baidu--ernie-light-dt-1.0-intl-2026-11-18T10-34-39.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2647,
+   "cachedTokens": 2556,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "2/3",
+   "7.5m": "2/3",
+   "10m": "1/3",
+   "15m": "1/3",
+   "20m": "1/3",
+   "25m": "1/3",
+   "30m": "0/3",
+   "40m": "1/3",
+   "50m": "2/3",
+   "1h": "1/3",
+   "75m": "1/3",
+   "90m": "2/3",
+   "2h": "2/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 150,
+  "last_warm_s": 7200,
+  "first_all_cold_s": 1800,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
  },
  {
   "label": "meta--muse-spark-open",
@@ -2505,16 +2906,46 @@
  {
   "label": "z-ai--glm-5.3-prime",
   "model": "z-ai/glm-5.3-prime",
-  "state": "running",
-  "status": null,
-  "usd": 0.2682,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.2923,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Alibaba"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "z-ai--glm-5.3-prime-2026-11-18T10-48-12.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2678,
+   "cachedTokens": 2560,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "2/3",
+   "40m": "1/3",
+   "50m": "3/3",
+   "1h": "2/3",
+   "75m": "2/3",
+   "90m": "1/3",
+   "2h": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1500,
+  "last_warm_s": 5400,
+  "first_all_cold_s": 7200,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
  },
  {
   "label": "qwen--qwen3.8-max-0902",
@@ -2615,86 +3046,249 @@
  {
   "label": "openai--gpt-6-sol",
   "model": "openai/gpt-6-sol",
-  "state": "running",
-  "status": null,
-  "usd": 0.2722,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.308,
   "site_documented_s": 1800,
   "error": null,
   "upstreams": [
    "OpenAI"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "openai--gpt-6-sol-2026-11-18T11-32-30.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2357,
+   "cachedTokens": 2354,
+   "outputTokens": 5
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1800,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "30m documented: holds (warm through 30m)",
+  "crossings": []
  },
  {
   "label": "unbiased--pareto-26.9",
   "model": "unbiased/pareto-26.9",
-  "state": "running",
-  "status": null,
-  "usd": 0.2955,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.3354,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Unbiased"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "unbiased--pareto-26.9-2026-11-18T11-32-45.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2661,
+   "cachedTokens": 2647,
+   "outputTokens": 2
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1800,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
  },
  {
   "label": "aion-labs--aion-3.5",
   "model": "aion-labs/aion-3.5",
-  "state": "running",
-  "status": null,
-  "usd": 0.3912,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.4762,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "AionLabs"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 1
+  "upstream_unknown": 0,
+  "file": "aion-labs--aion-3.5-2026-11-18T11-40-25.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2632,
+   "cachedTokens": 2632,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "1/3",
+   "75m": "0/3",
+   "90m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 3000,
+  "last_warm_s": 3600,
+  "first_all_cold_s": 4500,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
  },
  {
   "label": "fireworks--ember-1",
   "model": "fireworks/ember-1",
-  "state": "running",
-  "status": null,
-  "usd": 0.3806,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.4336,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Fireworks"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 3
+  "upstream_unknown": 0,
+  "file": "fireworks--ember-1-2026-11-18T11-40-40.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2715,
+   "cachedTokens": 2714,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1800,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
  },
  {
   "label": "qwen--qwen3.8-max-prime",
   "model": "qwen/qwen3.8-max-prime",
-  "state": "running",
-  "status": null,
-  "usd": 0.6186,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.7046,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Alibaba"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 3
+  "upstream_unknown": 0,
+  "file": "qwen--qwen3.8-max-prime-2026-11-18T11-40-55.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2944,
+   "cachedTokens": 2048,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1800,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
  },
  {
   "label": "xiaomi--mimo-v2.6-pro-ultraspeed",
   "model": "xiaomi/mimo-v2.6-pro-ultraspeed",
-  "state": "running",
-  "status": null,
-  "usd": 0.5408,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.5495,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Xiaomi"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "xiaomi--mimo-v2.6-pro-ultraspeed-2026-11-18T11-44-20.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2804,
+   "cachedTokens": 2752,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "2/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "3/3",
+   "75m": "3/3",
+   "90m": "3/3",
+   "2h": "3/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 600,
+  "last_warm_s": 7200,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
  },
  {
   "label": "sakana--fugu-ultra-v2",
@@ -2750,9 +3344,9 @@
  {
   "label": "alias-z-ai--glm-flash-latest",
   "model": "~z-ai/glm-flash-latest",
-  "state": "running",
-  "status": null,
-  "usd": 0.006,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0082,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
@@ -2767,27 +3361,140 @@
    "Relace",
    "River",
    "Together",
+   "Venice",
    "Wafer"
   ],
-  "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_changed": [
+   {
+    "sample": "20m-r2",
+    "upstreams": [
+     "Reka",
+     "Wafer"
+    ]
+   },
+   {
+    "sample": "1h-r3",
+    "upstreams": [
+     "Together",
+     "Relace"
+    ]
+   },
+   {
+    "sample": "75m-r3",
+    "upstreams": [
+     "Relace",
+     "Venice"
+    ]
+   }
+  ],
+  "upstream_unknown": 0,
+  "file": "alias-z-ai--glm-flash-latest-2026-11-18T11-48-38.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2663,
+   "cachedTokens": 2560,
+   "outputTokens": 3
+  },
+  "checks": {
+   "2.5m": "2/3",
+   "5m": "2/3",
+   "7.5m": "3/3",
+   "10m": "2/3",
+   "15m": "1/3",
+   "20m": "0/3",
+   "25m": "1/3",
+   "30m": "1/3",
+   "40m": "1/3",
+   "50m": "1/3",
+   "1h": "0/3",
+   "75m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": 3000,
+  "first_all_cold_s": 1200,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": [
+   "20m-r2: primed on Reka, answered by Wafer: cold (0/2661 cached)",
+   "1h-r3: primed on Together, answered by Relace: cold (0/2677 cached)",
+   "75m-r3: primed on Relace, answered by Venice: cold (0/2680 cached)"
+  ]
  },
  {
   "label": "alias-z-ai--glm-latest",
   "model": "~z-ai/glm-latest",
-  "state": "running",
-  "status": null,
-  "usd": 0.0108,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.012,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Decart",
+   "DeepInfra",
    "Fireworks",
    "InferenceNet",
+   "Morph",
    "Wafer"
   ],
-  "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_changed": [
+   {
+    "sample": "20m-r1",
+    "upstreams": [
+     "InferenceNet",
+     "Morph"
+    ]
+   },
+   {
+    "sample": "15m-r3",
+    "upstreams": [
+     "Wafer",
+     "Decart"
+    ]
+   },
+   {
+    "sample": "15m-r2",
+    "upstreams": [
+     "InferenceNet",
+     "Fireworks"
+    ]
+   },
+   {
+    "sample": "20m-r3",
+    "upstreams": [
+     "InferenceNet",
+     "DeepInfra"
+    ]
+   }
+  ],
+  "upstream_unknown": 0,
+  "file": "alias-z-ai--glm-latest-2026-11-18T11-52-20.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2632,
+   "cachedTokens": 2624,
+   "outputTokens": 3
+  },
+  "checks": {
+   "2.5m": "2/3",
+   "5m": "3/3",
+   "7.5m": "2/3",
+   "10m": "1/3",
+   "15m": "0/3",
+   "20m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": 600,
+  "first_all_cold_s": 900,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": [
+   "20m-r1: primed on InferenceNet, answered by Morph: cold (0/2685 cached)",
+   "15m-r3: primed on Wafer, answered by Decart: cold (0/2625 cached)",
+   "15m-r2: primed on InferenceNet, answered by Fireworks: cold (8/2661 cached)",
+   "20m-r3: primed on InferenceNet, answered by DeepInfra: cold (0/2644 cached)"
+  ]
  },
  {
   "label": "alias-deepseek--deepseek-pro-latest",
@@ -2825,29 +3532,420 @@
  {
   "label": "openai--gpt-6-luna-pro",
   "model": "openai/gpt-6-luna-pro",
-  "state": "running",
-  "status": null,
-  "usd": 0.0322,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0385,
   "site_documented_s": 1800,
   "error": null,
   "upstreams": [
    "OpenAI"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "openai--gpt-6-luna-pro-2026-11-18T11-56-55.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 8849,
+   "cachedTokens": 8698,
+   "outputTokens": 43
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1800,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "30m documented: holds (warm through 30m)",
+  "crossings": []
  },
  {
   "label": "alias-openai--gpt-luna-latest",
   "model": "~openai/gpt-luna-latest",
-  "state": "running",
-  "status": null,
-  "usd": 0.013,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0154,
   "site_documented_s": 1800,
   "error": null,
   "upstreams": [
    "OpenAI"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 2
+  "upstream_unknown": 0,
+  "file": "alias-openai--gpt-luna-latest-2026-11-18T12-04-13.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2385,
+   "cachedTokens": 2382,
+   "outputTokens": 5
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1800,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "30m documented: holds (warm through 30m)",
+  "crossings": []
+ },
+ {
+  "label": "alias-unbiased--pareto-latest",
+  "model": "~unbiased/pareto-latest",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.1055,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Unbiased"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "alias-unbiased--pareto-latest-2026-11-18T12-10-46.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2675,
+   "cachedTokens": 2663,
+   "outputTokens": 2
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "3/3",
+   "75m": "0/3",
+   "90m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 3600,
+  "last_warm_s": 3600,
+  "first_all_cold_s": 4500,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
+ },
+ {
+  "label": "openai--gpt-6.1-terra-pro",
+  "model": "openai/gpt-6.1-terra-pro",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.364,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "OpenAI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "openai--gpt-6.1-terra-pro-2026-11-18T12-14-52.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 8821,
+   "cachedTokens": 8670,
+   "outputTokens": 44
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1800,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": []
+ },
+ {
+  "label": "alias-openai--gpt-terra-latest",
+  "model": "~openai/gpt-terra-latest",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.1512,
+  "site_documented_s": 1800,
+  "error": null,
+  "upstreams": [
+   "OpenAI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "alias-openai--gpt-terra-latest-2026-11-18T12-15-07.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2396,
+   "cachedTokens": 2393,
+   "outputTokens": 5
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1800,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "30m documented: holds (warm through 30m)",
+  "crossings": []
+ },
+ {
+  "label": "openai--gpt-6-sol-pro",
+  "model": "openai/gpt-6-sol-pro",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.7494,
+  "site_documented_s": 1800,
+  "error": null,
+  "upstreams": [
+   "OpenAI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "openai--gpt-6-sol-pro-2026-11-18T12-25-17.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 8739,
+   "cachedTokens": 8588,
+   "outputTokens": 25
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1800,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "30m documented: holds (warm through 30m)",
+  "crossings": []
+ },
+ {
+  "label": "openai--gpt-6.1-sol-pro",
+  "model": "openai/gpt-6.1-sol-pro",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.7164,
+  "site_documented_s": 1800,
+  "error": null,
+  "upstreams": [
+   "OpenAI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "openai--gpt-6.1-sol-pro-2026-11-18T12-25-33.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 8878,
+   "cachedTokens": 8670,
+   "outputTokens": 25
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1800,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "30m documented: holds (warm through 30m)",
+  "crossings": []
+ },
+ {
+  "label": "openai--gpt-6.2-sol-pro",
+  "model": "openai/gpt-6.2-sol-pro",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.7713,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Azure",
+   "OpenAI"
+  ],
+  "upstream_changed": [
+   {
+    "sample": "15m-r2",
+    "upstreams": [
+     "Azure",
+     "OpenAI"
+    ]
+   }
+  ],
+  "upstream_unknown": 0,
+  "file": "openai--gpt-6.2-sol-pro-2026-11-18T12-47-54.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 9056,
+   "cachedTokens": 8673,
+   "outputTokens": 25
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "2/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "2/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 600,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "crossings": [
+   "15m-r2: primed on Azure, answered by OpenAI: cold (2401/9062 cached)"
+  ]
+ },
+ {
+  "label": "alias-openai--gpt-sol-latest",
+  "model": "~openai/gpt-sol-latest",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.3199,
+  "site_documented_s": 1800,
+  "error": null,
+  "upstreams": [
+   "Amazon Bedrock",
+   "Azure",
+   "OpenAI"
+  ],
+  "upstream_changed": [
+   {
+    "sample": "5m-r2",
+    "upstreams": [
+     "Azure",
+     "Amazon Bedrock"
+    ]
+   },
+   {
+    "sample": "15m-r1",
+    "upstreams": [
+     "Amazon Bedrock",
+     "OpenAI"
+    ]
+   }
+  ],
+  "upstream_unknown": 0,
+  "file": "alias-openai--gpt-sol-latest-2026-11-18T12-57-46.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2392,
+   "cachedTokens": 2392,
+   "outputTokens": 5
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "2/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "2/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "2/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 150,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "30m documented: 2 of 3 at 5m; all warm through 2.5m",
+  "crossings": [
+   "5m-r2: primed on Azure, answered by Amazon Bedrock: cold (0/2378 cached)",
+   "15m-r1: primed on Amazon Bedrock, answered by OpenAI: cold (0/2428 cached)"
+  ]
+ },
+ {
+  "label": "openai--gpt-6.2-astra-pro",
+  "model": "openai/gpt-6.2-astra-pro",
+  "state": "left out",
+  "status": null,
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": null,
+  "reason": "worst case $7.94 did not fit: committed $15.10 of $18.0"
+ },
+ {
+  "label": "alias-openai--gpt-astra-latest",
+  "model": "~openai/gpt-astra-latest",
+  "state": "running",
+  "status": null,
+  "usd": 1.0445,
+  "site_documented_s": 1800,
+  "error": null,
+  "upstreams": [
+   "Amazon Bedrock",
+   "OpenAI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
  }
 ]

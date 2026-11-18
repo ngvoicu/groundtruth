@@ -64,10 +64,25 @@
    },
    "control": "0 of 2829 tokens cached",
    "larger_prompt_run": {
-    "label": "nvidia--nemotron-3.5-super-vl-free-8k",
-    "state": "running"
+    "entry": {
+     "id": "openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free-8k",
+     "file": "results/openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free-8k-2026-11-18T11-28-15.json",
+     "route": "openrouter",
+     "client": "direct",
+     "model": "nvidia/nemotron-3.5-super-vl:free",
+     "models_dev": "openrouter/nvidia/nemotron-3.5-super-vl:free",
+     "base_model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+     "options": {
+      "prefix_tokens": 8000
+     },
+     "note": "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute)"
+    },
+    "status": "completed",
+    "control": "8672 of 9163 tokens cached",
+    "all_warm_through_s": 5400,
+    "first_all_cold_s": 7200
    },
-   "state": "larger-prompt run not finished"
+   "state": "the larger prompt was cached: see its run"
   },
   {
    "run": {
@@ -116,10 +131,24 @@
    },
    "control": "0 of 2869 tokens cached",
    "larger_prompt_run": {
-    "label": "liquid--lfm-2.5-24b-a2b-8k",
-    "state": "running"
+    "entry": {
+     "id": "openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b-8k",
+     "file": "results/openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b-8k-2026-11-18T11-27-45.json",
+     "route": "openrouter",
+     "client": "direct",
+     "model": "liquid/lfm-2.5-24b-a2b",
+     "models_dev": "openrouter/liquid/lfm-2.5-24b-a2b",
+     "base_model": null,
+     "options": {
+      "prefix_tokens": 8000
+     }
+    },
+    "status": "stopped-early",
+    "control": "8192 of 9015 tokens cached",
+    "all_warm_through_s": 3600,
+    "first_all_cold_s": 4500
    },
-   "state": "larger-prompt run not finished"
+   "state": "the larger prompt was cached: see its run"
   },
   {
    "run": {
@@ -264,10 +293,24 @@
    },
    "control": "0 of 3164 tokens cached",
    "larger_prompt_run": {
-    "label": "kt--midm-k-3.0-pro-8k",
-    "state": "running"
+    "entry": {
+     "id": "openrouter-2026-11-18/kt--midm-k-3.0-pro-8k",
+     "file": "results/openrouter-2026-11-18/kt--midm-k-3.0-pro-8k-2026-11-18T11-15-02.json",
+     "route": "openrouter",
+     "client": "direct",
+     "model": "kt/midm-k-3.0-pro",
+     "models_dev": "openrouter/kt/midm-k-3.0-pro",
+     "base_model": null,
+     "options": {
+      "prefix_tokens": 8000
+     }
+    },
+    "status": "completed",
+    "control": "8768 of 9547 tokens cached",
+    "all_warm_through_s": 7200,
+    "first_all_cold_s": null
    },
-   "state": "larger-prompt run not finished"
+   "state": "the larger prompt was cached: see its run"
   },
   {
    "run": {
@@ -282,10 +325,25 @@
    },
    "control": "0 of 2520 tokens cached",
    "larger_prompt_run": {
-    "label": "alias-deepseek--deepseek-flash-latest-8k",
-    "state": "running"
+    "entry": {
+     "id": "openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest-8k",
+     "file": "results/openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest-8k-2026-11-18T11-52-05.json",
+     "route": "openrouter",
+     "client": "direct",
+     "model": "~deepseek/deepseek-flash-latest",
+     "models_dev": "openrouter/~deepseek/deepseek-flash-latest",
+     "base_model": null,
+     "options": {
+      "prefix_tokens": 8000
+     },
+     "note": "OpenRouter's default route: 2 check(s) were answered by another upstream than the one their sample was primed on (75m-r1: primed on InferenceNet, answered by Wafer: cold (0/7950 cached); 90m-r3: primed on InferenceNet, answered by Morph: cold (0/7962 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
+    },
+    "status": "completed",
+    "control": "7936 of 7972 tokens cached",
+    "all_warm_through_s": 150,
+    "first_all_cold_s": null
    },
-   "state": "larger-prompt run not finished"
+   "state": "the larger prompt was cached: see its run"
   }
  ]
 }
