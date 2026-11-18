@@ -14,5 +14,5 @@ run L2 moonshotai/kimi-k3.1-pro 2
 run L3 deepseek/deepseek-v4.1-flash 2
 run L4 muse-wonder-1.0 3
 echo launched
-# L1 (Gemini 4 Argon) had no cached re-send with the ~2.3k prompt: again with 8k (Gemini's minimum cacheable size)
+# L1 (Gemini 4 Argon) had no cached re-send with the ~2.3k prompt: again with 8k (a larger prompt, in case the small one was under a minimum cacheable size)
 # nohup node src/cli.ts --base-url $B --model google/gemini-4-argon --format responses --prefix-tokens 8000 --ages $AGES --replicas 2 --label L1b --concurrency 2 --out $OUT
