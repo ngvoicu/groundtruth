@@ -83,7 +83,10 @@ cached at all and that the route reports cache hits), then checked at 2.5, 5 and
 A cache that is gone inside five minutes only shows in the first ages, and two results can only be compared when they
 share them. `harness/probe.py` (the same evaluation through a real coding tool) has the same schedules, and
 `scripts/build_observed.py` refuses a run dated 14 November 2026 or later that has no control or does not start at
-2.5 minutes. A run whose control missed (no observable cache) has no ages and is accepted as it is. Runs before that date keep the ages they were made with.
+2.5 minutes. A run whose every control missed has no ages by the method and is accepted as it is; the rule reads the
+run's own control, so a run with a mixed control (one re-send hit, another missed) showed the cache and must go on to
+its ages like one whose control hit. A run that continues another is not held to the rule. Runs before that date keep
+the ages they were made with.
 
 Options: `--schedule std|long|quick`, `--ages 30m,65m`, `--replicas 3`, `--prefix-tokens 2500`, `--filler words|list`, `--max-output 16`,
 `--stream`, `--ttl`, `--beta`, `--header k:v`, `--body-extra '<json>'`, `--label`, `--salt`, `--out`,
@@ -120,12 +123,15 @@ subscription routes that have no public API (a ChatGPT plan through Codex, Devin
   `all_warm_through_s` (every age up to here was fully warm: **the safe value**), `last_warm_s` (the oldest age with
   any warm check) and `first_all_cold_s` (the youngest age with none). When `last_warm_s` is past
   `first_all_cold_s`, the route misses at random rather than by age.
-- `control` is an immediate re-send; `0/1` means the route showed no cache at all. `late_excluded` counts checks
-  that ran too long after their age and were left out.
+- `control` is an immediate re-send, counted like a check (`warm` of `total`); `0/1` means that the re-send was not
+  served from cache by the probe's rule (at least half of the prompt and 500 tokens), which shows no lifetime: a run
+  with nothing else says nothing about how long a cache lives. `late_excluded` counts checks that ran too long after
+  their age and were left out.
 - `latest` marks the newest run for the same route, client, model and options. Older runs stay in the file.
 - `continues` names an earlier run that this one adds checks to: older ages, or more samples of an age (same route,
-  client, model and options). Its `checks` and its three summary numbers then cover that run too, and any run that
-  one continues; `source` is the file with its own checks.
+  client, model and options). Its `checks`, its `control` and its three summary numbers then cover that run too, and
+  any run that one continues: every run's own control counted once, outcomes kept as they are (a chain whose first
+  control hit and whose second missed has `1/2`); `source` is the file with its own checks.
 - `removed_by_proxy` (from 2026-11-17): body fields the client sent (the run file records them) that are shown not
   to reach the provider on that route and build, because the proxy deletes them. `options` hold what the provider
   received, so such a field is not in `options` and asks for nothing; the run's `note` must give the proof (the

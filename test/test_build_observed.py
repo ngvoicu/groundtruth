@@ -1,4 +1,5 @@
-"""scripts/build_observed.py: removed_by_proxy (a field the client sent that the proxy removes before the provider).
+"""scripts/build_observed.py: removed_by_proxy (a field the client sent that the proxy removes before the provider), the
+ladder rule of 14 November, and a chain's control (every run's own control, counted once).
 
     python3 -m unittest discover -s test -p "test_*.py"
 """
@@ -85,6 +86,93 @@ class Ladder(unittest.TestCase):
             self.build(True, [])
         with self.assertRaisesRegex(SystemExit, "2.5 minutes"):
             self.build(True, [{"targetAgeMs": 300000, "actualAgeMs": 300500, "warm": True}])
+
+
+def check(age_s, warm):
+    return {"targetAgeMs": age_s * 1000, "actualAgeMs": age_s * 1000 + 500, "warm": warm}
+
+
+class ChainControl(unittest.TestCase):
+    """A run that continues another carries every control of the chain, each run's own counted once."""
+
+    def build(self, runs):
+        # runs: [(label, started, control_warm or None, checks, continues)]
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "results"))
+            manifest = []
+            for label, started, control, checks, continues in runs:
+                f = {**run_file(None), "label": label, "startedAt": started, "checks": checks}
+                if control is None:
+                    del f["control"]
+                else:
+                    f["control"] = {"warm": control}
+                with open(os.path.join(root, "results", f"{label}.json"), "w") as out:
+                    json.dump(f, out)
+                entry = {"id": f"x/{label}", "file": f"results/{label}.json", "route": "codex-subscription",
+                         "client": "cliproxyapi", "model": "m"}
+                if continues:
+                    entry["continues"] = f"x/{continues}"
+                manifest.append(entry)
+            bo.ROOT = root
+            return {e["id"].split("/")[1]: e for e in bo.build_cache({"runs": manifest})}
+
+    def test_all_hit_three_runs(self):
+        e = self.build([("A", "2026-11-17T10:00:00.000Z", True, [check(150, True)], None),
+                        ("B", "2026-11-17T11:00:00.000Z", True, [check(150, True)], "A"),
+                        ("C", "2026-11-17T12:00:00.000Z", True, [check(300, True)], "B")])
+        self.assertEqual(e["A"]["control"], {"warm": 1, "total": 1})
+        self.assertEqual(e["B"]["control"], {"warm": 2, "total": 2})
+        self.assertEqual(e["C"]["control"], {"warm": 3, "total": 3})  # A's counted once, not again through B
+        self.assertEqual(e["C"]["checks"], [{"age": "2.5m", "age_s": 150, "warm": 2, "total": 2},
+                                            {"age": "5m", "age_s": 300, "warm": 1, "total": 1}])
+
+    def test_mixed_outcome_is_kept(self):
+        # LC4 / CL4: the first run's control hit, the continuation's missed and it has no check.
+        e = self.build([("A", "2026-11-17T10:00:00.000Z", True, [check(150, False), check(150, True)], None),
+                        ("B", "2026-11-17T14:00:00.000Z", False, [], "A")])
+        self.assertEqual(e["B"]["control"], {"warm": 1, "total": 2})
+        self.assertEqual(e["B"]["checks"], [{"age": "2.5m", "age_s": 150, "warm": 1, "total": 2}])
+        self.assertIsNone(e["B"]["all_warm_through_s"])
+        self.assertEqual(e["A"]["control"], {"warm": 1, "total": 1})  # the earlier run keeps its own
+
+    def test_the_only_control_missed(self):
+        # The earlier run recorded no control (before 14 November); the continuation's control missed.
+        e = self.build([("A", "2026-11-10T10:00:00.000Z", None, [check(300, True)], None),
+                        ("B", "2026-11-17T14:00:00.000Z", False, [], "A")])
+        self.assertEqual(e["A"]["control"], {"warm": 0, "total": 0})
+        self.assertEqual(e["B"]["control"], {"warm": 0, "total": 1})
+
+
+def harness_file(controls, ages):
+    rows = [{"event": "start", "harness": "pi", "at": "2026-11-17T10:00:00Z"}]
+    rows += [{"event": "check", "age": "control", "warm": w} for w in controls]
+    rows += [{"event": "check", "age": a, "warm": True} for a in ages]
+    return "".join(json.dumps(r) + "\n" for r in rows)
+
+
+class MixedControlLadder(unittest.TestCase):
+    """The ladder rule reads a run's own control: only a run whose every control missed may end without ages."""
+
+    def build(self, controls, ages):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "results"))
+            with open(os.path.join(root, "results", "H.jsonl"), "w") as out:
+                out.write(harness_file(controls, ages))
+            bo.ROOT = root
+            return bo.build_cache({"runs": [{"id": "x/H", "file": "results/H.jsonl", "route": "antigravity",
+                                             "model": "m"}]})[0]
+
+    def test_mixed_control_without_ages_is_refused(self):
+        with self.assertRaisesRegex(SystemExit, "2.5 minutes"):
+            self.build([True, False], [])
+
+    def test_mixed_control_with_the_ladder_is_published_as_recorded(self):
+        e = self.build([True, False], ["2.5m", "5m"])
+        self.assertEqual(e["control"], {"warm": 1, "total": 2})
+
+    def test_every_control_missed_without_ages_is_accepted(self):
+        e = self.build([False, False], [])
+        self.assertEqual(e["control"], {"warm": 0, "total": 2})
 
 
 if __name__ == "__main__":

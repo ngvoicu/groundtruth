@@ -174,8 +174,9 @@ def build_cache(manifest):
         }
         # From 14 November 2026 every evaluation starts the same way: a control (the prompt sent again at once), then
         # 2.5 minutes as its first age. A run that continues another one carries on from where that one stopped. A run
-        # whose control missed has no ages by the method (no observable cache: it ends at the control); it is a result
-        # and is published as such, as cpa-8.0.53/D6 and O1 were before that date.
+        # whose control missed has no ages by the method (it ends at the control), as cpa-8.0.53/D6 and O1 before that
+        # date. The rule reads the run's own control, never a chain's: only a run whose every control missed may have no
+        # ages. A mixed control (some hit) showed the cache, so the run must go on to its ages like one whose control hit.
         control_missed = bool(data["control"]) and not any(data["control"]) and not data["checks"]
         if entry["date"] >= LADDER_SINCE and not run.get("continues") and not control_missed:
             first = min(data["checks"]) if data["checks"] else None
@@ -187,15 +188,18 @@ def build_cache(manifest):
                 entry[key] = run[key]
         entry["_started"] = data["started"]
         entry["_checks"] = data["checks"]
+        entry["_control"] = list(data["control"])
         entries.append(entry)
 
     # "continues": a run that adds checks to an earlier one (older ages, or more samples of an age; same route,
     # client, model and options). Its `checks` and its three summary numbers then cover the earlier run too, and the
     # runs that one continues, so the entry stays consistent in itself for a reader that doesn't know the field (a
-    # run with only cold, old ages would otherwise read as "never cached").
+    # run with only cold, old ages would otherwise read as "never cached"). Its `control` is likewise every control of
+    # the chain, each run's own counted once (warm and total summed; a missed one stays a miss beside one that hit).
     by_id = {e["id"]: e for e in entries}
     for e in sorted(entries, key=lambda e: e["_started"]):
         e["_merged"] = e["_checks"]
+        e["_merged_control"] = e["_control"]
         if "continues" not in e:
             continue
         base = by_id.get(e["continues"])
@@ -206,6 +210,8 @@ def build_cache(manifest):
         for age, v in e["_checks"].items():
             merged.setdefault(age, []).extend(v)
         e["_merged"] = merged
+        e["_merged_control"] = base["_merged_control"] + e["_control"]
+        e["control"] = {"warm": sum(e["_merged_control"]), "total": len(e["_merged_control"])}
         e["checks"] = [{"age": age_label(age), "age_s": age, "warm": sum(v), "total": len(v)} for age, v in sorted(merged.items())]
         e.update(summarize(merged))
 
@@ -218,7 +224,7 @@ def build_cache(manifest):
     for e in entries:
         key = (e["route"], e["client"], e["model"], json.dumps(e["options"], sort_keys=True))
         e["latest"] = newest[key] is e
-        del e["_started"], e["_checks"], e["_merged"]
+        del e["_started"], e["_checks"], e["_merged"], e["_control"], e["_merged_control"]
     entries.sort(key=lambda e: (e["route"], e["model"], e["client"], e["date"], e["id"]))
     return entries
 

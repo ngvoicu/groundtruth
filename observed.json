@@ -1883,8 +1883,8 @@
    "date": "2026-11-17",
    "source": "results/logins-long-2026-11-17/CL3-2026-11-17T16-30-03.partial.json",
    "control": {
-    "warm": 1,
-    "total": 1
+    "warm": 2,
+    "total": 2
    },
    "checks": [
     {
@@ -2143,8 +2143,8 @@
    "date": "2026-11-17",
    "source": "results/logins-long-2026-11-17/CL4-2026-11-17T16-31-23.json",
    "control": {
-    "warm": 0,
-    "total": 1
+    "warm": 1,
+    "total": 2
    },
    "checks": [
     {
@@ -2610,8 +2610,8 @@
    "date": "2026-11-17",
    "source": "results/logins-long-2026-11-17/CL1-2026-11-17T16-27-48.partial.json",
    "control": {
-    "warm": 1,
-    "total": 1
+    "warm": 2,
+    "total": 2
    },
    "checks": [
     {
@@ -3023,8 +3023,8 @@
    "date": "2026-11-17",
    "source": "results/logins-long-2026-11-17/CL2-2026-11-17T16-28-58.json",
    "control": {
-    "warm": 1,
-    "total": 1
+    "warm": 2,
+    "total": 2
    },
    "checks": [
     {
@@ -5712,8 +5712,8 @@
    "date": "2026-11-17",
    "source": "results/logins-long-2026-11-17/ML1-2026-11-17T16-31-20.partial.json",
    "control": {
-    "warm": 1,
-    "total": 1
+    "warm": 2,
+    "total": 2
    },
    "checks": [
     {
@@ -5939,8 +5939,8 @@
    "date": "2026-11-10",
    "source": "results/meta-24h-2026-11-10/M1.jsonl",
    "control": {
-    "warm": 1,
-    "total": 1
+    "warm": 2,
+    "total": 2
    },
    "checks": [
     {
@@ -6503,8 +6503,8 @@
    "date": "2026-11-17",
    "source": "results/logins-long-2026-11-17/ML3-2026-11-17T16-31-45.partial.json",
    "control": {
-    "warm": 1,
-    "total": 1
+    "warm": 2,
+    "total": 2
    },
    "checks": [
     {
@@ -8346,8 +8346,8 @@
    "date": "2026-11-12",
    "source": "results/openrouter-flash-2026-11-12/F5-2026-11-12T19-59-40.json",
    "control": {
-    "warm": 1,
-    "total": 1
+    "warm": 2,
+    "total": 2
    },
    "checks": [
     {
@@ -8419,8 +8419,8 @@
    "date": "2026-11-12",
    "source": "results/openrouter-flash-2026-11-12/F6-2026-11-12T20-55-04.json",
    "control": {
-    "warm": 1,
-    "total": 1
+    "warm": 3,
+    "total": 3
    },
    "checks": [
     {
@@ -10015,8 +10015,8 @@
    "date": "2026-11-12",
    "source": "results/openrouter-flash-2026-11-12/F4-2026-11-12T19-59-30.json",
    "control": {
-    "warm": 1,
-    "total": 1
+    "warm": 2,
+    "total": 2
    },
    "checks": [
     {
