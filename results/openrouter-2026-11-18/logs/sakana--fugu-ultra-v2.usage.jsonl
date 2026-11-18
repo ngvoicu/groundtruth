@@ -1,0 +1,1 @@
+{"at":"2026-11-18T11:44:36.313Z","label":"sakana--fugu-ultra-v2","model":"sakana/fugu-ultra-v2","sample":"groundtruth-dwfhcsyu-control","status":403,"error":{"code":403,"message":"sakana/fugu-ultra-v2 is not available in your region: Sakana AI blocks requests originating from your location."}}

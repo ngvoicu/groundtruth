@@ -1,15 +1,16 @@
 {
- "comment": "Entries for observed/manifest.json from results/openrouter-2026-11-18 (branch campaign/openrouter): add runs to runs and excluded to excluded. Finished runs only; not applied here; a later task assembles the manifest.",
+ "comment": "Entries for observed/manifest.json from results/openrouter-2026-11-18 (branch campaign/openrouter): add runs to runs, excluded to excluded and limits to limits. Finished runs only; not applied here; a later task assembles the manifest.",
  "runs": [
   {
-   "id": "openrouter-2026-11-18/google--gemini-4-hydrogen",
-   "file": "results/openrouter-2026-11-18/google--gemini-4-hydrogen-2026-11-18T08-42-30.json",
+   "id": "openrouter-2026-11-18/openai--gpt-6.2-sol",
+   "file": "results/openrouter-2026-11-18/openai--gpt-6.2-sol-2026-11-18T08-40-45.json",
    "route": "openrouter",
    "client": "direct",
-   "model": "google/gemini-4-hydrogen",
-   "models_dev": "openrouter/google/gemini-4-hydrogen",
-   "base_model": "google/gemini-4-hydrogen",
-   "options": {}
+   "model": "openai/gpt-6.2-sol",
+   "models_dev": "openrouter/openai/gpt-6.2-sol",
+   "base_model": "openai/gpt-6.2-sol",
+   "options": {},
+   "note": "OpenRouter's default route: 4 check(s) were answered by another upstream than the one their sample was primed on (15m-r3: primed on Amazon Bedrock, answered by OpenAI: cold (0/2406 cached); 15m-r2: primed on Amazon Bedrock, answered by OpenAI: cold (0/2396 cached); 20m-r2: primed on Amazon Bedrock, answered by OpenAI: cold (0/2405 cached); 20m-r3: primed on Amazon Bedrock, answered by OpenAI: cold (0/2356 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
   },
   {
    "id": "openrouter-2026-11-18/qwen--qwen4-max",
@@ -20,6 +21,17 @@
    "models_dev": "openrouter/qwen/qwen4-max",
    "base_model": "alibaba/qwen4-max",
    "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/meta--muse-ember",
+   "file": "results/openrouter-2026-11-18/meta--muse-ember-2026-11-18T08-43-15.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "meta/muse-ember",
+   "models_dev": "openrouter/meta/muse-ember",
+   "base_model": null,
+   "options": {},
+   "note": "OpenRouter's default route: 1 check(s) were answered by another upstream than the one their sample was primed on (2h-r3: primed on Google, answered by Meta: cold (0/2632 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
   },
   {
    "id": "openrouter-2026-11-18/anthropic--claude-fable-5.2",
@@ -47,17 +59,6 @@
    "options": {}
   },
   {
-   "id": "openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free",
-   "file": "results/openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free-2026-11-18T09-29-46.json",
-   "route": "openrouter",
-   "client": "direct",
-   "model": "nvidia/nemotron-3.5-super-vl:free",
-   "models_dev": "openrouter/nvidia/nemotron-3.5-super-vl:free",
-   "base_model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
-   "options": {},
-   "note": "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute)"
-  },
-  {
    "id": "openrouter-2026-11-18/particle-ai--particle-1-free",
    "file": "results/openrouter-2026-11-18/particle-ai--particle-1-free-2026-11-18T09-33-29.json",
    "route": "openrouter",
@@ -67,6 +68,160 @@
    "base_model": null,
    "options": {},
    "note": "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute)"
+  },
+  {
+   "id": "openrouter-2026-11-18/recursive--flint-v1.0-free",
+   "file": "results/openrouter-2026-11-18/recursive--flint-v1.0-free-2026-11-18T09-44-48.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "recursive/flint-v1.0:free",
+   "models_dev": "openrouter/recursive/flint-v1.0:free",
+   "base_model": null,
+   "options": {},
+   "note": "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute)"
+  },
+  {
+   "id": "openrouter-2026-11-18/google--gemini-4-carbon-8k",
+   "file": "results/openrouter-2026-11-18/google--gemini-4-carbon-8k-2026-11-18T11-07-48.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "google/gemini-4-carbon",
+   "models_dev": "openrouter/google/gemini-4-carbon",
+   "base_model": "google/gemini-4-carbon",
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "note": "the run ended after its 5m checks, at the next check, on an upstream's answer (HTTP 504 \"The operation was aborted\", after a 429 of Google AI Studio (\"google/gemini-4-carbon is temporarily rate-limited upstream. Please retry shortly, or add \u2026\")), which the probe's --stop-on-refusal read as a rate refusal and did not retry; the checks answered before it stand, later ages untested; OpenRouter's default route: 4 check(s) were answered by another upstream than the one their sample was primed on (5m-r1: primed on Google, answered by Google AI Studio: cold (0/7501 cached); 5m-r3: primed on Google, answered by Google AI Studio: cold (0/7548 cached); 2.5m-r2: primed on Google, answered by Google AI Studio: cold (0/7539 cached); 2.5m-r3~2: primed on Google, answered by Google AI Studio: cold (0/7534 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream; the same request with a ~2,500-token prompt (openrouter-2026-11-18/google--gemini-4-carbon) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
+  },
+  {
+   "id": "openrouter-2026-11-18/google--gemini-4-hydrogen-8k",
+   "file": "results/openrouter-2026-11-18/google--gemini-4-hydrogen-8k-2026-11-18T11-14-47.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "google/gemini-4-hydrogen",
+   "models_dev": "openrouter/google/gemini-4-hydrogen",
+   "base_model": "google/gemini-4-hydrogen",
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/google--gemini-4-hydrogen) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
+  },
+  {
+   "id": "openrouter-2026-11-18/kt--midm-k-3.0-pro-8k",
+   "file": "results/openrouter-2026-11-18/kt--midm-k-3.0-pro-8k-2026-11-18T11-15-02.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "kt/midm-k-3.0-pro",
+   "models_dev": "openrouter/kt/midm-k-3.0-pro",
+   "base_model": null,
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/kt--midm-k-3.0-pro) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
+  },
+  {
+   "id": "openrouter-2026-11-18/perceptron--perceptron-mk1.5-8k",
+   "file": "results/openrouter-2026-11-18/perceptron--perceptron-mk1.5-8k-2026-11-18T11-15-17.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "perceptron/perceptron-mk1.5",
+   "models_dev": "openrouter/perceptron/perceptron-mk1.5",
+   "base_model": null,
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "note": "no cache read observed with about 2,500- and 8,000-token prompts (this run and openrouter-2026-11-18/perceptron--perceptron-mk1.5: neither control read a cached token)"
+  },
+  {
+   "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b-8k",
+   "file": "results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b-8k-2026-11-18T11-19-28.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "prism-ml/ternary-bonsai-2-9b",
+   "models_dev": "openrouter/prism-ml/ternary-bonsai-2-9b",
+   "base_model": null,
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
+  },
+  {
+   "id": "openrouter-2026-11-18/liquid--lfm-3-1.7b-8k",
+   "file": "results/openrouter-2026-11-18/liquid--lfm-3-1.7b-8k-2026-11-18T11-19-43.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "liquid/lfm-3-1.7b",
+   "models_dev": "openrouter/liquid/lfm-3-1.7b",
+   "base_model": null,
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/liquid--lfm-3-1.7b) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
+  },
+  {
+   "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b-8k",
+   "file": "results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b-8k-2026-11-18T11-19-58.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "prism-ml/ternary-bonsai-2-27b",
+   "models_dev": "openrouter/prism-ml/ternary-bonsai-2-27b",
+   "base_model": null,
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
+  },
+  {
+   "id": "openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b-8k",
+   "file": "results/openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b-8k-2026-11-18T11-27-45.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "liquid/lfm-2.5-24b-a2b",
+   "models_dev": "openrouter/liquid/lfm-2.5-24b-a2b",
+   "base_model": null,
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
+  },
+  {
+   "id": "openrouter-2026-11-18/scaledown--summarize-8k",
+   "file": "results/openrouter-2026-11-18/scaledown--summarize-8k-2026-11-18T11-28-00.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "scaledown/summarize",
+   "models_dev": "openrouter/scaledown/summarize",
+   "base_model": null,
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "note": "no cache read observed with about 2,500- and 8,000-token prompts (this run and openrouter-2026-11-18/scaledown--summarize: neither control read a cached token)"
+  },
+  {
+   "id": "openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free-8k",
+   "file": "results/openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free-8k-2026-11-18T11-28-15.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "nvidia/nemotron-3.5-super-vl:free",
+   "models_dev": "openrouter/nvidia/nemotron-3.5-super-vl:free",
+   "base_model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "note": "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute); the same request with a ~2,500-token prompt (openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
+  },
+  {
+   "id": "openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest-8k",
+   "file": "results/openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest-8k-2026-11-18T11-52-05.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "~deepseek/deepseek-flash-latest",
+   "models_dev": "openrouter/~deepseek/deepseek-flash-latest",
+   "base_model": null,
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "note": "OpenRouter's default route: 2 check(s) were answered by another upstream than the one their sample was primed on (75m-r1: primed on InferenceNet, answered by Wafer: cold (0/7950 cached); 90m-r3: primed on InferenceNet, answered by Morph: cold (0/7962 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream; the same request with a ~2,500-token prompt (openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement"
   },
   {
    "id": "openrouter-2026-11-18/nex-agi--nex-n2.5-mini",
@@ -89,6 +244,17 @@
    "options": {}
   },
   {
+   "id": "openrouter-2026-11-18/deepseek--deepseek-v4.1-flash-1017",
+   "file": "results/openrouter-2026-11-18/deepseek--deepseek-v4.1-flash-1017-2026-11-18T08-44-45.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "deepseek/deepseek-v4.1-flash-1017",
+   "models_dev": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+   "base_model": "deepseek/deepseek-v4.1-flash-1017",
+   "options": {},
+   "note": "OpenRouter's default route: 1 check(s) were answered by another upstream than the one their sample was primed on (20m-r2: primed on PrimeIntellect, answered by Morph: cold (0/2528 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
+  },
+  {
    "id": "openrouter-2026-11-18/scaledown--summarize",
    "file": "results/openrouter-2026-11-18/scaledown--summarize-2026-11-18T08-45-16.json",
    "route": "openrouter",
@@ -96,7 +262,8 @@
    "model": "scaledown/summarize",
    "models_dev": "openrouter/scaledown/summarize",
    "base_model": null,
-   "options": {}
+   "options": {},
+   "note": "no cache read observed with about 2,500- and 8,000-token prompts (this run and openrouter-2026-11-18/scaledown--summarize-8k: neither control read a cached token)"
   },
   {
    "id": "openrouter-2026-11-18/inclusionai--ling-3.1-flash",
@@ -116,16 +283,6 @@
    "model": "upstage/solar-mini4",
    "models_dev": "openrouter/upstage/solar-mini4",
    "base_model": "upstage/solar-mini4",
-   "options": {}
-  },
-  {
-   "id": "openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b",
-   "file": "results/openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b-2026-11-18T08-50-40.json",
-   "route": "openrouter",
-   "client": "direct",
-   "model": "liquid/lfm-2.5-24b-a2b",
-   "models_dev": "openrouter/liquid/lfm-2.5-24b-a2b",
-   "base_model": null,
    "options": {}
   },
   {
@@ -169,34 +326,35 @@
    "options": {}
   },
   {
-   "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b",
-   "file": "results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b-2026-11-18T09-07-59.json",
+   "id": "openrouter-2026-11-18/ricursiveai--ripple-65b-preview",
+   "file": "results/openrouter-2026-11-18/ricursiveai--ripple-65b-preview-2026-11-18T09-12-46.json",
    "route": "openrouter",
    "client": "direct",
-   "model": "prism-ml/ternary-bonsai-2-27b",
-   "models_dev": "openrouter/prism-ml/ternary-bonsai-2-27b",
+   "model": "ricursiveai/ripple-65b-preview",
+   "models_dev": "openrouter/ricursiveai/ripple-65b-preview",
    "base_model": null,
    "options": {}
   },
   {
-   "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b",
-   "file": "results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b-2026-11-18T09-08-14.json",
+   "id": "openrouter-2026-11-18/nex-agi--nex-n2.6",
+   "file": "results/openrouter-2026-11-18/nex-agi--nex-n2.6-2026-11-18T09-13-01.json",
    "route": "openrouter",
    "client": "direct",
-   "model": "prism-ml/ternary-bonsai-2-9b",
-   "models_dev": "openrouter/prism-ml/ternary-bonsai-2-9b",
+   "model": "nex-agi/nex-n2.6",
+   "models_dev": "openrouter/nex-agi/nex-n2.6",
    "base_model": null,
    "options": {}
   },
   {
-   "id": "openrouter-2026-11-18/liquid--lfm-3-1.7b",
-   "file": "results/openrouter-2026-11-18/liquid--lfm-3-1.7b-2026-11-18T09-08-29.json",
+   "id": "openrouter-2026-11-18/xiaomi--mimo-v2.6-flash",
+   "file": "results/openrouter-2026-11-18/xiaomi--mimo-v2.6-flash-2026-11-18T09-13-16.json",
    "route": "openrouter",
    "client": "direct",
-   "model": "liquid/lfm-3-1.7b",
-   "models_dev": "openrouter/liquid/lfm-3-1.7b",
-   "base_model": null,
-   "options": {}
+   "model": "xiaomi/mimo-v2.6-flash",
+   "models_dev": "openrouter/xiaomi/mimo-v2.6-flash",
+   "base_model": "xiaomi/mimo-v2.6-flash",
+   "options": {},
+   "note": "OpenRouter's default route: 4 check(s) were answered by another upstream than the one their sample was primed on (1h-r3: primed on Xiaomi, answered by Cohere: cold (0/2784 cached); 50m-r1: primed on Xiaomi, answered by Cohere: cold (0/2791 cached); 75m-r2: primed on Xiaomi, answered by Cohere: cold (0/2763 cached); 2h-r1: primed on Xiaomi, answered by Cohere: cold (0/2819 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
   },
   {
    "id": "openrouter-2026-11-18/qwen--qwen3.8-flash",
@@ -219,6 +377,17 @@
    "options": {}
   },
   {
+   "id": "openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl",
+   "file": "results/openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-2026-11-18T09-26-00.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "nvidia/nemotron-3.5-super-vl",
+   "models_dev": "openrouter/nvidia/nemotron-3.5-super-vl",
+   "base_model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+   "options": {},
+   "note": "OpenRouter's default route: 4 check(s) were answered by another upstream than the one their sample was primed on (30m-r1: primed on Venice, answered by CoreWeave: cold (0/2872 cached); 1h-r2: primed on DeepInfra, answered by CoreWeave: cold (0/2835 cached); 90m-r1: primed on DeepInfra, answered by CoreWeave: cold (0/2878 cached); 75m-r3: primed on DeepInfra, answered by Darkbloom: cold (0/2849 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
+  },
+  {
    "id": "openrouter-2026-11-18/minimax--minimax-m3.1-flash",
    "file": "results/openrouter-2026-11-18/minimax--minimax-m3.1-flash-2026-11-18T09-30-01.json",
    "route": "openrouter",
@@ -236,17 +405,19 @@
    "model": "perceptron/perceptron-mk1.5",
    "models_dev": "openrouter/perceptron/perceptron-mk1.5",
    "base_model": null,
-   "options": {}
+   "options": {},
+   "note": "no cache read observed with about 2,500- and 8,000-token prompts (this run and openrouter-2026-11-18/perceptron--perceptron-mk1.5-8k: neither control read a cached token)"
   },
   {
-   "id": "openrouter-2026-11-18/kt--midm-k-3.0-pro",
-   "file": "results/openrouter-2026-11-18/kt--midm-k-3.0-pro-2026-11-18T09-37-28.json",
+   "id": "openrouter-2026-11-18/reflection--beam-1.0-501b-a23b",
+   "file": "results/openrouter-2026-11-18/reflection--beam-1.0-501b-a23b-2026-11-18T09-41-03.json",
    "route": "openrouter",
    "client": "direct",
-   "model": "kt/midm-k-3.0-pro",
-   "models_dev": "openrouter/kt/midm-k-3.0-pro",
-   "base_model": null,
-   "options": {}
+   "model": "reflection/beam-1.0-501b-a23b",
+   "models_dev": "openrouter/reflection/beam-1.0-501b-a23b",
+   "base_model": "reflection/beam-1.0-501b-a23b",
+   "options": {},
+   "note": "OpenRouter's default route: 4 check(s) were answered by another upstream than the one their sample was primed on (75m-r1: primed on BaseTen, answered by DigitalOcean: cold (32/2851 cached); 90m-r2: primed on BaseTen, answered by Nebius: cold (0/2824 cached); 2h-r3: primed on BaseTen, answered by Together: cold (16/2839 cached); 2h-r2: primed on CoreWeave, answered by Together: cold (16/2840 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
   },
   {
    "id": "openrouter-2026-11-18/thinkingmachines--inkling-2-small",
@@ -256,6 +427,16 @@
    "model": "thinkingmachines/inkling-2-small",
    "models_dev": "openrouter/thinkingmachines/inkling-2-small",
    "base_model": "thinkingmachines/inkling-2-small",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/motif-technologies--motif-3",
+   "file": "results/openrouter-2026-11-18/motif-technologies--motif-3-2026-11-18T09-48-31.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "motif-technologies/motif-3",
+   "models_dev": "openrouter/motif-technologies/motif-3",
+   "base_model": null,
    "options": {}
   },
   {
@@ -279,6 +460,56 @@
    "options": {}
   },
   {
+   "id": "openrouter-2026-11-18/z-ai--glm-5.3-flashx",
+   "file": "results/openrouter-2026-11-18/z-ai--glm-5.3-flashx-2026-11-18T10-05-42.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "z-ai/glm-5.3-flashx",
+   "models_dev": "openrouter/z-ai/glm-5.3-flashx",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/z-ai--glm-5.3-flashx-legal",
+   "file": "results/openrouter-2026-11-18/z-ai--glm-5.3-flashx-legal-2026-11-18T10-09-48.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "z-ai/glm-5.3-flashx-legal",
+   "models_dev": "openrouter/z-ai/glm-5.3-flashx-legal",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/tencent--hy4",
+   "file": "results/openrouter-2026-11-18/tencent--hy4-2026-11-18T10-13-11.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "tencent/hy4",
+   "models_dev": "openrouter/tencent/hy4",
+   "base_model": "tencent/hy4",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/xiaomi--mimo-v2.6-pro",
+   "file": "results/openrouter-2026-11-18/xiaomi--mimo-v2.6-pro-2026-11-18T10-23-19.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "xiaomi/mimo-v2.6-pro",
+   "models_dev": "openrouter/xiaomi/mimo-v2.6-pro",
+   "base_model": "xiaomi/mimo-v2.6-pro",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/deepseek--deepseek-v4-flash-vision-exp",
+   "file": "results/openrouter-2026-11-18/deepseek--deepseek-v4-flash-vision-exp-2026-11-18T10-23-34.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "deepseek/deepseek-v4-flash-vision-exp",
+   "models_dev": "openrouter/deepseek/deepseek-v4-flash-vision-exp",
+   "base_model": "deepseek/deepseek-v4-flash-vision-exp",
+   "options": {}
+  },
+  {
    "id": "openrouter-2026-11-18/elorian--glimpse",
    "file": "results/openrouter-2026-11-18/elorian--glimpse-2026-11-18T10-23-49.json",
    "route": "openrouter",
@@ -287,20 +518,326 @@
    "models_dev": "openrouter/elorian/glimpse",
    "base_model": null,
    "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/aion-labs--aion-3.5-mini",
+   "file": "results/openrouter-2026-11-18/aion-labs--aion-3.5-mini-2026-11-18T10-24-04.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "aion-labs/aion-3.5-mini",
+   "models_dev": "openrouter/aion-labs/aion-3.5-mini",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/unbiased--pareto-26.10",
+   "file": "results/openrouter-2026-11-18/unbiased--pareto-26.10-2026-11-18T10-24-19.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "unbiased/pareto-26.10",
+   "models_dev": "openrouter/unbiased/pareto-26.10",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/unbiased--pareto-26.10-preview",
+   "file": "results/openrouter-2026-11-18/unbiased--pareto-26.10-preview-2026-11-18T10-24-34.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "unbiased/pareto-26.10-preview",
+   "models_dev": "openrouter/unbiased/pareto-26.10-preview",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/tencent--hy4-preview",
+   "file": "results/openrouter-2026-11-18/tencent--hy4-preview-2026-11-18T10-24-49.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "tencent/hy4-preview",
+   "models_dev": "openrouter/tencent/hy4-preview",
+   "base_model": "tencent/hy4-preview",
+   "options": {},
+   "note": "OpenRouter's default route: 5 check(s) were answered by another upstream than the one their sample was primed on (75m-r3: primed on SiliconFlow, answered by Venice: cold (0/2643 cached); 90m-r2: primed on SiliconFlow, answered by Venice: cold (0/2690 cached); 90m-r1: primed on SiliconFlow, answered by Venice: cold (0/2670 cached); 2h-r1: primed on SiliconFlow, answered by Venice: cold (0/2709 cached); 2h-r3: primed on GMICloud, answered by Venice: cold (0/2681 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
+  },
+  {
+   "id": "openrouter-2026-11-18/stepfun--step-5-preview",
+   "file": "results/openrouter-2026-11-18/stepfun--step-5-preview-2026-11-18T10-25-05.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "stepfun/step-5-preview",
+   "models_dev": "openrouter/stepfun/step-5-preview",
+   "base_model": "stepfun/step-5-preview",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/baidu--ernie-light-dt-1.0-intl",
+   "file": "results/openrouter-2026-11-18/baidu--ernie-light-dt-1.0-intl-2026-11-18T10-34-39.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "baidu/ernie-light-dt-1.0-intl",
+   "models_dev": "openrouter/baidu/ernie-light-dt-1.0-intl",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/meta--muse-spark-open",
+   "file": "results/openrouter-2026-11-18/meta--muse-spark-open-2026-11-18T10-44-49.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "meta/muse-spark-open",
+   "models_dev": "openrouter/meta/muse-spark-open",
+   "base_model": "meta/muse-spark-open",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/z-ai--glm-5.3-prime",
+   "file": "results/openrouter-2026-11-18/z-ai--glm-5.3-prime-2026-11-18T10-48-12.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "z-ai/glm-5.3-prime",
+   "models_dev": "openrouter/z-ai/glm-5.3-prime",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/qwen--qwen3.8-max-0902",
+   "file": "results/openrouter-2026-11-18/qwen--qwen3.8-max-0902-2026-11-18T10-51-31.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "qwen/qwen3.8-max-0902",
+   "models_dev": "openrouter/qwen/qwen3.8-max-0902",
+   "base_model": "alibaba/qwen3.8-max-0902",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/anthropic--claude-sonnet-5.5",
+   "file": "results/openrouter-2026-11-18/anthropic--claude-sonnet-5.5-2026-11-18T11-28-46.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "anthropic/claude-sonnet-5.5",
+   "models_dev": "openrouter/anthropic/claude-sonnet-5.5",
+   "base_model": "anthropic/claude-sonnet-5-5",
+   "options": {
+    "cache_control": {
+     "type": "ephemeral"
+    },
+    "session_id": true
+   }
+  },
+  {
+   "id": "openrouter-2026-11-18/openai--gpt-6-sol",
+   "file": "results/openrouter-2026-11-18/openai--gpt-6-sol-2026-11-18T11-32-30.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "openai/gpt-6-sol",
+   "models_dev": "openrouter/openai/gpt-6-sol",
+   "base_model": "openai/gpt-6-sol",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/unbiased--pareto-26.9",
+   "file": "results/openrouter-2026-11-18/unbiased--pareto-26.9-2026-11-18T11-32-45.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "unbiased/pareto-26.9",
+   "models_dev": "openrouter/unbiased/pareto-26.9",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/aion-labs--aion-3.5",
+   "file": "results/openrouter-2026-11-18/aion-labs--aion-3.5-2026-11-18T11-40-25.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "aion-labs/aion-3.5",
+   "models_dev": "openrouter/aion-labs/aion-3.5",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/fireworks--ember-1",
+   "file": "results/openrouter-2026-11-18/fireworks--ember-1-2026-11-18T11-40-40.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "fireworks/ember-1",
+   "models_dev": "openrouter/fireworks/ember-1",
+   "base_model": "fireworks/ember-1",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/qwen--qwen3.8-max-prime",
+   "file": "results/openrouter-2026-11-18/qwen--qwen3.8-max-prime-2026-11-18T11-40-55.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "qwen/qwen3.8-max-prime",
+   "models_dev": "openrouter/qwen/qwen3.8-max-prime",
+   "base_model": "alibaba/qwen3.8-max-prime",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/xiaomi--mimo-v2.6-pro-ultraspeed",
+   "file": "results/openrouter-2026-11-18/xiaomi--mimo-v2.6-pro-ultraspeed-2026-11-18T11-44-20.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "xiaomi/mimo-v2.6-pro-ultraspeed",
+   "models_dev": "openrouter/xiaomi/mimo-v2.6-pro-ultraspeed",
+   "base_model": "xiaomi/mimo-v2.6-pro-ultraspeed",
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/alias-z-ai--glm-flash-latest",
+   "file": "results/openrouter-2026-11-18/alias-z-ai--glm-flash-latest-2026-11-18T11-48-38.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "~z-ai/glm-flash-latest",
+   "models_dev": "openrouter/~z-ai/glm-flash-latest",
+   "base_model": null,
+   "options": {},
+   "note": "OpenRouter's default route: 3 check(s) were answered by another upstream than the one their sample was primed on (20m-r2: primed on Reka, answered by Wafer: cold (0/2661 cached); 1h-r3: primed on Together, answered by Relace: cold (0/2677 cached); 75m-r3: primed on Relace, answered by Venice: cold (0/2680 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
+  },
+  {
+   "id": "openrouter-2026-11-18/alias-z-ai--glm-latest",
+   "file": "results/openrouter-2026-11-18/alias-z-ai--glm-latest-2026-11-18T11-52-20.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "~z-ai/glm-latest",
+   "models_dev": "openrouter/~z-ai/glm-latest",
+   "base_model": null,
+   "options": {},
+   "note": "OpenRouter's default route: 4 check(s) were answered by another upstream than the one their sample was primed on (20m-r1: primed on InferenceNet, answered by Morph: cold (0/2685 cached); 15m-r3: primed on Wafer, answered by Decart: cold (0/2625 cached); 15m-r2: primed on InferenceNet, answered by Fireworks: cold (8/2661 cached); 20m-r3: primed on InferenceNet, answered by DeepInfra: cold (0/2644 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
+  },
+  {
+   "id": "openrouter-2026-11-18/alias-deepseek--deepseek-pro-latest",
+   "file": "results/openrouter-2026-11-18/alias-deepseek--deepseek-pro-latest-2026-11-18T11-56-40.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "~deepseek/deepseek-pro-latest",
+   "models_dev": "openrouter/~deepseek/deepseek-pro-latest",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/openai--gpt-6-luna-pro",
+   "file": "results/openrouter-2026-11-18/openai--gpt-6-luna-pro-2026-11-18T11-56-55.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "openai/gpt-6-luna-pro",
+   "models_dev": "openrouter/openai/gpt-6-luna-pro",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/alias-openai--gpt-luna-latest",
+   "file": "results/openrouter-2026-11-18/alias-openai--gpt-luna-latest-2026-11-18T12-04-13.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "~openai/gpt-luna-latest",
+   "models_dev": "openrouter/~openai/gpt-luna-latest",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/alias-unbiased--pareto-latest",
+   "file": "results/openrouter-2026-11-18/alias-unbiased--pareto-latest-2026-11-18T12-10-46.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "~unbiased/pareto-latest",
+   "models_dev": "openrouter/~unbiased/pareto-latest",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/openai--gpt-6.1-terra-pro",
+   "file": "results/openrouter-2026-11-18/openai--gpt-6.1-terra-pro-2026-11-18T12-14-52.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "openai/gpt-6.1-terra-pro",
+   "models_dev": "openrouter/openai/gpt-6.1-terra-pro",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/alias-openai--gpt-terra-latest",
+   "file": "results/openrouter-2026-11-18/alias-openai--gpt-terra-latest-2026-11-18T12-15-07.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "~openai/gpt-terra-latest",
+   "models_dev": "openrouter/~openai/gpt-terra-latest",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/openai--gpt-6-sol-pro",
+   "file": "results/openrouter-2026-11-18/openai--gpt-6-sol-pro-2026-11-18T12-25-17.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "openai/gpt-6-sol-pro",
+   "models_dev": "openrouter/openai/gpt-6-sol-pro",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/openai--gpt-6.1-sol-pro",
+   "file": "results/openrouter-2026-11-18/openai--gpt-6.1-sol-pro-2026-11-18T12-25-33.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "openai/gpt-6.1-sol-pro",
+   "models_dev": "openrouter/openai/gpt-6.1-sol-pro",
+   "base_model": null,
+   "options": {}
+  },
+  {
+   "id": "openrouter-2026-11-18/openai--gpt-6.2-sol-pro",
+   "file": "results/openrouter-2026-11-18/openai--gpt-6.2-sol-pro-2026-11-18T12-47-54.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "openai/gpt-6.2-sol-pro",
+   "models_dev": "openrouter/openai/gpt-6.2-sol-pro",
+   "base_model": null,
+   "options": {},
+   "note": "OpenRouter's default route: 1 check(s) were answered by another upstream than the one their sample was primed on (15m-r2: primed on Azure, answered by OpenAI: cold (2401/9062 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
+  },
+  {
+   "id": "openrouter-2026-11-18/alias-openai--gpt-sol-latest",
+   "file": "results/openrouter-2026-11-18/alias-openai--gpt-sol-latest-2026-11-18T12-57-46.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "~openai/gpt-sol-latest",
+   "models_dev": "openrouter/~openai/gpt-sol-latest",
+   "base_model": null,
+   "options": {},
+   "note": "OpenRouter's default route: 2 check(s) were answered by another upstream than the one their sample was primed on (5m-r2: primed on Azure, answered by Amazon Bedrock: cold (0/2378 cached); 15m-r1: primed on Amazon Bedrock, answered by OpenAI: cold (0/2428 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
   }
  ],
  "excluded": [
+  {
+   "id": "openrouter-2026-11-18/google--gemini-4-carbon",
+   "reason": "the control's re-send was answered by another upstream than the one primed, the control missed and there is no timed check: no lifetime measured (control: primed on Google, answered by Google AI Studio (replies Google \u2192 Google \u2192 Google AI Studio): cold (0/2384 cached))"
+  },
+  {
+   "id": "openrouter-2026-11-18/openai--gpt-6.2-sol-pinned-openai",
+   "reason": "supplemental evidence, not a manifest run (the reviewer's ruling, m-10767): pinned to one upstream, options.provider = {\"order\": [\"openai\"], \"allow_fallbacks\": false}; no check crossed upstreams"
+  },
   {
    "id": "openrouter-2026-11-18/baidu--ernie-5.5-flash-preview-free",
    "reason": "failed: quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Rate limit exceeded: free-models-per-min. \",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"20\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1794991500000\"},\"limit_source\":\"openrouter_free_tier_per_minute\",\"remedy_hint\":\"S"
   },
   {
    "id": "openrouter-2026-11-18/inclusionai--ling-3.2-flash-free",
-   "reason": "failed: quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"inclusionai/ling-3.2-flash:free is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/"
+   "reason": "failed: quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"inclusionai/ling-3.2-flash:free is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/ (its answered checks begin at 5m, not 2.5 minutes, so the build's rule for an evaluation leaves it out)"
   },
   {
    "id": "openrouter-2026-11-18/liquid--lfm-3-1.7b-free",
    "reason": "failed: quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"liquid/lfm-3-1.7b:free is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/b"
+  },
+  {
+   "id": "openrouter-2026-11-18/thinkingmachines--inkling-2-small-free",
+   "reason": "failed: HTTP 403: {\"error\":{\"message\":\"This model is not available in your region.\",\"code\":403,\"metadata\":{\"routing_funnel\":[{\"step\":\"Initial Endpoints\",\"endpoint_count\":1}],\"failed_routing_step\":\"Gate Thinking Machines Endpoints with Geo Restrictions\"}}}"
+  },
+  {
+   "id": "openrouter-2026-11-18/baidu--ernie-5.5-flash-preview-free-paced",
+   "reason": "failed: quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"baidu/ernie-5.5-flash-preview:free is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspac"
   },
   {
    "id": "openrouter-2026-11-18/scaledown--extract",
@@ -313,6 +850,112 @@
   {
    "id": "openrouter-2026-11-18/meta--muse-spark-1.3-contributor",
    "reason": "failed: HTTP 404: {\"error\":{\"message\":\"0 endpoints out of 1 requested are available matching your guardrail restrictions and data policy. We removed them for the following reasons (an endpoint may have matched multiple reasons):\\nPaid model training violation (account settings): 1 endpoint excluded; configu"
+  },
+  {
+   "id": "openrouter-2026-11-18/sakana--fugu-max",
+   "reason": "failed: HTTP 403: {\"error\":{\"message\":\"sakana/fugu-max is not available in your region: Sakana AI blocks requests originating from your location.\",\"code\":403,\"metadata\":{\"raw\":\"sakana/fugu-max is not available in your region: Sakana AI blocks requests originating from your location.\",\"provider_name\":\"Sakana"
+  },
+  {
+   "id": "openrouter-2026-11-18/sakana--fugu-ultra-v2",
+   "reason": "failed: HTTP 403: {\"error\":{\"message\":\"sakana/fugu-ultra-v2 is not available in your region: Sakana AI blocks requests originating from your location.\",\"code\":403,\"metadata\":{\"raw\":\"sakana/fugu-ultra-v2 is not available in your region: Sakana AI blocks requests originating from your location.\",\"provider_nam"
+  },
+  {
+   "id": "openrouter-2026-11-18/google--gemini-4-hydrogen",
+   "reason": "no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/google--gemini-4-hydrogen-8k) shows the prompt was under the smallest cacheable size"
+  },
+  {
+   "id": "openrouter-2026-11-18/kt--midm-k-3.0-pro",
+   "reason": "no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/kt--midm-k-3.0-pro-8k) shows the prompt was under the smallest cacheable size"
+  },
+  {
+   "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b",
+   "reason": "no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b-8k) shows the prompt was under the smallest cacheable size"
+  },
+  {
+   "id": "openrouter-2026-11-18/liquid--lfm-3-1.7b",
+   "reason": "no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/liquid--lfm-3-1.7b-8k) shows the prompt was under the smallest cacheable size"
+  },
+  {
+   "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b",
+   "reason": "no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b-8k) shows the prompt was under the smallest cacheable size"
+  },
+  {
+   "id": "openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b",
+   "reason": "no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b-8k) shows the prompt was under the smallest cacheable size"
+  },
+  {
+   "id": "openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free",
+   "reason": "no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free-8k) shows the prompt was under the smallest cacheable size"
+  },
+  {
+   "id": "openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest",
+   "reason": "no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest-8k) shows the prompt was under the smallest cacheable size"
+  }
+ ],
+ "limits": [
+  {
+   "route": "openrouter",
+   "client": "direct",
+   "model": "xiaomi/mimo-v2.6-flash",
+   "models_dev": "openrouter/xiaomi/mimo-v2.6-flash",
+   "base_model": "xiaomi/mimo-v2.6-flash",
+   "context": 1050000,
+   "note": "OpenRouter's own refusal of a request of about 1.2 million tokens names the endpoint's window (\"maximum context length is 1050000 tokens\"); OpenRouter lists context_length 1,050,000 and top_provider.context_length 1,048,576. The refusal came from OpenRouter before any upstream; no large request was accepted (none was sent near a limit), so no accepted size; the output limit was not tested",
+   "file": "results/openrouter-2026-11-18/windows.jsonl",
+   "evidence": [
+    {
+     "row_model": "xiaomi/mimo-v2.6-flash",
+     "message_has": "maximum context length is 1050000 tokens"
+    }
+   ]
+  },
+  {
+   "route": "openrouter",
+   "client": "direct",
+   "model": "nvidia/nemotron-3.5-super-vl",
+   "models_dev": "openrouter/nvidia/nemotron-3.5-super-vl",
+   "base_model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+   "context": 1048576,
+   "note": "OpenRouter's own refusal of a request of about 1.2 million tokens names the endpoint's window (\"maximum context length is 1048576 tokens\"); OpenRouter lists context_length 1,048,576 and top_provider.context_length 262,144. The refusal came from OpenRouter before any upstream; no large request was accepted (none was sent near a limit), so no accepted size; the output limit was not tested",
+   "file": "results/openrouter-2026-11-18/windows.jsonl",
+   "evidence": [
+    {
+     "row_model": "nvidia/nemotron-3.5-super-vl",
+     "message_has": "maximum context length is 1048576 tokens"
+    }
+   ]
+  },
+  {
+   "route": "openrouter",
+   "client": "direct",
+   "model": "deepseek/deepseek-v4-flash-vision-exp",
+   "models_dev": "openrouter/deepseek/deepseek-v4-flash-vision-exp",
+   "base_model": "deepseek/deepseek-v4-flash-vision-exp",
+   "context": 1048576,
+   "note": "OpenRouter's own refusal of a request of about 1.2 million tokens names the endpoint's window (\"maximum context length is 1048576 tokens\"); OpenRouter lists context_length 1,048,576 and top_provider.context_length 1,048,575. The refusal came from OpenRouter before any upstream; no large request was accepted (none was sent near a limit), so no accepted size; the output limit was not tested",
+   "file": "results/openrouter-2026-11-18/windows.jsonl",
+   "evidence": [
+    {
+     "row_model": "deepseek/deepseek-v4-flash-vision-exp",
+     "message_has": "maximum context length is 1048576 tokens"
+    }
+   ]
+  },
+  {
+   "route": "openrouter",
+   "client": "direct",
+   "model": "xiaomi/mimo-v2.6-pro",
+   "models_dev": "openrouter/xiaomi/mimo-v2.6-pro",
+   "base_model": "xiaomi/mimo-v2.6-pro",
+   "context": 1050000,
+   "note": "OpenRouter's own refusal of a request of about 1.2 million tokens names the endpoint's window (\"maximum context length is 1050000 tokens\"); OpenRouter lists context_length 1,050,000 and top_provider.context_length 1,048,576. The refusal came from OpenRouter before any upstream; no large request was accepted (none was sent near a limit), so no accepted size; the output limit was not tested",
+   "file": "results/openrouter-2026-11-18/windows.jsonl",
+   "evidence": [
+    {
+     "row_model": "xiaomi/mimo-v2.6-pro",
+     "message_has": "maximum context length is 1050000 tokens"
+    }
+   ]
   }
  ]
 }

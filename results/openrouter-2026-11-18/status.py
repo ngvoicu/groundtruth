@@ -15,7 +15,8 @@ reading to offered.jsonl (offered or gone, the price), then starts a run when
   - spent (the higher of the ledger and the key's usage) + what the running runs may still cost + its own worst
     case + the window requests still owed fit in the $18 stop. A run that does not fit blocks the ones after it
     until room frees; when nothing runs and it still does not fit, it is left out (decisions.json).
---enforce stops (by its own pid only) the newest running run while the money committed is above the stop.
+--enforce stops (by its own pid only) the running runs, newest first, when the money spent comes within $0.75 of
+the stop (until 12:28 UTC it acted on the money committed, reservations included).
 """
 import glob
 import json
@@ -110,7 +111,7 @@ def state(r):
 def worst_now(r, used):
     """The run's worst case, from its own replies once it has some (the largest prompt and output seen)."""
     p = L.prices()[r["model"]]
-    prompt = max(plan["prompt_tokens"], used.get("prompt", 0))
+    prompt = max(r.get("prompt_tokens", plan["prompt_tokens"]), used.get("prompt", 0))
     out = max(plan["output_tokens"], used.get("output", 0))
     return (plan["requests"] * prompt * max(p["in"], p["write"]) + plan["requests"] * out * p["out"]) / 1e6
 
@@ -141,17 +142,59 @@ def report():
         used = led["per_run"].get(r["label"], {"usd": 0.0})
         s["usd"] = round(used["usd"], 4)
         if s["state"] == "running":
-            s["reserve"] = max(0.0, worst_now(r, used) - used["usd"])
+            # What it may still cost: its requests not yet sent (the plan's 87, 5 more for samples primed again, less
+            # those sent), each at its full worst price (from 12:50 UTC; before, its whole worst case less its spending).
+            left = max(0, plan["requests"] + 5 - used.get("requests", 0))
+            s["reserve"] = worst_now(r, used) * left / plan["requests"]
             reserved += s["reserve"]
         if r["window"] and r["model"] not in wd and s["state"] not in ("left out",):
             reserved += window_worst(r)
-    spent = max(led["total"], ku)
+    spent = max(led["total"], led["reported"], ku)  # OpenRouter's per-reply figure too (it runs above the ledger)
     return led, ku, kat, states, spent, reserved
 
 
 def offered_now():
     return {m["id"]: m for m in json.load(urllib.request.urlopen(
         urllib.request.Request("https://openrouter.ai/api/v1/models", headers={"User-Agent": "groundtruth"}), timeout=60))["data"]}
+
+
+def zero_controls():
+    """Finished first runs whose control read 0 cached tokens (no observable cache at the default ~2,500 tokens)."""
+    out = []
+    for r in runs:
+        if r.get("larger_prompt_of"):
+            continue
+        st = state(r)
+        if st["state"] == "finished" and st.get("status") == "no-observable-cache":
+            j = json.load(open(os.path.join(HERE, st["file"])))
+            if ((j.get("control") or {}).get("check") or {}).get("cachedTokens", 0) == 0:
+                out.append(r)
+    return out
+
+
+def add_larger_prompt_runs():
+    """The chief's decision (m-10759): every model whose control read 0 gets one more run of its own with a prefix of
+    about 8,000 tokens (as cpa-latest-2026-11-06/L1b), everything else as its first run; the dearest first, ahead of
+    the first runs not yet started."""
+    have = {r.get("larger_prompt_of") for r in runs}
+    new = [r for r in zero_controls() if r["label"] not in have]
+    if not new:
+        return []
+    new.sort(key=lambda r: -L.prices()[r["model"]]["in"])
+    first_free = next((i for i, r in enumerate(runs) if state(r)["state"] == "not started"), len(runs))
+    added = []
+    for r in new:
+        e = dict(r)
+        e.update(label=r["label"] + "-8k", larger_prompt_of=r["label"], window=False, prompt_tokens=9000,
+                 args=list(r["args"]) + ["--prefix-tokens", "8000"], options=dict(r["options"], prefix_tokens=8000))
+        added.append(e)
+    for e in added:
+        e["worst_usd"] = round(worst_now(e, {}), 4)
+    runs[first_free:first_free] = added
+    for i, r in enumerate(runs, 1):
+        r["n"] = i
+    json.dump(plan, open(os.path.join(HERE, "plan.json"), "w"), indent=1)
+    return [e["label"] for e in added]
 
 
 def main():
@@ -192,13 +235,17 @@ def main():
         print(f"  {s['label']:44} {s['state']:9} {s.get('status') or s.get('partial_status') or '':20} ${s['usd']:.4f}"
               f"{' reserve $%.3f' % s['reserve'] if 'reserve' in s else ''}{extra}{' REFUSAL ' + json.dumps(s['refusals'][0]) if s['refusals'] else ''}"
               f"{' ERROR ' + s['error'][:100] if s.get('error') else ''}")
-    if "--enforce" in sys.argv and spent + reserved > STOP:
+    # --enforce acts on money spent, not on reservations: a running run whose worst case grew (the -pro variants answer
+    # with ~8,900-token prompts, OpenRouter adding its own) is not stopped for that; the newest runs are stopped when
+    # what was spent comes within ENFORCE_MARGIN of the stop. Launches still need the whole worst case to fit.
+    ENFORCE_MARGIN = 0.75
+    if "--enforce" in sys.argv and spent > STOP - ENFORCE_MARGIN:
         running = sorted((s for s in states if s["state"] == "running"), key=lambda s: os.path.getmtime(os.path.join(HERE, "logs", s["label"] + ".pid")))
-        while running and spent + reserved > STOP:
+        while running:
             s = running.pop()
             os.kill(s["pid"], signal.SIGTERM)
             reserved -= s["reserve"]
-            dec["left_out"][s["label"]] = f"stopped by hand at {time.strftime('%H:%M:%SZ', time.gmtime())}: the money committed passed the stop"
+            dec["left_out"][s["label"]] = f"stopped at {time.strftime('%H:%M:%SZ', time.gmtime())}: the money spent came within ${ENFORCE_MARGIN} of the ${STOP:.0f} stop"
             save_dec()
             print("STOPPED", s["label"], s["pid"])
     if not launch:
@@ -206,6 +253,9 @@ def main():
     if dec["halt"]:
         print("HALT: a refusal is open; write a decision in decisions.json before launching")
         return
+    added = add_larger_prompt_runs()
+    if added:
+        print("added larger-prompt runs:", added)
     subprocess.run([sys.executable, os.path.join(HERE, "key_usage.py"), "status.py --launch pass"], check=True, capture_output=True)
     led, ku, kat, states, spent, reserved = report()
     committed = spent + reserved

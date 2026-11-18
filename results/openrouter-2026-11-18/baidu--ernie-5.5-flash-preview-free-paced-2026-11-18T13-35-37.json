@@ -1,0 +1,94 @@
+{
+  "probeVersion": "0.3.4",
+  "label": "baidu--ernie-5.5-flash-preview-free-paced",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "format": "responses",
+  "model": "baidu/ernie-5.5-flash-preview:free",
+  "request": {
+    "method": "POST",
+    "path": "/responses",
+    "bodyExtra": null,
+    "prefixTokens": 2500,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "baidu/ernie-5.5-flash-preview:free",
+      "input": [
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "<prefix: about 2500 tokens of words filler, one per sample>"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "Reply with the single word OK."
+            }
+          ]
+        }
+      ],
+      "max_output_tokens": 16,
+      "store": false,
+      "stream": false,
+      "prompt_cache_key": "groundtruth-miinc74w-<sample>"
+    }
+  },
+  "runSalt": "miinc74w",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000,
+    1200000,
+    1500000,
+    1800000,
+    2400000,
+    3000000,
+    3600000,
+    4500000,
+    5400000,
+    7200000
+  ],
+  "startedAt": "2026-11-18T13:35:37.597Z",
+  "status": "failed",
+  "spent": {
+    "requests": 3,
+    "promptTokens": 7257,
+    "cachedTokens": 2304,
+    "outputTokens": 48,
+    "requestsWithoutOutput": 0
+  },
+  "checks": [],
+  "control": {
+    "prime": {
+      "promptTokens": 2413,
+      "cachedTokens": 0,
+      "outputTokens": 16
+    },
+    "check": {
+      "promptTokens": 2413,
+      "cachedTokens": 2304,
+      "outputTokens": 16
+    },
+    "warm": true
+  },
+  "error": "quota or rate refusal, not retried: HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"baidu/ernie-5.5-flash-preview:free is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/byok\",\"provider_name\":\"Baidu\",\"is_b",
+  "finishedAt": "2026-11-18T13:35:50.043Z"
+}

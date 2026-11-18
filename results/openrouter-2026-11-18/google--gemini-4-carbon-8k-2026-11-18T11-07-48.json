@@ -1,0 +1,143 @@
+{
+  "probeVersion": "0.3.4",
+  "label": "google--gemini-4-carbon-8k",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "format": "responses",
+  "model": "google/gemini-4-carbon",
+  "request": {
+    "method": "POST",
+    "path": "/responses",
+    "bodyExtra": null,
+    "prefixTokens": 8000,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "google/gemini-4-carbon",
+      "input": [
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "<prefix: about 8000 tokens of words filler, one per sample>"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "Reply with the single word OK."
+            }
+          ]
+        }
+      ],
+      "max_output_tokens": 16,
+      "store": false,
+      "stream": false,
+      "prompt_cache_key": "groundtruth-fxplvscc-<sample>"
+    }
+  },
+  "runSalt": "fxplvscc",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000,
+    1200000,
+    1500000,
+    1800000,
+    2400000,
+    3000000,
+    3600000,
+    4500000,
+    5400000,
+    7200000
+  ],
+  "startedAt": "2026-11-18T11:07:48.024Z",
+  "status": "failed",
+  "spent": {
+    "requests": 51,
+    "promptTokens": 383582,
+    "cachedTokens": 10949,
+    "outputTokens": 255,
+    "requestsWithoutOutput": 0
+  },
+  "checks": [
+    {
+      "sampleId": "2.5m-r1",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 151644,
+      "promptTokens": 7529,
+      "cachedTokens": 5475,
+      "warm": true
+    },
+    {
+      "sampleId": "2.5m-r2",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 172264,
+      "promptTokens": 7539,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "5m-r1",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300002,
+      "promptTokens": 7501,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "5m-r2",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 317081,
+      "promptTokens": 7483,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "5m-r3",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 318178,
+      "promptTokens": 7548,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "2.5m-r3~2",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 157286,
+      "promptTokens": 7534,
+      "cachedTokens": 0,
+      "warm": false
+    }
+  ],
+  "control": {
+    "prime": {
+      "promptTokens": 7528,
+      "cachedTokens": 0,
+      "outputTokens": 5
+    },
+    "check": {
+      "promptTokens": 7528,
+      "cachedTokens": 5474,
+      "outputTokens": 5
+    },
+    "warm": true
+  },
+  "error": "quota or rate refusal, not retried: HTTP 504: {\"error\":{\"message\":\"The operation was aborted\",\"code\":504,\"metadata\":{\"provider_name\":\"Google\",\"previous_errors\":[{\"code\":429,\"message\":\"Provider returned error\",\"provider_name\":\"Google AI Studio\",\"raw\":\"google/gemini-4-carbon is temporarily rate-limited upstream. Please retry shortly, or add your ",
+  "finishedAt": "2026-11-18T11:16:03.051Z"
+}

@@ -43,8 +43,21 @@ try:
     runs = list(add["runs"])
     if "--separate" in sys.argv:
         runs += [x["entry"] for x in json.load(open(os.path.join(HERE, "manifest-entries-upstream-changed.json")))["runs"]]
-    main_manifest["runs"] += runs
-    main_manifest["excluded"] += add["excluded"]
+    # Runs already on main (released, or held there under excluded by the assembly) are not added again.
+    # A run main holds under excluded that this folder now lists as a run (a ruling moved it) is moved: dropped from
+    # main's excluded, added as a run.
+    my_ids = {r["id"] for r in runs}
+    moved = [e["id"] for e in main_manifest["excluded"] if e["id"] in my_ids]
+    main_manifest["excluded"] = [e for e in main_manifest["excluded"] if e["id"] not in my_ids]
+    if moved:
+        print(f"{len(moved)} runs held on main under excluded are moved to runs: {', '.join(i.split('/')[-1] for i in moved)}")
+    on_main = {r["id"] for r in main_manifest["runs"]} | {e["id"] for e in main_manifest["excluded"]}
+    skipped = [r["id"] for r in runs if r["id"] in on_main] + [e["id"] for e in add["excluded"] if e["id"] in on_main]
+    main_manifest["runs"] += [r for r in runs if r["id"] not in on_main]
+    main_manifest["excluded"] += [e for e in add["excluded"] if e["id"] not in on_main]
+    lim_keys = {(l["route"], l["client"], l["model"]) for l in main_manifest["limits"]}
+    main_manifest["limits"] += [l for l in add.get("limits", []) if (l["route"], l["client"], l["model"]) not in lim_keys]
+    print(f"{len(skipped)} of this folder's ids are already on main (released or held there), not added again")
     json.dump(main_manifest, open(os.path.join(tmp, "observed", "manifest.json"), "w"), indent=1)
     out = subprocess.run([sys.executable, "scripts/build_observed.py"], cwd=tmp, capture_output=True, text=True)
     print(out.stdout.strip(), out.stderr.strip())
@@ -54,6 +67,10 @@ try:
     built = json.load(open(os.path.join(tmp, "observed.json")))
     before = {e["id"] for e in main_observed["cache"]}
     new = [e for e in built["cache"] if e["id"] not in before]
+    lim_before = {(l["route"], l["client"], l["model"]) for l in main_observed["limits"]}
+    for l in built["limits"]:
+        if (l["route"], l["client"], l["model"]) not in lim_before:
+            print(f"  limits row added: {l['model']}: context {l.get('context')}, date {l.get('date')}")
     print(f"build passes: {len(built['cache'])} cache rows ({len(main_observed['cache'])} on main), {len(new)} added, "
           f"{len(built.get('excluded', []))} excluded ({len(main_observed.get('excluded', []))} on main)")
     for e in new:
