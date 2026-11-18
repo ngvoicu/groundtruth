@@ -12,11 +12,17 @@ the file and the field the value came from, so it can be judged.
 
 Model names are not secrets: model lists and the names in a login's `model_aliases` are skipped, because a run that
 measured `devin/some-model` necessarily contains that name.
+
+A `logs` folder is mostly local (a run's console output, never committed), but a campaign may force-add its usage
+logs. So in a `logs` folder the files git tracks are scanned (staged ones included) and the others skipped; in a
+folder that is not in a git work tree (the tree the pre-commit hook and CI export from the index, where every file is
+about to be published) every file of it is scanned.
 """
 import glob
 import json
 import os
 import re
+import subprocess
 import sys
 
 HOME = os.path.expanduser("~")
@@ -81,6 +87,44 @@ def collect():
     return secrets
 
 
+def tracked(folder):
+    """The files under `folder` that git tracks (relative paths), or None when `folder` is in no git work tree."""
+    # Without the GIT_* variables a hook runs with (GIT_DIR, GIT_INDEX_FILE…): they would answer for the repository
+    # being committed to, not for the folder (the hook scans an exported tree outside it).
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
+    def git(*args):
+        return subprocess.run(["git", "-C", folder, *args], capture_output=True, text=True, env=env)
+    if git("rev-parse", "--is-inside-work-tree").stdout.strip() != "true":
+        return None
+    out = git("ls-files", "-z", "--", ".")
+    if out.returncode:
+        sys.exit(f"{folder}: git ls-files failed: {out.stderr.strip()}")
+    return {os.path.normpath(p) for p in out.stdout.split("\0") if p}
+
+
+def files_in(target):
+    """Every file to scan under `target`: `logs` folders only for what git tracks (or all of it outside git)."""
+    if os.path.isfile(target):
+        # a single file is scanned too (os.walk yields nothing for one, which would pass it unread)
+        yield target
+        return
+    for root, dirs, names in os.walk(target):
+        logs = [d for d in dirs if d == "logs"]
+        dirs[:] = [d for d in dirs if d not in ("logs", ".git", "node_modules") and not d.startswith("work-")]  # never committed
+        for name in names:
+            yield os.path.join(root, name)
+        for d in logs:
+            folder = os.path.join(root, d)
+            keep = tracked(folder)
+            for sub, subdirs, subnames in os.walk(folder):
+                subdirs[:] = [s for s in subdirs if s not in (".git", "node_modules")]
+                for name in subnames:
+                    path = os.path.join(sub, name)
+                    if keep is None or os.path.normpath(os.path.relpath(path, folder)) in keep:
+                        yield path
+
+
 def main():
     if len(sys.argv) < 2:
         sys.exit(__doc__)
@@ -89,29 +133,24 @@ def main():
     for target in sys.argv[1:]:
         if not os.path.exists(target):
             sys.exit(f"{target}: no such file or folder")
-        # a single file is scanned too (os.walk yields nothing for one, which would pass it unread)
-        walk = [(os.path.dirname(target), [], [os.path.basename(target)])] if os.path.isfile(target) else os.walk(target)
-        for root, dirs, names in walk:
-            dirs[:] = [d for d in dirs if d not in ("logs", ".git", "node_modules") and not d.startswith("work-")]  # never committed
-            for name in names:
-                path = os.path.join(root, name)
-                files += 1
-                text = open(path, errors="ignore").read()
-                found = []
-                origins = sorted({origin for value, origin in secrets.items() if value in text})
-                if origins:
-                    found.append("a value from " + "; ".join(origins[:4]))
-                if TOKEN_SHAPES.search(text):
-                    found.append("something shaped like a token")
-                if any(m.group(0).lower() not in PUBLIC_EMAILS for m in EMAIL.finditer(text)):
-                    found.append("an e-mail address")
-                if HOME_PATH.search(text):
-                    found.append("a home folder path")
-                if "pi-sessions" in path.split(os.sep):
-                    found.append("a pi session file (holds the whole system prompt: skill names, folder paths)")
-                if found:
-                    hits += 1
-                    print(f"{path}: {', '.join(found)}")
+        for path in files_in(target):
+            files += 1
+            text = open(path, errors="ignore").read()
+            found = []
+            origins = sorted({origin for value, origin in secrets.items() if value in text})
+            if origins:
+                found.append("a value from " + "; ".join(origins[:4]))
+            if TOKEN_SHAPES.search(text):
+                found.append("something shaped like a token")
+            if any(m.group(0).lower() not in PUBLIC_EMAILS for m in EMAIL.finditer(text)):
+                found.append("an e-mail address")
+            if HOME_PATH.search(text):
+                found.append("a home folder path")
+            if "pi-sessions" in path.split(os.sep):
+                found.append("a pi session file (holds the whole system prompt: skill names, folder paths)")
+            if found:
+                hits += 1
+                print(f"{path}: {', '.join(found)}")
     if not files:
         sys.exit("nothing was scanned")
     print(f"{files} files scanned against {len(secrets)} credentials: {'CLEAN' if not hits else str(hits) + ' file(s) with findings'}")
