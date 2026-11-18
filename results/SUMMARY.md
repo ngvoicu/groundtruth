@@ -161,6 +161,20 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   through 2 hours, all cold at 4; Wonder warm through 4 hours, no data at 8 (the proxy's lookup of Meta's host timed
   out), all cold at 12. A restart of the Mac on 2026-11-18 cut off CL1, CL3, ML1 and ML3 before 24 hours; their
   progress files are their run files, unchanged. See its README.
+- `openrouter-2026-11-18/`, **batch 1** (from `campaign/openrouter` at `f1cca4d`; the measuring goes on, later batches
+  follow): OpenRouter's chat models released since 2026-08-17, straight to OpenRouter with a key of the campaign's,
+  default route, plain probe, nothing asked about caching, 3 samples per age. **Released: 19 runs**, those of the folder's
+  `manifest-entries.json` whose control hit and that are not in its upstream-changed list. Among the big releases:
+  Claude Fable 5.2 warm through 5 minutes, cold at 7.5 (with a top-level `cache_control` and a `session_id`, as R1b);
+  GPT-6.2 Astra warm through 25 minutes, 2 of 3 at 30, cold at 40; Qwen4 Max 2 of 3 at 2.5 minutes, cold at 40.
+  **Held back in this batch, under `excluded`** (the folder lists them otherwise; the assembly holds them): the nine
+  runs of `manifest-entries.json` whose control read 0 cached tokens (Gemini 4 Hydrogen and eight others), until a run
+  with a larger prompt shows whether the ~2,500-token prompt was under the upstream's smallest cacheable size; and the
+  five runs of `manifest-entries-upstream-changed.json` (GPT-6.2 Sol unpinned and pinned to OpenAI, Gemini 4 Carbon,
+  Muse Ember, DeepSeek V4.1 Flash 1017), until it is decided how a run whose check crossed upstreams is published. Six
+  failed runs are under `excluded` with the folder's reasons (one free model refused by OpenRouter's free-request
+  limit, two free models refused by their upstream's rate limit, ScaleDown Extract takes no plain request, two Muse Spark contributor models excluded by the account's
+  data policy). See its README and `results.md`.
 
 ## The limits rows of observed.json (2026-11-17)
 
