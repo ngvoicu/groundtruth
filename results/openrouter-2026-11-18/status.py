@@ -110,7 +110,7 @@ def state(r):
 def worst_now(r, used):
     """The run's worst case, from its own replies once it has some (the largest prompt and output seen)."""
     p = L.prices()[r["model"]]
-    prompt = max(plan["prompt_tokens"], used.get("prompt", 0))
+    prompt = max(r.get("prompt_tokens", plan["prompt_tokens"]), used.get("prompt", 0))
     out = max(plan["output_tokens"], used.get("output", 0))
     return (plan["requests"] * prompt * max(p["in"], p["write"]) + plan["requests"] * out * p["out"]) / 1e6
 
@@ -152,6 +152,45 @@ def report():
 def offered_now():
     return {m["id"]: m for m in json.load(urllib.request.urlopen(
         urllib.request.Request("https://openrouter.ai/api/v1/models", headers={"User-Agent": "groundtruth"}), timeout=60))["data"]}
+
+
+def zero_controls():
+    """Finished first runs whose control read 0 cached tokens (no observable cache at the default ~2,500 tokens)."""
+    out = []
+    for r in runs:
+        if r.get("larger_prompt_of"):
+            continue
+        st = state(r)
+        if st["state"] == "finished" and st.get("status") == "no-observable-cache":
+            j = json.load(open(os.path.join(HERE, st["file"])))
+            if ((j.get("control") or {}).get("check") or {}).get("cachedTokens", 0) == 0:
+                out.append(r)
+    return out
+
+
+def add_larger_prompt_runs():
+    """The chief's decision (m-10759): every model whose control read 0 gets one more run of its own with a prefix of
+    about 8,000 tokens (as cpa-latest-2026-11-06/L1b), everything else as its first run; the dearest first, ahead of
+    the first runs not yet started."""
+    have = {r.get("larger_prompt_of") for r in runs}
+    new = [r for r in zero_controls() if r["label"] not in have]
+    if not new:
+        return []
+    new.sort(key=lambda r: -L.prices()[r["model"]]["in"])
+    first_free = next((i for i, r in enumerate(runs) if state(r)["state"] == "not started"), len(runs))
+    added = []
+    for r in new:
+        e = dict(r)
+        e.update(label=r["label"] + "-8k", larger_prompt_of=r["label"], window=False, prompt_tokens=9000,
+                 args=list(r["args"]) + ["--prefix-tokens", "8000"], options=dict(r["options"], prefix_tokens=8000))
+        added.append(e)
+    for e in added:
+        e["worst_usd"] = round(worst_now(e, {}), 4)
+    runs[first_free:first_free] = added
+    for i, r in enumerate(runs, 1):
+        r["n"] = i
+    json.dump(plan, open(os.path.join(HERE, "plan.json"), "w"), indent=1)
+    return [e["label"] for e in added]
 
 
 def main():
@@ -206,6 +245,9 @@ def main():
     if dec["halt"]:
         print("HALT: a refusal is open; write a decision in decisions.json before launching")
         return
+    added = add_larger_prompt_runs()
+    if added:
+        print("added larger-prompt runs:", added)
     subprocess.run([sys.executable, os.path.join(HERE, "key_usage.py"), "status.py --launch pass"], check=True, capture_output=True)
     led, ku, kat, states, spent, reserved = report()
     committed = spent + reserved

@@ -27,7 +27,7 @@ while True:
                          capture_output=True, text=True)
     text = out.stdout + out.stderr
     for line in text.splitlines():
-        if line.startswith(("ledger", "states", "started", "WAIT", "LEFT", "HALT", "STOPPED", "Traceback")) or " pid " in line:
+        if line.startswith(("added", "ledger", "states", "started", "WAIT", "LEFT", "HALT", "STOPPED", "Traceback")) or " pid " in line:
             log(line)
     if out.returncode:
         log(f"status.py exited {out.returncode}: {text[-500:]}")

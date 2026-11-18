@@ -221,6 +221,219 @@
   },
   {
    "n": 15,
+   "label": "google--gemini-4-carbon-8k",
+   "model": "google/gemini-4-carbon",
+   "group": "big",
+   "args": [
+    "--prefix-tokens",
+    "8000"
+   ],
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "worst_usd": 1.5938,
+   "window": false,
+   "context_length": 1048576,
+   "top_provider_context_length": 1048576,
+   "larger_prompt_of": "google--gemini-4-carbon",
+   "prompt_tokens": 9000
+  },
+  {
+   "n": 16,
+   "label": "google--gemini-4-hydrogen-8k",
+   "model": "google/gemini-4-hydrogen",
+   "group": "big",
+   "args": [
+    "--prefix-tokens",
+    "8000"
+   ],
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "worst_usd": 1.1954,
+   "window": false,
+   "context_length": 1048576,
+   "top_provider_context_length": 1048576,
+   "larger_prompt_of": "google--gemini-4-hydrogen",
+   "prompt_tokens": 9000
+  },
+  {
+   "n": 17,
+   "label": "kt--midm-k-3.0-pro-8k",
+   "model": "kt/midm-k-3.0-pro",
+   "group": "rest",
+   "args": [
+    "--prefix-tokens",
+    "8000"
+   ],
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "worst_usd": 0.1588,
+   "window": false,
+   "context_length": 261795,
+   "top_provider_context_length": 261795,
+   "larger_prompt_of": "kt--midm-k-3.0-pro",
+   "prompt_tokens": 9000
+  },
+  {
+   "n": 18,
+   "label": "perceptron--perceptron-mk1.5-8k",
+   "model": "perceptron/perceptron-mk1.5",
+   "group": "rest",
+   "args": [
+    "--prefix-tokens",
+    "8000"
+   ],
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "worst_usd": 0.1216,
+   "window": false,
+   "context_length": 36864,
+   "top_provider_context_length": 36864,
+   "larger_prompt_of": "perceptron--perceptron-mk1.5",
+   "prompt_tokens": 9000
+  },
+  {
+   "n": 19,
+   "label": "prism-ml--ternary-bonsai-2-9b-8k",
+   "model": "prism-ml/ternary-bonsai-2-9b",
+   "group": "rest",
+   "args": [
+    "--prefix-tokens",
+    "8000"
+   ],
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "worst_usd": 0.063,
+   "window": false,
+   "context_length": 262144,
+   "top_provider_context_length": 262144,
+   "larger_prompt_of": "prism-ml--ternary-bonsai-2-9b",
+   "prompt_tokens": 9000
+  },
+  {
+   "n": 20,
+   "label": "liquid--lfm-3-1.7b-8k",
+   "model": "liquid/lfm-3-1.7b",
+   "group": "rest",
+   "args": [
+    "--prefix-tokens",
+    "8000"
+   ],
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "worst_usd": 0.0632,
+   "window": false,
+   "context_length": 262144,
+   "top_provider_context_length": 262144,
+   "larger_prompt_of": "liquid--lfm-3-1.7b",
+   "prompt_tokens": 9000
+  },
+  {
+   "n": 21,
+   "label": "prism-ml--ternary-bonsai-2-27b-8k",
+   "model": "prism-ml/ternary-bonsai-2-27b",
+   "group": "rest",
+   "args": [
+    "--prefix-tokens",
+    "8000"
+   ],
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "worst_usd": 0.0601,
+   "window": false,
+   "context_length": 262144,
+   "top_provider_context_length": 262144,
+   "larger_prompt_of": "prism-ml--ternary-bonsai-2-27b",
+   "prompt_tokens": 9000
+  },
+  {
+   "n": 22,
+   "label": "liquid--lfm-2.5-24b-a2b-8k",
+   "model": "liquid/lfm-2.5-24b-a2b",
+   "group": "rest",
+   "args": [
+    "--prefix-tokens",
+    "8000"
+   ],
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "worst_usd": 0.0411,
+   "window": false,
+   "context_length": 128000,
+   "top_provider_context_length": 128000,
+   "larger_prompt_of": "liquid--lfm-2.5-24b-a2b",
+   "prompt_tokens": 9000
+  },
+  {
+   "n": 23,
+   "label": "scaledown--summarize-8k",
+   "model": "scaledown/summarize",
+   "group": "rest",
+   "args": [
+    "--prefix-tokens",
+    "8000"
+   ],
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "worst_usd": 0.0313,
+   "window": false,
+   "context_length": 1000000,
+   "top_provider_context_length": 1000000,
+   "larger_prompt_of": "scaledown--summarize",
+   "prompt_tokens": 9000
+  },
+  {
+   "n": 24,
+   "label": "nvidia--nemotron-3.5-super-vl-free-8k",
+   "model": "nvidia/nemotron-3.5-super-vl:free",
+   "group": "free",
+   "args": [
+    "--concurrency",
+    "1",
+    "--prime-pause",
+    "3500",
+    "--prefix-tokens",
+    "8000"
+   ],
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "worst_usd": 0.0,
+   "window": false,
+   "context_length": 1000000,
+   "top_provider_context_length": 1000000,
+   "larger_prompt_of": "nvidia--nemotron-3.5-super-vl-free",
+   "prompt_tokens": 9000
+  },
+  {
+   "n": 25,
+   "label": "alias-deepseek--deepseek-flash-latest-8k",
+   "model": "~deepseek/deepseek-flash-latest",
+   "group": "last",
+   "args": [
+    "--prefix-tokens",
+    "8000"
+   ],
+   "options": {
+    "prefix_tokens": 8000
+   },
+   "worst_usd": 0.0296,
+   "window": false,
+   "context_length": 1048576,
+   "top_provider_context_length": 1048576,
+   "larger_prompt_of": "alias-deepseek--deepseek-flash-latest",
+   "prompt_tokens": 9000
+  },
+  {
+   "n": 26,
    "label": "thinkingmachines--inkling-2-small-free",
    "model": "thinkingmachines/inkling-2-small:free",
    "group": "free",
@@ -237,7 +450,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 16,
+   "n": 27,
    "label": "baidu--ernie-5.5-flash-preview-free-paced",
    "model": "baidu/ernie-5.5-flash-preview:free",
    "group": "free",
@@ -254,7 +467,7 @@
    "top_provider_context_length": 1024000
   },
   {
-   "n": 17,
+   "n": 28,
    "label": "nex-agi--nex-n2.5-mini",
    "model": "nex-agi/nex-n2.5-mini",
    "group": "rest",
@@ -266,7 +479,7 @@
    "top_provider_context_length": 262144
   },
   {
-   "n": 18,
+   "n": 29,
    "label": "tencent--hy4-flash",
    "model": "tencent/hy4-flash",
    "group": "rest",
@@ -278,7 +491,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 19,
+   "n": 30,
    "label": "deepseek--deepseek-v4.1-flash-1017",
    "model": "deepseek/deepseek-v4.1-flash-1017",
    "group": "rest",
@@ -290,7 +503,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 20,
+   "n": 31,
    "label": "scaledown--extract",
    "model": "scaledown/extract",
    "group": "rest",
@@ -302,7 +515,7 @@
    "top_provider_context_length": 1000000
   },
   {
-   "n": 21,
+   "n": 32,
    "label": "scaledown--summarize",
    "model": "scaledown/summarize",
    "group": "rest",
@@ -314,7 +527,7 @@
    "top_provider_context_length": 1000000
   },
   {
-   "n": 22,
+   "n": 33,
    "label": "inclusionai--ling-3.1-flash",
    "model": "inclusionai/ling-3.1-flash",
    "group": "rest",
@@ -326,7 +539,7 @@
    "top_provider_context_length": 1000000
   },
   {
-   "n": 23,
+   "n": 34,
    "label": "upstage--solar-mini4",
    "model": "upstage/solar-mini4",
    "group": "rest",
@@ -338,7 +551,7 @@
    "top_provider_context_length": 524288
   },
   {
-   "n": 24,
+   "n": 35,
    "label": "liquid--lfm-2.5-24b-a2b",
    "model": "liquid/lfm-2.5-24b-a2b",
    "group": "rest",
@@ -350,7 +563,7 @@
    "top_provider_context_length": 128000
   },
   {
-   "n": 25,
+   "n": 36,
    "label": "ibm-granite--granite-4.2-8b",
    "model": "ibm-granite/granite-4.2-8b",
    "group": "rest",
@@ -362,7 +575,7 @@
    "top_provider_context_length": 131072
   },
   {
-   "n": 26,
+   "n": 37,
    "label": "inclusionai--ling-3.0-flash-vl",
    "model": "inclusionai/ling-3.0-flash-vl",
    "group": "rest",
@@ -374,7 +587,7 @@
    "top_provider_context_length": 131072
   },
   {
-   "n": 27,
+   "n": 38,
    "label": "particle-ai--particle-1",
    "model": "particle-ai/particle-1",
    "group": "rest",
@@ -386,7 +599,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 28,
+   "n": 39,
    "label": "nex-agi--nex-n2.5-pro",
    "model": "nex-agi/nex-n2.5-pro",
    "group": "rest",
@@ -398,7 +611,7 @@
    "top_provider_context_length": 262144
   },
   {
-   "n": 29,
+   "n": 40,
    "label": "prism-ml--ternary-bonsai-2-27b",
    "model": "prism-ml/ternary-bonsai-2-27b",
    "group": "rest",
@@ -410,7 +623,7 @@
    "top_provider_context_length": 262144
   },
   {
-   "n": 30,
+   "n": 41,
    "label": "prism-ml--ternary-bonsai-2-9b",
    "model": "prism-ml/ternary-bonsai-2-9b",
    "group": "rest",
@@ -422,7 +635,7 @@
    "top_provider_context_length": 262144
   },
   {
-   "n": 31,
+   "n": 42,
    "label": "liquid--lfm-3-1.7b",
    "model": "liquid/lfm-3-1.7b",
    "group": "rest",
@@ -434,7 +647,7 @@
    "top_provider_context_length": 262144
   },
   {
-   "n": 32,
+   "n": 43,
    "label": "meta--muse-spark-1.2-contributor",
    "model": "meta/muse-spark-1.2-contributor",
    "group": "rest",
@@ -446,7 +659,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 33,
+   "n": 44,
    "label": "meta--muse-spark-1.3-contributor",
    "model": "meta/muse-spark-1.3-contributor",
    "group": "rest",
@@ -458,7 +671,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 34,
+   "n": 45,
    "label": "ricursiveai--ripple-65b-preview",
    "model": "ricursiveai/ripple-65b-preview",
    "group": "rest",
@@ -470,7 +683,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 35,
+   "n": 46,
    "label": "nex-agi--nex-n2.6",
    "model": "nex-agi/nex-n2.6",
    "group": "rest",
@@ -482,7 +695,7 @@
    "top_provider_context_length": 262144
   },
   {
-   "n": 36,
+   "n": 47,
    "label": "xiaomi--mimo-v2.6-flash",
    "model": "xiaomi/mimo-v2.6-flash",
    "group": "rest",
@@ -494,7 +707,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 37,
+   "n": 48,
    "label": "qwen--qwen3.8-flash",
    "model": "qwen/qwen3.8-flash",
    "group": "rest",
@@ -506,7 +719,7 @@
    "top_provider_context_length": 1000000
   },
   {
-   "n": 38,
+   "n": 49,
    "label": "qwen--qwen3.8-omni-flash",
    "model": "qwen/qwen3.8-omni-flash",
    "group": "rest",
@@ -518,7 +731,7 @@
    "top_provider_context_length": 1000000
   },
   {
-   "n": 39,
+   "n": 50,
    "label": "nvidia--nemotron-3.5-super-vl",
    "model": "nvidia/nemotron-3.5-super-vl",
    "group": "rest",
@@ -530,7 +743,7 @@
    "top_provider_context_length": 262144
   },
   {
-   "n": 40,
+   "n": 51,
    "label": "minimax--minimax-m3.1-flash",
    "model": "minimax/minimax-m3.1-flash",
    "group": "rest",
@@ -542,7 +755,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 41,
+   "n": 52,
    "label": "perceptron--perceptron-mk1.5",
    "model": "perceptron/perceptron-mk1.5",
    "group": "rest",
@@ -554,7 +767,7 @@
    "top_provider_context_length": 36864
   },
   {
-   "n": 42,
+   "n": 53,
    "label": "kt--midm-k-3.0-pro",
    "model": "kt/midm-k-3.0-pro",
    "group": "rest",
@@ -566,7 +779,7 @@
    "top_provider_context_length": 261795
   },
   {
-   "n": 43,
+   "n": 54,
    "label": "reflection--beam-1.0-501b-a23b",
    "model": "reflection/beam-1.0-501b-a23b",
    "group": "rest",
@@ -578,7 +791,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 44,
+   "n": 55,
    "label": "thinkingmachines--inkling-2-small",
    "model": "thinkingmachines/inkling-2-small",
    "group": "rest",
@@ -590,7 +803,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 45,
+   "n": 56,
    "label": "motif-technologies--motif-3",
    "model": "motif-technologies/motif-3",
    "group": "rest",
@@ -602,7 +815,7 @@
    "top_provider_context_length": 262144
   },
   {
-   "n": 46,
+   "n": 57,
    "label": "moondream--moondream3-preview",
    "model": "moondream/moondream3-preview",
    "group": "rest",
@@ -614,7 +827,7 @@
    "top_provider_context_length": 32000
   },
   {
-   "n": 47,
+   "n": 58,
    "label": "moondream--moondream3.1-9b-a2b",
    "model": "moondream/moondream3.1-9b-a2b",
    "group": "rest",
@@ -626,7 +839,7 @@
    "top_provider_context_length": 32000
   },
   {
-   "n": 48,
+   "n": 59,
    "label": "z-ai--glm-5.3-flashx",
    "model": "z-ai/glm-5.3-flashx",
    "group": "rest",
@@ -638,7 +851,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 49,
+   "n": 60,
    "label": "z-ai--glm-5.3-flashx-legal",
    "model": "z-ai/glm-5.3-flashx-legal",
    "group": "rest",
@@ -650,7 +863,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 50,
+   "n": 61,
    "label": "tencent--hy4",
    "model": "tencent/hy4",
    "group": "rest",
@@ -662,7 +875,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 51,
+   "n": 62,
    "label": "xiaomi--mimo-v2.6-pro",
    "model": "xiaomi/mimo-v2.6-pro",
    "group": "rest",
@@ -674,7 +887,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 52,
+   "n": 63,
    "label": "deepseek--deepseek-v4-flash-vision-exp",
    "model": "deepseek/deepseek-v4-flash-vision-exp",
    "group": "rest",
@@ -686,7 +899,7 @@
    "top_provider_context_length": 1048575
   },
   {
-   "n": 53,
+   "n": 64,
    "label": "elorian--glimpse",
    "model": "elorian/glimpse",
    "group": "rest",
@@ -698,7 +911,7 @@
    "top_provider_context_length": 262144
   },
   {
-   "n": 54,
+   "n": 65,
    "label": "aion-labs--aion-3.5-mini",
    "model": "aion-labs/aion-3.5-mini",
    "group": "rest",
@@ -710,7 +923,7 @@
    "top_provider_context_length": 262144
   },
   {
-   "n": 55,
+   "n": 66,
    "label": "unbiased--pareto-26.10",
    "model": "unbiased/pareto-26.10",
    "group": "rest",
@@ -722,7 +935,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 56,
+   "n": 67,
    "label": "unbiased--pareto-26.10-preview",
    "model": "unbiased/pareto-26.10-preview",
    "group": "rest",
@@ -734,7 +947,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 57,
+   "n": 68,
    "label": "tencent--hy4-preview",
    "model": "tencent/hy4-preview",
    "group": "rest",
@@ -746,7 +959,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 58,
+   "n": 69,
    "label": "stepfun--step-5-preview",
    "model": "stepfun/step-5-preview",
    "group": "rest",
@@ -758,7 +971,7 @@
    "top_provider_context_length": 1000000
   },
   {
-   "n": 59,
+   "n": 70,
    "label": "baidu--ernie-light-dt-1.0-intl",
    "model": "baidu/ernie-light-dt-1.0-intl",
    "group": "rest",
@@ -770,7 +983,7 @@
    "top_provider_context_length": 1024000
   },
   {
-   "n": 60,
+   "n": 71,
    "label": "meta--muse-spark-open",
    "model": "meta/muse-spark-open",
    "group": "rest",
@@ -782,7 +995,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 61,
+   "n": 72,
    "label": "z-ai--glm-5.3-prime",
    "model": "z-ai/glm-5.3-prime",
    "group": "rest",
@@ -794,7 +1007,7 @@
    "top_provider_context_length": 1000000
   },
   {
-   "n": 62,
+   "n": 73,
    "label": "qwen--qwen3.8-max-0902",
    "model": "qwen/qwen3.8-max-0902",
    "group": "rest",
@@ -806,7 +1019,7 @@
    "top_provider_context_length": 1000000
   },
   {
-   "n": 63,
+   "n": 74,
    "label": "sakana--fugu-max",
    "model": "sakana/fugu-max",
    "group": "rest",
@@ -818,7 +1031,7 @@
    "top_provider_context_length": 1000000
   },
   {
-   "n": 64,
+   "n": 75,
    "label": "anthropic--claude-sonnet-5.5",
    "model": "anthropic/claude-sonnet-5.5",
    "group": "rest",
@@ -839,7 +1052,7 @@
    "top_provider_context_length": 1000000
   },
   {
-   "n": 65,
+   "n": 76,
    "label": "openai--gpt-6-sol",
    "model": "openai/gpt-6-sol",
    "group": "rest",
@@ -851,7 +1064,7 @@
    "top_provider_context_length": 1050000
   },
   {
-   "n": 66,
+   "n": 77,
    "label": "unbiased--pareto-26.9",
    "model": "unbiased/pareto-26.9",
    "group": "rest",
@@ -863,7 +1076,7 @@
    "top_provider_context_length": 262144
   },
   {
-   "n": 67,
+   "n": 78,
    "label": "aion-labs--aion-3.5",
    "model": "aion-labs/aion-3.5",
    "group": "rest",
@@ -875,7 +1088,7 @@
    "top_provider_context_length": 262144
   },
   {
-   "n": 68,
+   "n": 79,
    "label": "fireworks--ember-1",
    "model": "fireworks/ember-1",
    "group": "rest",
@@ -887,7 +1100,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 69,
+   "n": 80,
    "label": "qwen--qwen3.8-max-prime",
    "model": "qwen/qwen3.8-max-prime",
    "group": "rest",
@@ -899,7 +1112,7 @@
    "top_provider_context_length": 1000000
   },
   {
-   "n": 70,
+   "n": 81,
    "label": "xiaomi--mimo-v2.6-pro-ultraspeed",
    "model": "xiaomi/mimo-v2.6-pro-ultraspeed",
    "group": "rest",
@@ -911,7 +1124,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 71,
+   "n": 82,
    "label": "sakana--fugu-ultra-v2",
    "model": "sakana/fugu-ultra-v2",
    "group": "rest",
@@ -923,7 +1136,7 @@
    "top_provider_context_length": 1000000
   },
   {
-   "n": 72,
+   "n": 83,
    "label": "alias-deepseek--deepseek-flash-latest",
    "model": "~deepseek/deepseek-flash-latest",
    "group": "last",
@@ -935,7 +1148,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 73,
+   "n": 84,
    "label": "alias-z-ai--glm-flash-latest",
    "model": "~z-ai/glm-flash-latest",
    "group": "last",
@@ -947,7 +1160,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 74,
+   "n": 85,
    "label": "alias-z-ai--glm-latest",
    "model": "~z-ai/glm-latest",
    "group": "last",
@@ -959,7 +1172,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 75,
+   "n": 86,
    "label": "alias-deepseek--deepseek-pro-latest",
    "model": "~deepseek/deepseek-pro-latest",
    "group": "last",
@@ -971,7 +1184,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 76,
+   "n": 87,
    "label": "openai--gpt-6-luna-pro",
    "model": "openai/gpt-6-luna-pro",
    "group": "last",
@@ -983,7 +1196,7 @@
    "top_provider_context_length": 1050000
   },
   {
-   "n": 77,
+   "n": 88,
    "label": "alias-openai--gpt-luna-latest",
    "model": "~openai/gpt-luna-latest",
    "group": "last",
@@ -995,7 +1208,7 @@
    "top_provider_context_length": 1050000
   },
   {
-   "n": 78,
+   "n": 89,
    "label": "alias-unbiased--pareto-latest",
    "model": "~unbiased/pareto-latest",
    "group": "last",
@@ -1007,7 +1220,7 @@
    "top_provider_context_length": 1048576
   },
   {
-   "n": 79,
+   "n": 90,
    "label": "openai--gpt-6.1-terra-pro",
    "model": "openai/gpt-6.1-terra-pro",
    "group": "last",
@@ -1019,7 +1232,7 @@
    "top_provider_context_length": 1050000
   },
   {
-   "n": 80,
+   "n": 91,
    "label": "alias-openai--gpt-terra-latest",
    "model": "~openai/gpt-terra-latest",
    "group": "last",
@@ -1031,7 +1244,7 @@
    "top_provider_context_length": 1050000
   },
   {
-   "n": 81,
+   "n": 92,
    "label": "openai--gpt-6-sol-pro",
    "model": "openai/gpt-6-sol-pro",
    "group": "last",
@@ -1043,7 +1256,7 @@
    "top_provider_context_length": 1050000
   },
   {
-   "n": 82,
+   "n": 93,
    "label": "openai--gpt-6.1-sol-pro",
    "model": "openai/gpt-6.1-sol-pro",
    "group": "last",
@@ -1055,7 +1268,7 @@
    "top_provider_context_length": 1050000
   },
   {
-   "n": 83,
+   "n": 94,
    "label": "openai--gpt-6.2-sol-pro",
    "model": "openai/gpt-6.2-sol-pro",
    "group": "last",
@@ -1067,7 +1280,7 @@
    "top_provider_context_length": 1050000
   },
   {
-   "n": 84,
+   "n": 95,
    "label": "alias-openai--gpt-sol-latest",
    "model": "~openai/gpt-sol-latest",
    "group": "last",
@@ -1079,7 +1292,7 @@
    "top_provider_context_length": 1050000
   },
   {
-   "n": 85,
+   "n": 96,
    "label": "openai--gpt-6.2-astra-pro",
    "model": "openai/gpt-6.2-astra-pro",
    "group": "last",
@@ -1091,7 +1304,7 @@
    "top_provider_context_length": 1050000
   },
   {
-   "n": 86,
+   "n": 97,
    "label": "alias-openai--gpt-astra-latest",
    "model": "~openai/gpt-astra-latest",
    "group": "last",
@@ -1103,7 +1316,7 @@
    "top_provider_context_length": 1050000
   },
   {
-   "n": 87,
+   "n": 98,
    "label": "openai--gpt-6-astra-pro",
    "model": "openai/gpt-6-astra-pro",
    "group": "last",

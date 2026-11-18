@@ -5,7 +5,8 @@ their priming, cost, and what providers.dev documented for the entry on 2026-11-
 manifest-entries.json (the entries a finished run adds to observed/manifest.json; a run that failed goes to
 `excluded` with its reason), and manifest-entries-upstream-changed.json (runs in which the upstream changed between a
 sample's priming and its check, and runs pinned to one upstream: the entry each would have, and the checks that
-crossed upstreams with their outcome, for the reviewer). A run still
+crossed upstreams with their outcome, for the reviewer), and manifest-entries-cold-control.json (first runs whose
+control read 0 cached tokens, each with its ~8,000-token run). A run still
 running is listed and gets nothing in manifest-entries.json.
     python3 results/openrouter-2026-11-18/summary.py
 """
@@ -124,14 +125,68 @@ for r in S.runs:
     rows.append(row)
 
 json.dump(rows, open(os.path.join(HERE, "results.json"), "w"), indent=1)
+# Window refusals that name a figure: one limits row each (the window named, no accepted size: no request near a
+# limit was sent), backed by the raw row's message, as logins-2026-11-17's Fable row.
+import re  # noqa: E402
+limits = []
+for model, w in windows.items():
+    m = re.search(r"maximum context length is (\d+) tokens", w.get("message") or "")
+    if w.get("status") and 400 <= w["status"] < 500 and m:
+        e = site.get(model, {})
+        plan_row = next(r for r in S.runs if r["model"] == model)
+        limits.append({
+            "route": "openrouter", "client": "direct", "model": model, "models_dev": e.get("ref"),
+            "base_model": e.get("canonical_id"), "context": int(m.group(1)),
+            "note": (f"OpenRouter's own refusal of a request of about 1.2 million tokens names the endpoint's window "
+                     f"(\"maximum context length is {m.group(1)} tokens\"); OpenRouter lists context_length "
+                     f"{plan_row['context_length']:,} and top_provider.context_length {plan_row['top_provider_context_length']:,}. "
+                     "The refusal came from OpenRouter before any upstream; no large request was accepted (none was sent "
+                     "near a limit), so no accepted size; the output limit was not tested"),
+            "file": f"results/{FOLDER}/windows.jsonl",
+            "evidence": [{"row_model": model, "message_has": f"maximum context length is {m.group(1)} tokens"}]})
 json.dump({"comment": f"Entries for observed/manifest.json from results/{FOLDER} (branch campaign/openrouter): add runs "
-           "to runs and excluded to excluded. Finished runs only; not applied here; a later task assembles the manifest.",
-           "runs": entries, "excluded": excluded}, open(os.path.join(HERE, "manifest-entries.json"), "w"), indent=1)
+           "to runs, excluded to excluded and limits to limits. Finished runs only; not applied here; a later task "
+           "assembles the manifest.",
+           "runs": entries, "excluded": excluded, "limits": limits}, open(os.path.join(HERE, "manifest-entries.json"), "w"), indent=1)
 json.dump({"comment": f"Runs of results/{FOLDER} kept apart from manifest-entries.json for the reviewer (the chief's "
            "decision, m-10723): runs on OpenRouter's default route in which a check was answered by another upstream "
            "than the one its sample was primed on, and runs pinned to one upstream. Each has the entry it would have and "
            "a note naming the checks that crossed upstreams and their outcome. Not applied anywhere.",
            "runs": separate}, open(os.path.join(HERE, "manifest-entries-upstream-changed.json"), "w"), indent=1)
+# The chief's decision (m-10759): first runs whose control read 0 cached tokens at the default ~2,500 tokens, each
+# with its run of about 8,000 tokens once that exists (the assembler holds the cold rows out until then).
+by_label = {x["label"]: x for x in rows}
+all_entries = {e["id"]: e for e in entries} | {x["entry"]["id"]: x["entry"] for x in separate}
+cold = []
+for r in S.runs:
+    x = by_label.get(r["label"])
+    if r.get("larger_prompt_of") or not x or x.get("status") != "no-observable-cache" or (x.get("control_tokens") or {}).get("cachedTokens"):
+        continue
+    big = next((q for q in S.runs if q.get("larger_prompt_of") == r["label"]), None)
+    bx = by_label.get(big["label"]) if big else None
+    item = {"run": all_entries.get(f"{FOLDER}/{r['label']}") or {"id": f"{FOLDER}/{r['label']}"},
+            "control": f"0 of {(x.get('control_tokens') or {}).get('promptTokens')} tokens cached"}
+    if not big:
+        item["larger_prompt_run"] = None
+        item["state"] = "larger-prompt run not planned yet"
+    elif not bx or bx["state"] != "finished":
+        item["larger_prompt_run"] = {"label": big["label"], "state": bx["state"] if bx else "not started"}
+        item["state"] = "larger-prompt run not finished"
+    else:
+        ct = bx.get("control_tokens") or {}
+        item["larger_prompt_run"] = {"entry": all_entries.get(f"{FOLDER}/{big['label']}") or {"id": f"{FOLDER}/{big['label']}", "excluded": True},
+                                     "status": bx.get("status"), "control": f"{ct.get('cachedTokens')} of {ct.get('promptTokens')} tokens cached",
+                                     "all_warm_through_s": bx.get("all_warm_through_s"), "first_all_cold_s": bx.get("first_all_cold_s")}
+        item["state"] = (f"the larger-prompt run failed: {(bx.get('error') or '')[:160]}" if bx.get("status") == "failed" else
+                         "the larger prompt read 0 again: two runs say no observable cache"
+                         if bx.get("status") == "no-observable-cache" and not ct.get("cachedTokens") else
+                         "the larger prompt was cached: see its run" if bx.get("control") == "warm" else "see the larger-prompt run")
+    cold.append(item)
+json.dump({"comment": f"First runs of results/{FOLDER} whose control read 0 cached tokens at the default ~2,500-token "
+           "prompt (no observable cache), each with its run of its own with a ~8,000-token prompt (as "
+           "cpa-latest-2026-11-06/L1b) once that exists (the chief's decision, m-10759). The first runs stay in "
+           "manifest-entries.json as summary.py builds it; the assembler holds them out until their larger-prompt run "
+           "exists.", "runs": cold}, open(os.path.join(HERE, "manifest-entries-cold-control.json"), "w"), indent=1)
 with open(os.path.join(HERE, "results.md"), "w") as md:
     md.write("# Results, run by run\n\nWritten by `summary.py` from the run files, `logs/*.usage.jsonl`, `upstreams.jsonl` "
              "and `sources/providers-dev-entries.json`. Checks: warm of total per age. Upstream: the providers that "

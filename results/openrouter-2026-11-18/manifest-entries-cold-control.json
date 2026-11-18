@@ -1,0 +1,294 @@
+{
+ "comment": "First runs of results/openrouter-2026-11-18 whose control read 0 cached tokens at the default ~2,500-token prompt (no observable cache), each with its run of its own with a ~8,000-token prompt (as cpa-latest-2026-11-06/L1b) once that exists (the chief's decision, m-10759). The first runs stay in manifest-entries.json as summary.py builds it; the assembler holds them out until their larger-prompt run exists.",
+ "runs": [
+  {
+   "run": {
+    "id": "openrouter-2026-11-18/google--gemini-4-hydrogen",
+    "file": "results/openrouter-2026-11-18/google--gemini-4-hydrogen-2026-11-18T08-42-30.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "google/gemini-4-hydrogen",
+    "models_dev": "openrouter/google/gemini-4-hydrogen",
+    "base_model": "google/gemini-4-hydrogen",
+    "options": {}
+   },
+   "control": "0 of 2345 tokens cached",
+   "larger_prompt_run": {
+    "entry": {
+     "id": "openrouter-2026-11-18/google--gemini-4-hydrogen-8k",
+     "file": "results/openrouter-2026-11-18/google--gemini-4-hydrogen-8k-2026-11-18T11-14-47.json",
+     "route": "openrouter",
+     "client": "direct",
+     "model": "google/gemini-4-hydrogen",
+     "models_dev": "openrouter/google/gemini-4-hydrogen",
+     "base_model": "google/gemini-4-hydrogen",
+     "options": {
+      "prefix_tokens": 8000
+     }
+    },
+    "status": "stopped-early",
+    "control": "5461 of 7515 tokens cached",
+    "all_warm_through_s": null,
+    "first_all_cold_s": 450
+   },
+   "state": "the larger prompt was cached: see its run"
+  },
+  {
+   "run": {
+    "id": "openrouter-2026-11-18/google--gemini-4-carbon",
+    "file": "results/openrouter-2026-11-18/google--gemini-4-carbon-2026-11-18T08-42-45.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "google/gemini-4-carbon",
+    "models_dev": "openrouter/google/gemini-4-carbon",
+    "base_model": "google/gemini-4-carbon",
+    "options": {}
+   },
+   "control": "0 of 2384 tokens cached",
+   "larger_prompt_run": {
+    "entry": {
+     "id": "openrouter-2026-11-18/google--gemini-4-carbon-8k",
+     "excluded": true
+    },
+    "status": "failed",
+    "control": "5474 of 7528 tokens cached",
+    "all_warm_through_s": null,
+    "first_all_cold_s": 300
+   },
+   "state": "the larger-prompt run failed: quota or rate refusal, not retried: HTTP 504: {\"error\":{\"message\":\"The operation was aborted\",\"code\":504,\"metadata\":{\"provider_name\":\"Google\",\"previous_errors\":"
+  },
+  {
+   "run": {
+    "id": "openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free",
+    "file": "results/openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free-2026-11-18T09-29-46.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "nvidia/nemotron-3.5-super-vl:free",
+    "models_dev": "openrouter/nvidia/nemotron-3.5-super-vl:free",
+    "base_model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "options": {},
+    "note": "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute)"
+   },
+   "control": "0 of 2829 tokens cached",
+   "larger_prompt_run": {
+    "label": "nvidia--nemotron-3.5-super-vl-free-8k",
+    "state": "running"
+   },
+   "state": "larger-prompt run not finished"
+  },
+  {
+   "run": {
+    "id": "openrouter-2026-11-18/scaledown--summarize",
+    "file": "results/openrouter-2026-11-18/scaledown--summarize-2026-11-18T08-45-16.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "scaledown/summarize",
+    "models_dev": "openrouter/scaledown/summarize",
+    "base_model": null,
+    "options": {}
+   },
+   "control": "0 of 3093 tokens cached",
+   "larger_prompt_run": {
+    "entry": {
+     "id": "openrouter-2026-11-18/scaledown--summarize-8k",
+     "file": "results/openrouter-2026-11-18/scaledown--summarize-8k-2026-11-18T11-28-00.json",
+     "route": "openrouter",
+     "client": "direct",
+     "model": "scaledown/summarize",
+     "models_dev": "openrouter/scaledown/summarize",
+     "base_model": null,
+     "options": {
+      "prefix_tokens": 8000
+     }
+    },
+    "status": "no-observable-cache",
+    "control": "0 of 9670 tokens cached",
+    "all_warm_through_s": null,
+    "first_all_cold_s": null
+   },
+   "state": "the larger prompt read 0 again: two runs say no observable cache"
+  },
+  {
+   "run": {
+    "id": "openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b",
+    "file": "results/openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b-2026-11-18T08-50-40.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "liquid/lfm-2.5-24b-a2b",
+    "models_dev": "openrouter/liquid/lfm-2.5-24b-a2b",
+    "base_model": null,
+    "options": {}
+   },
+   "control": "0 of 2869 tokens cached",
+   "larger_prompt_run": {
+    "label": "liquid--lfm-2.5-24b-a2b-8k",
+    "state": "running"
+   },
+   "state": "larger-prompt run not finished"
+  },
+  {
+   "run": {
+    "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b",
+    "file": "results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b-2026-11-18T09-07-59.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "prism-ml/ternary-bonsai-2-27b",
+    "models_dev": "openrouter/prism-ml/ternary-bonsai-2-27b",
+    "base_model": null,
+    "options": {}
+   },
+   "control": "0 of 2942 tokens cached",
+   "larger_prompt_run": {
+    "entry": {
+     "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b-8k",
+     "file": "results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b-8k-2026-11-18T11-19-58.json",
+     "route": "openrouter",
+     "client": "direct",
+     "model": "prism-ml/ternary-bonsai-2-27b",
+     "models_dev": "openrouter/prism-ml/ternary-bonsai-2-27b",
+     "base_model": null,
+     "options": {
+      "prefix_tokens": 8000
+     }
+    },
+    "status": "stopped-early",
+    "control": "8192 of 9265 tokens cached",
+    "all_warm_through_s": null,
+    "first_all_cold_s": 150
+   },
+   "state": "the larger prompt was cached: see its run"
+  },
+  {
+   "run": {
+    "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b",
+    "file": "results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b-2026-11-18T09-08-14.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "prism-ml/ternary-bonsai-2-9b",
+    "models_dev": "openrouter/prism-ml/ternary-bonsai-2-9b",
+    "base_model": null,
+    "options": {}
+   },
+   "control": "0 of 2881 tokens cached",
+   "larger_prompt_run": {
+    "entry": {
+     "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b-8k",
+     "file": "results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b-8k-2026-11-18T11-19-28.json",
+     "route": "openrouter",
+     "client": "direct",
+     "model": "prism-ml/ternary-bonsai-2-9b",
+     "models_dev": "openrouter/prism-ml/ternary-bonsai-2-9b",
+     "base_model": null,
+     "options": {
+      "prefix_tokens": 8000
+     }
+    },
+    "status": "stopped-early",
+    "control": "8192 of 9329 tokens cached",
+    "all_warm_through_s": null,
+    "first_all_cold_s": 150
+   },
+   "state": "the larger prompt was cached: see its run"
+  },
+  {
+   "run": {
+    "id": "openrouter-2026-11-18/liquid--lfm-3-1.7b",
+    "file": "results/openrouter-2026-11-18/liquid--lfm-3-1.7b-2026-11-18T09-08-29.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "liquid/lfm-3-1.7b",
+    "models_dev": "openrouter/liquid/lfm-3-1.7b",
+    "base_model": null,
+    "options": {}
+   },
+   "control": "0 of 2887 tokens cached",
+   "larger_prompt_run": {
+    "entry": {
+     "id": "openrouter-2026-11-18/liquid--lfm-3-1.7b-8k",
+     "file": "results/openrouter-2026-11-18/liquid--lfm-3-1.7b-8k-2026-11-18T11-19-43.json",
+     "route": "openrouter",
+     "client": "direct",
+     "model": "liquid/lfm-3-1.7b",
+     "models_dev": "openrouter/liquid/lfm-3-1.7b",
+     "base_model": null,
+     "options": {
+      "prefix_tokens": 8000
+     }
+    },
+    "status": "stopped-early",
+    "control": "8960 of 9033 tokens cached",
+    "all_warm_through_s": null,
+    "first_all_cold_s": 150
+   },
+   "state": "the larger prompt was cached: see its run"
+  },
+  {
+   "run": {
+    "id": "openrouter-2026-11-18/perceptron--perceptron-mk1.5",
+    "file": "results/openrouter-2026-11-18/perceptron--perceptron-mk1.5-2026-11-18T09-37-13.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "perceptron/perceptron-mk1.5",
+    "models_dev": "openrouter/perceptron/perceptron-mk1.5",
+    "base_model": null,
+    "options": {}
+   },
+   "control": "0 of 2874 tokens cached",
+   "larger_prompt_run": {
+    "entry": {
+     "id": "openrouter-2026-11-18/perceptron--perceptron-mk1.5-8k",
+     "file": "results/openrouter-2026-11-18/perceptron--perceptron-mk1.5-8k-2026-11-18T11-15-17.json",
+     "route": "openrouter",
+     "client": "direct",
+     "model": "perceptron/perceptron-mk1.5",
+     "models_dev": "openrouter/perceptron/perceptron-mk1.5",
+     "base_model": null,
+     "options": {
+      "prefix_tokens": 8000
+     }
+    },
+    "status": "no-observable-cache",
+    "control": "0 of 9385 tokens cached",
+    "all_warm_through_s": null,
+    "first_all_cold_s": null
+   },
+   "state": "the larger prompt read 0 again: two runs say no observable cache"
+  },
+  {
+   "run": {
+    "id": "openrouter-2026-11-18/kt--midm-k-3.0-pro",
+    "file": "results/openrouter-2026-11-18/kt--midm-k-3.0-pro-2026-11-18T09-37-28.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "kt/midm-k-3.0-pro",
+    "models_dev": "openrouter/kt/midm-k-3.0-pro",
+    "base_model": null,
+    "options": {}
+   },
+   "control": "0 of 3164 tokens cached",
+   "larger_prompt_run": {
+    "label": "kt--midm-k-3.0-pro-8k",
+    "state": "running"
+   },
+   "state": "larger-prompt run not finished"
+  },
+  {
+   "run": {
+    "id": "openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest",
+    "file": "results/openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest-2026-11-18T11-48-23.json",
+    "route": "openrouter",
+    "client": "direct",
+    "model": "~deepseek/deepseek-flash-latest",
+    "models_dev": "openrouter/~deepseek/deepseek-flash-latest",
+    "base_model": null,
+    "options": {}
+   },
+   "control": "0 of 2520 tokens cached",
+   "larger_prompt_run": {
+    "label": "alias-deepseek--deepseek-flash-latest-8k",
+    "state": "running"
+   },
+   "state": "larger-prompt run not finished"
+  }
+ ]
+}

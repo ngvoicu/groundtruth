@@ -17,7 +17,18 @@ Written by `summary.py` from the run files, `logs/*.usage.jsonl`, `upstreams.jso
 | `liquid--lfm-3-1.7b-free` | `liquid/lfm-3-1.7b:free` | failed: quota or rate refusal, not retried: HTTP 429: {"error":{"message":"Provider returned error","code":429,"metadata":{"raw":"liquid/lfm-3-1.7b: | none |  | – | – |  | none | 0.0000 | none documented |
 | `nvidia--nemotron-3.5-super-vl-free` | `nvidia/nemotron-3.5-super-vl:free` | no-observable-cache | cold (0/2829) |  | – | – | Nvidia | none | 0.0000 | none documented |
 | `particle-ai--particle-1-free` | `particle-ai/particle-1:free` | stopped-early | warm (2304/2553) | 2.5m 0/3, 5m 1/3, 7.5m 0/3, 10m 0/3 | – | 2.5m | Particle AI | none | 0.0000 | none documented |
-| `recursive--flint-v1.0-free` | `recursive/flint-v1.0:free` | running |  |  | – | – | Recursive | none | 0.0000 |  |
+| `recursive--flint-v1.0-free` | `recursive/flint-v1.0:free` | stopped-early | warm (2176/2233) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 3/3, 20m 3/3, 25m 3/3, 30m 3/3, 40m 3/3, 50m 1/3, 1h 0/3, 75m 0/3 | 40m | 1h | Recursive | none | 0.0000 | none documented |
+| `google--gemini-4-carbon-8k` | `google/gemini-4-carbon` | failed: quota or rate refusal, not retried: HTTP 504: {"error":{"message":"The operation was aborted","code":504,"metadata":{"provider_name":"Google | warm (5474/7528) | 2.5m 1/3, 5m 0/3 | – | 5m | Google, Google AI Studio | 5m-r1: Google → Google AI Studio; 5m-r3: Google → Google AI Studio; 2.5m-r2: Google → Google AI Studio; 2.5m-r3~2: Google → Google AI Studio | 0.7489 | none documented |
+| `google--gemini-4-hydrogen-8k` | `google/gemini-4-hydrogen` | stopped-early | warm (5461/7515) | 2.5m 2/3, 5m 1/3, 7.5m 0/3, 10m 0/3 | – | 7.5m | Google, Google AI Studio | none | 0.6081 | none documented |
+| `kt--midm-k-3.0-pro-8k` | `kt/midm-k-3.0-pro` | running |  |  | – | – | KT | none | 0.0973 |  |
+| `perceptron--perceptron-mk1.5-8k` | `perceptron/perceptron-mk1.5` | no-observable-cache | cold (0/9385) |  | – | – | Perceptron | none | 0.0042 | none documented |
+| `prism-ml--ternary-bonsai-2-9b-8k` | `prism-ml/ternary-bonsai-2-9b` | stopped-early | warm (8192/9329) | 2.5m 0/3, 5m 0/3 | – | 2.5m | Darkbloom | none | 0.0380 | none documented |
+| `liquid--lfm-3-1.7b-8k` | `liquid/lfm-3-1.7b` | stopped-early | warm (8960/9033) | 2.5m 0/3, 5m 0/3 | – | 2.5m | Liquid | none | 0.0364 | none documented |
+| `prism-ml--ternary-bonsai-2-27b-8k` | `prism-ml/ternary-bonsai-2-27b` | stopped-early | warm (8192/9265) | 2.5m 0/1, 5m 0/3, 7.5m 0/3, 10m 0/3, 15m 0/3 | – | 2.5m | Darkbloom | none | 0.0496 | none documented |
+| `liquid--lfm-2.5-24b-a2b-8k` | `liquid/lfm-2.5-24b-a2b` | running |  |  | – | – | Liquid | none | 0.0268 |  |
+| `scaledown--summarize-8k` | `scaledown/summarize` | no-observable-cache | cold (0/9670) |  | – | – | ScaleDown | none | 0.0012 | none documented |
+| `nvidia--nemotron-3.5-super-vl-free-8k` | `nvidia/nemotron-3.5-super-vl:free` | running |  |  | – | – | Nvidia | none | 0.0000 |  |
+| `alias-deepseek--deepseek-flash-latest-8k` | `~deepseek/deepseek-flash-latest` | running |  |  | – | – | DeepInfra, InferenceNet, Modal, Morph, Nebius, PrimeIntellect, Relace, Together, Wafer | none | 0.0141 |  |
 | `nex-agi--nex-n2.5-mini` | `nex-agi/nex-n2.5-mini` | completed | warm (2816/2880) | 2.5m 3/3, 5m 1/3, 7.5m 3/3, 10m 2/3, 15m 3/3, 20m 3/3, 25m 2/3, 30m 2/3, 40m 1/3, 50m 2/3, 1h 2/3, 75m 2/3, 90m 0/3, 2h 1/3 | 2.5m | 90m | Nex AGI | none | 0.0045 | none documented |
 | `tencent--hy4-flash` | `tencent/hy4-flash` | stopped-early | warm (2560/2693) | 2.5m 3/3, 5m 3/3, 7.5m 2/3, 10m 0/3, 15m 0/3 | 5m | 10m | Tencent | none | 0.0049 | none documented |
 | `deepseek--deepseek-v4.1-flash-1017` | `deepseek/deepseek-v4.1-flash-1017` | stopped-early | warm (2432/2548) | 2.5m 3/3, 5m 2/3, 7.5m 2/3, 10m 2/3, 15m 2/3, 20m 0/3, 25m 0/3 | 2.5m | 20m | InferenceNet, Morph, Nebius, PrimeIntellect, Relace, StepFun, Wafer | 20m-r2: PrimeIntellect → Morph | 0.0056 | none documented |
@@ -35,31 +46,46 @@ Written by `summary.py` from the run files, `logs/*.usage.jsonl`, `upstreams.jso
 | `liquid--lfm-3-1.7b` | `liquid/lfm-3-1.7b` | no-observable-cache | cold (0/2887) |  | – | – | Liquid | none | 0.0007 | none documented |
 | `meta--muse-spark-1.2-contributor` | `meta/muse-spark-1.2-contributor` | failed: HTTP 404: {"error":{"message":"0 endpoints out of 1 requested are available matching your guardrail restrictions and data policy. We removed | none |  | – | – |  | none | 0.0000 | none documented |
 | `meta--muse-spark-1.3-contributor` | `meta/muse-spark-1.3-contributor` | failed: HTTP 404: {"error":{"message":"0 endpoints out of 1 requested are available matching your guardrail restrictions and data policy. We removed | none |  | – | – |  | none | 0.0000 | none documented |
-| `ricursiveai--ripple-65b-preview` | `ricursiveai/ripple-65b-preview` | running |  |  | – | – | GMICloud | none | 0.0143 |  |
-| `nex-agi--nex-n2.6` | `nex-agi/nex-n2.6` | running |  |  | – | – | Nex AGI | none | 0.0172 |  |
-| `xiaomi--mimo-v2.6-flash` | `xiaomi/mimo-v2.6-flash` | running |  |  | – | – | Cohere, GMICloud, Makora, Xiaomi | 1h-r3: Xiaomi → Cohere; 50m-r1: Xiaomi → Cohere; 75m-r2: Xiaomi → Cohere | 0.0280 |  |
+| `ricursiveai--ripple-65b-preview` | `ricursiveai/ripple-65b-preview` | completed | warm (2624/2673) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 3/3, 20m 3/3, 25m 3/3, 30m 3/3, 40m 3/3, 50m 3/3, 1h 3/3, 75m 3/3, 90m 3/3, 2h 0/3 | 90m | 2h | GMICloud | none | 0.0151 | none documented |
+| `nex-agi--nex-n2.6` | `nex-agi/nex-n2.6` | completed | warm (2560/2652) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 3/3, 20m 3/3, 25m 3/3, 30m 3/3, 40m 3/3, 50m 3/3, 1h 3/3, 75m 3/3, 90m 3/3, 2h 3/3 | 2h | – | Nex AGI | none | 0.0174 | none documented |
+| `xiaomi--mimo-v2.6-flash` | `xiaomi/mimo-v2.6-flash` | completed | warm (2688/2808) | 2.5m 2/3, 5m 1/3, 7.5m 0/3, 10m 1/3, 15m 1/3, 20m 2/3, 25m 1/3, 30m 1/3, 40m 0/3, 50m 1/3, 1h 1/3, 75m 0/3, 90m 1/3, 2h 1/3 | – | 7.5m | Cohere, GMICloud, Makora, Xiaomi | 1h-r3: Xiaomi → Cohere; 50m-r1: Xiaomi → Cohere; 75m-r2: Xiaomi → Cohere; 2h-r1: Xiaomi → Cohere | 0.0288 | none documented |
 | `qwen--qwen3.8-flash` | `qwen/qwen3.8-flash` | stopped-early | warm (2048/2938) | 2.5m 3/3, 5m 3/3, 7.5m 1/3, 10m 2/3, 15m 1/3, 20m 1/3, 25m 0/3, 30m 2/3, 40m 0/3, 50m 2/3, 1h 1/3, 75m 0/3, 90m 0/3 | 5m | 25m | Alibaba | none | 0.0328 | none documented |
 | `qwen--qwen3.8-omni-flash` | `qwen/qwen3.8-omni-flash` | stopped-early | warm (1792/2902) | 2.5m 1/3, 5m 0/3, 7.5m 0/3 | – | 5m | Alibaba | none | 0.0235 | none documented |
-| `nvidia--nemotron-3.5-super-vl` | `nvidia/nemotron-3.5-super-vl` | running |  |  | – | – | CoreWeave, Crusoe, Darkbloom, DeepInfra, Venice | 30m-r1: Venice → CoreWeave; 1h-r2: DeepInfra → CoreWeave; 75m-r3: DeepInfra → Darkbloom | 0.0275 |  |
+| `nvidia--nemotron-3.5-super-vl` | `nvidia/nemotron-3.5-super-vl` | completed | warm (2816/2836) | 2.5m 3/3, 5m 2/3, 7.5m 1/3, 10m 2/3, 15m 3/3, 20m 1/3, 25m 1/3, 30m 0/3, 40m 2/3, 50m 2/3, 1h 1/3, 75m 1/3, 90m 2/3, 2h 2/3 | 2.5m | 30m | CoreWeave, Crusoe, Darkbloom, DeepInfra, Venice | 30m-r1: Venice → CoreWeave; 1h-r2: DeepInfra → CoreWeave; 90m-r1: DeepInfra → CoreWeave; 75m-r3: DeepInfra → Darkbloom | 0.0287 | none documented |
 | `minimax--minimax-m3.1-flash` | `minimax/minimax-m3.1-flash` | stopped-early | warm (2472/2473) | 2.5m 3/3, 5m 1/3, 7.5m 2/3, 10m 1/3, 15m 1/3, 20m 0/3, 25m 0/3 | 2.5m | 20m | Fireworks, Inferact vLLM, Makora, ModelRun, Together, Wafer | none | 0.0210 | none documented |
 | `perceptron--perceptron-mk1.5` | `perceptron/perceptron-mk1.5` | no-observable-cache | cold (0/2874) |  | – | – | Perceptron | none | 0.0013 | none documented |
 | `kt--midm-k-3.0-pro` | `kt/midm-k-3.0-pro` | no-observable-cache | cold (0/3164) |  | – | – | KT | none | 0.0019 | none documented |
-| `reflection--beam-1.0-501b-a23b` | `reflection/beam-1.0-501b-a23b` | running |  |  | – | – | BaseTen, CoreWeave | none | 0.0462 |  |
+| `reflection--beam-1.0-501b-a23b` | `reflection/beam-1.0-501b-a23b` | completed | warm (2816/2876) | 2.5m 3/3, 5m 3/3, 7.5m 2/3, 10m 2/3, 15m 2/3, 20m 2/3, 25m 2/3, 30m 3/3, 40m 3/3, 50m 2/3, 1h 3/3, 75m 2/3, 90m 2/3, 2h 1/3 | 5m | – | BaseTen, CoreWeave, DigitalOcean, Nebius, Together | 75m-r1: BaseTen → DigitalOcean; 90m-r2: BaseTen → Nebius; 2h-r3: BaseTen → Together; 2h-r2: CoreWeave → Together | 0.0503 | none documented |
 | `thinkingmachines--inkling-2-small` | `thinkingmachines/inkling-2-small` | stopped-early | warm (3072/3158) | 2.5m 0/3, 5m 0/3 | – | 2.5m | Cloudflare, DeepInfra, Nebius | none | 0.0483 | none documented |
-| `motif-technologies--motif-3` | `motif-technologies/motif-3` | running |  |  | – | – | KT | none | 0.0364 |  |
+| `motif-technologies--motif-3` | `motif-technologies/motif-3` | completed | warm (2048/2196) | 2.5m 2/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 3/3, 20m 2/3, 25m 3/3, 30m 3/3, 40m 3/3, 50m 3/3, 1h 3/3, 75m 3/3, 90m 3/3, 2h 3/3 | – | – | KT | none | 0.0381 | none documented |
 | `moondream--moondream3-preview` | `moondream/moondream3-preview` | stopped-early | warm (2668/2669) | 2.5m 3/3, 5m 0/3, 7.5m 0/3 | 2.5m | 5m | PrimeIntellect | none | 0.0426 | none documented |
 | `moondream--moondream3.1-9b-a2b` | `moondream/moondream3.1-9b-a2b` | stopped-early | warm (2615/2616) | 2.5m 0/3, 5m 0/3 | – | 2.5m | PrimeIntellect | none | 0.0403 | none documented |
-| `z-ai--glm-5.3-flashx` | `z-ai/glm-5.3-flashx` | running |  |  | – | – | Z.AI | none | 0.0501 |  |
-| `z-ai--glm-5.3-flashx-legal` | `z-ai/glm-5.3-flashx-legal` | running |  |  | – | – | Z.AI | none | 0.0496 |  |
-| `tencent--hy4` | `tencent/hy4` | running |  |  | – | – | Tencent | none | 0.0517 |  |
-| `xiaomi--mimo-v2.6-pro` | `xiaomi/mimo-v2.6-pro` | running |  |  | – | – | DeepInfra, Xiaomi | none | 0.0609 |  |
-| `deepseek--deepseek-v4-flash-vision-exp` | `deepseek/deepseek-v4-flash-vision-exp` | running |  |  | – | – | GMICloud | none | 0.0546 |  |
+| `z-ai--glm-5.3-flashx` | `z-ai/glm-5.3-flashx` | stopped-early | warm (2624/2646) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 3/3, 20m 3/3, 25m 3/3, 30m 3/3, 40m 2/3, 50m 0/3, 1h 0/3 | 30m | 50m | Z.AI | none | 0.0562 | none documented |
+| `z-ai--glm-5.3-flashx-legal` | `z-ai/glm-5.3-flashx-legal` | running |  |  | – | – | Z.AI | none | 0.0562 |  |
+| `tencent--hy4` | `tencent/hy4` | running |  |  | – | – | Tencent | none | 0.0535 |  |
+| `xiaomi--mimo-v2.6-pro` | `xiaomi/mimo-v2.6-pro` | running |  |  | – | – | DeepInfra, Xiaomi | none | 0.0736 |  |
+| `deepseek--deepseek-v4-flash-vision-exp` | `deepseek/deepseek-v4-flash-vision-exp` | stopped-early | warm (2304/2512) | 2.5m 3/3, 5m 3/3, 7.5m 2/3, 10m 3/3, 15m 3/3, 20m 3/3, 25m 2/3, 30m 1/3, 40m 0/3, 50m 1/3, 1h 0/3, 75m 0/3 | 5m | 40m | GMICloud | none | 0.0694 | none documented |
 | `elorian--glimpse` | `elorian/glimpse` | stopped-early | warm (1600/2898) | 2.5m 1/3, 5m 0/3, 7.5m 0/3 | – | 5m | Together | none | 0.0940 | none documented |
-| `aion-labs--aion-3.5-mini` | `aion-labs/aion-3.5-mini` | running |  |  | – | – | AionLabs | none | 0.0916 |  |
-| `unbiased--pareto-26.10` | `unbiased/pareto-26.10` | running |  |  | – | – | Unbiased | none | 0.0913 |  |
-| `unbiased--pareto-26.10-preview` | `unbiased/pareto-26.10-preview` | running |  |  | – | – | Unbiased | none | 0.0911 |  |
-| `tencent--hy4-preview` | `tencent/hy4-preview` | running |  |  | – | – | DeepInfra, GMICloud, SiliconFlow, Tencent, Venice | none | 0.1021 |  |
-| `stepfun--step-5-preview` | `stepfun/step-5-preview` | running |  |  | – | – | StepFun | none | 0.1198 |  |
-| `baidu--ernie-light-dt-1.0-intl` | `baidu/ernie-light-dt-1.0-intl` | running |  |  | – | – | Baidu | none | 0.1574 |  |
-| `meta--muse-spark-open` | `meta/muse-spark-open` | running |  |  | – | – | BaseTen, Fireworks, Modal, Nebius, Together | none | 0.1536 |  |
-| `z-ai--glm-5.3-prime` | `z-ai/glm-5.3-prime` | running |  |  | – | – | Alibaba | none | 0.1981 |  |
+| `aion-labs--aion-3.5-mini` | `aion-labs/aion-3.5-mini` | stopped-early | warm (2670/2670) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 3/3, 20m 3/3, 25m 3/3, 30m 3/3, 40m 3/3, 50m 3/3, 1h 1/3, 75m 0/3, 90m 0/3 | 50m | 75m | AionLabs | none | 0.1117 | none documented |
+| `unbiased--pareto-26.10` | `unbiased/pareto-26.10` | running |  |  | – | – | Unbiased | none | 0.1034 |  |
+| `unbiased--pareto-26.10-preview` | `unbiased/pareto-26.10-preview` | stopped-early | warm (2647/2661) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 3/3, 20m 3/3, 25m 3/3, 30m 3/3, 40m 3/3, 50m 3/3, 1h 3/3, 75m 0/3, 90m 0/3 | 1h | 75m | Unbiased | none | 0.1051 | none documented |
+| `tencent--hy4-preview` | `tencent/hy4-preview` | running |  |  | – | – | DeepInfra, GMICloud, SiliconFlow, Tencent, Venice | 75m-r3: SiliconFlow → Venice; 90m-r2: SiliconFlow → Venice; 90m-r1: SiliconFlow → Venice | 0.1120 |  |
+| `stepfun--step-5-preview` | `stepfun/step-5-preview` | stopped-early | warm (2496/2538) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 3/3, 20m 3/3, 25m 2/3, 30m 2/3, 40m 0/3, 50m 0/3 | 20m | 40m | StepFun | none | 0.1385 | none documented |
+| `baidu--ernie-light-dt-1.0-intl` | `baidu/ernie-light-dt-1.0-intl` | running |  |  | – | – | Baidu | none | 0.2032 |  |
+| `meta--muse-spark-open` | `meta/muse-spark-open` | stopped-early | warm (2720/2745) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 2/3, 15m 3/3, 20m 3/3, 25m 3/3, 30m 2/3, 40m 1/3, 50m 0/3, 1h 0/3 | 7.5m | 50m | BaseTen, Fireworks, Modal, Nebius, Together | none | 0.1971 | none documented |
+| `z-ai--glm-5.3-prime` | `z-ai/glm-5.3-prime` | running |  |  | – | – | Alibaba | none | 0.2600 |  |
+| `qwen--qwen3.8-max-0902` | `qwen/qwen3.8-max-0902` | stopped-early | warm (2048/2949) | 2.5m 3/3, 5m 3/3, 7.5m 3/3, 10m 3/3, 15m 3/3, 20m 3/3, 25m 3/3, 30m 3/3, 40m 0/3, 50m 0/3 | 30m | 40m | Alibaba | none | 0.3509 | none documented |
+| `sakana--fugu-max` | `sakana/fugu-max` | failed: HTTP 403: {"error":{"message":"sakana/fugu-max is not available in your region: Sakana AI blocks requests originating from your location."," | none |  | – | – |  | none | 0.0000 | none documented |
+| `anthropic--claude-sonnet-5.5` | `anthropic/claude-sonnet-5.5` | stopped-early | warm (4271/4275) | 2.5m 3/3, 5m 3/3, 7.5m 0/3, 10m 0/3 | 5m | 7.5m | Claude Platform on AWS | none | 0.5339 | 5m documented: holds (warm through 5m) |
+| `openai--gpt-6-sol` | `openai/gpt-6-sol` | running |  |  | – | – | OpenAI | none | 0.2706 |  |
+| `unbiased--pareto-26.9` | `unbiased/pareto-26.9` | running |  |  | – | – | Unbiased | none | 0.2934 |  |
+| `aion-labs--aion-3.5` | `aion-labs/aion-3.5` | running |  |  | – | – | AionLabs | none | 0.3850 |  |
+| `fireworks--ember-1` | `fireworks/ember-1` | running |  |  | – | – | Fireworks | none | 0.3774 |  |
+| `qwen--qwen3.8-max-prime` | `qwen/qwen3.8-max-prime` | running |  |  | – | – | Alibaba | none | 0.6044 |  |
+| `xiaomi--mimo-v2.6-pro-ultraspeed` | `xiaomi/mimo-v2.6-pro-ultraspeed` | running |  |  | – | – | Xiaomi | none | 0.5395 |  |
+| `sakana--fugu-ultra-v2` | `sakana/fugu-ultra-v2` | failed: HTTP 403: {"error":{"message":"sakana/fugu-ultra-v2 is not available in your region: Sakana AI blocks requests originating from your locatio | none |  | – | – |  | none | 0.0000 | none documented |
+| `alias-deepseek--deepseek-flash-latest` | `~deepseek/deepseek-flash-latest` | no-observable-cache | cold (0/2520) |  | – | – | InferenceNet | none | 0.0003 | none documented |
+| `alias-z-ai--glm-flash-latest` | `~z-ai/glm-flash-latest` | running |  |  | – | – | BaseTen, Cohere, DeepInfra, Friendli, InferenceNet, Modal, Particle AI, Reka, Relace, River, Together, Wafer | none | 0.0057 |  |
+| `alias-z-ai--glm-latest` | `~z-ai/glm-latest` | running |  |  | – | – | Decart, Fireworks, InferenceNet, Wafer | none | 0.0108 |  |
+| `alias-deepseek--deepseek-pro-latest` | `~deepseek/deepseek-pro-latest` | stopped-early | warm (2304/2487) | 2.5m 0/3, 5m 0/3 | – | 2.5m | Sail Research, Wafer | none | 0.0133 | none documented |
+| `openai--gpt-6-luna-pro` | `openai/gpt-6-luna-pro` | running |  |  | – | – | OpenAI | none | 0.0318 |  |

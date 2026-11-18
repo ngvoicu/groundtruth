@@ -1,0 +1,1 @@
+{"at":"2026-11-18T11:28:31.573Z","label":"sakana--fugu-max","model":"sakana/fugu-max","sample":"groundtruth-mtq16y19-control","status":403,"error":{"code":403,"message":"sakana/fugu-max is not available in your region: Sakana AI blocks requests originating from your location."}}

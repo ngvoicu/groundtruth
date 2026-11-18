@@ -1,7 +1,8 @@
 # OpenRouter's chat models released since 2026-08-17: cache lifetimes, straight with a key of its own, 2026-11-18
 
-**State of this folder: batch 1 (the seven big releases), pushed 2026-11-18 about 10:55 UTC (Muse Ember's entry and the others' as in `manifest-entries.json` and the separate list), while the measuring goes on.** Runs still running or not yet
-started are listed as such in `results.md`; a run gets its entry only once it has finished. The folder is complete in
+**State of this folder: batch 2, pushed 2026-11-18 about 12:05 UTC while the measuring goes on** (batch 1 was
+`f1cca4d`, 10:51 UTC). Runs still running or not yet started are listed as such in `results.md`; a run gets its entry
+only once it has finished. The folder is complete in
 itself at every pushed commit.
 
 Plain probe (`src/cli.ts`) straight to `https://openrouter.ai/api/v1`, no proxy in between (route `openrouter`, client
@@ -65,6 +66,17 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
 - **Probe version.** The probe's changes for this folder (the upstream reply fields, the reply id and the sample key in
   the usage log; HTTP 402 as a refusal) are commit `e0d1afb`, first named 0.3.3; `campaign-1-long` already had another
   0.3.3, so the version was renamed 0.3.4 (commit `5977b0b`, code unchanged). The run files that recorded "0.3.3" with this code (started before `5977b0b`, 09:07 UTC): `anthropic--claude-fable-5.2`, `baidu--ernie-5.5-flash-preview-free`, `deepseek--deepseek-v4.1-flash-1017`, `google--gemini-4-carbon`, `google--gemini-4-hydrogen`, `ibm-granite--granite-4.2-8b`, `inclusionai--ling-3.0-flash-vl`, `inclusionai--ling-3.1-flash`, `liquid--lfm-2.5-24b-a2b`, `meta--muse-ember`, `nex-agi--nex-n2.5-mini`, `nex-agi--nex-n2.5-pro`, `openai--gpt-6.2-astra`, `openai--gpt-6.2-sol`, `particle-ai--particle-1`, `qwen--qwen4-max`, `scaledown--extract`, `scaledown--summarize`, `tencent--hy4-flash`, `upstage--solar-mini4`; every later run records "0.3.4". The run files are not edited.
+- **A larger prompt where the control read nothing** (the chief's decision, m-10759): a control that read 0 cached
+  tokens at about 2,500 tokens may only mean the prompt is under that upstream's smallest cacheable size. Every model
+  whose first run's control read 0 cached tokens gets one more run of its own (label `…-8k`) with
+  `--prefix-tokens 8000`, the size of the repository's earlier larger-prompt Gemini row
+  (`../cpa-latest-2026-11-06`, L1b, after L1's ~2.3k prompt was not cached; the older O4 / O5 used 5,000);
+  everything else as the first run (pacing for the free one). `status.py` adds such a run to `plan.json` as soon as a
+  first run ends that way, the dearest first, ahead of the first runs not yet started, with its own worst case (9,000
+  prompt tokens per request). Its manifest entry carries `"prefix_tokens": 8000` in its options, as L1b's; no lifetime
+  is asked, so it lands in the short profile like the first run (`scratch_build.py`). `manifest-entries-cold-control.json`
+  lists every first run whose control read 0, with its larger-prompt run and what that showed; the first runs stay in
+  `manifest-entries.json` as `summary.py` builds them.
 - `scripts/build_observed.py`: commit `83b05bb` accepts a run dated from 14 November whose control missed (no checks);
   `main` carries the same rule from `campaign-1-long` (`f005ffa`, refined by `1444a55`); the assembler puts them
   together.
@@ -92,6 +104,15 @@ with no warm check):
 providers.dev documented no lifetime for six of the seven on 2026-11-18; for GPT-6.2 Astra 30 minutes. Every other run
 is in `results.md` with the same columns.
 
+**Batch 2** adds 26 finished runs. Among them: Claude Sonnet 5.5 warm through 5 minutes, cold at 7.5 (documented 5
+minutes: holds); the larger-prompt runs, where Gemini 4 Hydrogen's control was cached at ~7,500 tokens (5,461) but no
+age was fully warm (2/3 at 2.5 min, 1/3 at 5, cold at 7.5), ScaleDown Summarize and Perceptron Mk1.5 read 0 again
+(two runs each say no observable cache), and the two ternary-bonsai and LFM3 1.7B were cached at ~9,000 tokens but cold
+at 2.5 minutes; long lifetimes on single upstreams (Nex N2.6 warm in every check to 2 hours, Ripple 65B through 90
+minutes, Pareto 26.10 Preview through 1 hour, Aion 3.5 Mini through 50 minutes, GLM 5.3 FlashX and Qwen3.8 Max 0902
+through 30 minutes, Flint v1.0 free through 40 minutes); and three models spread over several upstreams that crossed
+(MiMo v2.6 Flash, Nemotron 3.5 Super VL, Beam 1.0), in the separate list.
+
 ## Input windows, from a refusal only
 
 For the four models whose two OpenRouter figures disagree (`context_length` / `top_provider.context_length`:
@@ -99,9 +120,18 @@ For the four models whose two OpenRouter figures disagree (`context_length` / `t
 `xiaomi/mimo-v2.6-pro` 1,050,000 / 1,048,576, `deepseek/deepseek-v4-flash-vision-exp` 1,048,576 / 1,048,575):
 after the model's cache run, one Chat Completions request of " hello" × 1,200,000 (about 1.2 million tokens), 16
 output tokens, `transforms: []` (`window.py`, `windows.jsonl`, as `../logins-2026-11-17` recorded Fable's refusal).
-No accepted request near a limit. 
+No accepted request near a limit. Every refusal so far came from OpenRouter itself, before any upstream, and names
+the endpoint's window; `manifest-entries.json` has a limits row for each (the window named, no accepted size, as
+`../logins-2026-11-17`'s Fable row):
 
-None sent yet at batch 1 (each comes after its model's cache run).
+| Model | OpenRouter's figures (context_length / top_provider) | The refusal |
+|---|---|---|
+| `xiaomi/mimo-v2.6-flash` | 1,050,000 / 1,048,576 | "This endpoint's maximum context length is 1050000 tokens. However, you requested about 1800021 tokens (1800005 of text input, 16 in the output)" |
+| `nvidia/nemotron-3.5-super-vl` | 1,048,576 / 262,144 | "… maximum context length is 1048576 tokens …" |
+| `deepseek/deepseek-v4-flash-vision-exp` | 1,048,576 / 1,048,575 | "… maximum context length is 1048576 tokens …" |
+| `xiaomi/mimo-v2.6-pro` | 1,050,000 / 1,048,576 | not sent yet (its cache run is running) |
+
+OpenRouter counted the 1.2 million " hello" as about 1.8 million tokens (its own estimate before tokenizing).
 
 ## Left out, and why
 
@@ -118,8 +148,16 @@ Failed runs, kept with their files and in `excluded` of `manifest-entries.json`:
   your guardrail restrictions and data policy … Paid model training violation (account settings)": the account's data
   policy excludes their only endpoint. A setting of the account, which this task does not change.
 
+- `google/gemini-4-carbon`, the run with the larger prompt (`google--gemini-4-carbon-8k`): its control was cached
+  (5,474 of 7,528), then at the 7.5-minute check OpenRouter answered HTTP 504 "The operation was aborted" after a 429
+  of Google AI Studio ("temporarily rate-limited upstream"). The probe's `--stop-on-refusal` read the upstream's rate
+  wording in that answer and ended the run, not retried: 2.5 min 1/3, 5 min 0/3, four checks crossing upstreams
+  (Google / Google AI Studio). Failed for a reason of its own: kept, excluded, not started again.
+- `sakana/fugu-max`, `sakana/fugu-ultra-v2`: HTTP 403 "not available in your region: Sakana AI blocks requests
+  originating from your location". Nothing measured.
+
 Runs whose entry waits for OpenRouter's generation record of their last replies (a few minutes late) are marked
-"entry pending" in `results.md`. Nothing was left out for money at batch 1.
+"entry pending" in `results.md`. Nothing was left out for money up to batch 2.
 
 ## Money
 
@@ -133,6 +171,11 @@ what is left to $18 after the spent money, what the running runs may still cost 
 largest prompt and output so far, less what they spent) and the window requests still owed. 
 
 At batch 1 (10:51 UTC, runs still going): ledger **$6.07**, OpenRouter's own per-reply figure $6.09, the key's usage **$6.09** (`key-readings.jsonl`; the two OpenRouter figures run about 0.3 % above the ledger, the stop takes the higher). Per model and run in `ledger.md`; the seven big ones: Fable 5.2 $2.13, GPT-6.2 Astra $1.23, GPT-6.2 Sol $0.63 ($0.32 unpinned + $0.30 pinned), Qwen4 Max $0.23, Muse Ember $0.02, Gemini 4 Carbon $0.01, Gemini 4 Hydrogen $0.01.
+
+At batch 2 (12:02 UTC, runs still going): ledger **$11.39**, OpenRouter's own per-reply figure $11.47, the key's usage
+**$11.47**. The difference is mostly the `~…-latest` aliases and `ricursiveai/ripple-65b-preview`, which OpenRouter
+billed above the price its model list gives for them (the alias at the price of the model it resolved to); the stop
+takes the higher figure. The larger-prompt runs of the two Gemini cost $0.75 (Carbon) and $0.61 (Hydrogen).
 
 ## Picking up
 
@@ -151,7 +194,8 @@ cut off (pid gone, no final file) is kept as it is and not resumed. `summary.py`
   `supervisor.log`.
 - `plan.py`, `plan.json`: the list and the order (`plan.json` edited by hand for the paced free runs and the pinned Sol
   run, its `note` says so); `sources/`: the website's entries and OpenRouter's model list as read.
-- `run.sh`, `key.py`, `key_usage.py`, `status.py`, `supervise.py`, `decisions.json` (left out, refusals seen),
+- `run.sh`, `key.py`, `key_usage.py`, `status.py`, `supervise.py` (the running supervisor was started from the
+  version before its log filter also kept `added` lines; nothing else differs), `decisions.json` (left out, refusals seen),
   `offered.jsonl`, `upstream.py`, `upstreams.jsonl`, `window.py`, `windows.jsonl`.
 - `ledger.py`, `ledger.jsonl`, `ledger.md`, `key-readings.jsonl`: the cost.
 - `summary.py`, `results.md`, `results.json`, `manifest-entries.json`, `manifest-entries-upstream-changed.json`,

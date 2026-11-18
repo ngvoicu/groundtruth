@@ -482,13 +482,351 @@
  {
   "label": "recursive--flint-v1.0-free",
   "model": "recursive/flint-v1.0:free",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Recursive"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "recursive--flint-v1.0-free-2026-11-18T09-44-48.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2233,
+   "cachedTokens": 2176,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "1/3",
+   "1h": "0/3",
+   "75m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 2400,
+  "last_warm_s": 3000,
+  "first_all_cold_s": 3600,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "google--gemini-4-carbon-8k",
+  "model": "google/gemini-4-carbon",
+  "state": "finished",
+  "status": "failed",
+  "usd": 0.7489,
+  "site_documented_s": null,
+  "error": "quota or rate refusal, not retried: HTTP 504: {\"error\":{\"message\":\"The operation was aborted\",\"code\":504,\"metadata\":{\"provider_name\":\"Google\",\"previous_errors\":[{\"code\":429,\"message\":\"Provider returned error\",\"provider_name\":\"Google AI Studio\",\"raw\":\"google/gemini-4-carbon is temporarily rate-limited upstream. Please retry shortly, or add your ",
+  "upstreams": [
+   "Google",
+   "Google AI Studio"
+  ],
+  "upstream_changed": [
+   {
+    "sample": "5m-r1",
+    "upstreams": [
+     "Google",
+     "Google AI Studio"
+    ]
+   },
+   {
+    "sample": "5m-r3",
+    "upstreams": [
+     "Google",
+     "Google AI Studio"
+    ]
+   },
+   {
+    "sample": "2.5m-r2",
+    "upstreams": [
+     "Google",
+     "Google AI Studio"
+    ]
+   },
+   {
+    "sample": "2.5m-r3~2",
+    "upstreams": [
+     "Google",
+     "Google AI Studio"
+    ]
+   }
+  ],
+  "upstream_unknown": 0,
+  "file": "google--gemini-4-carbon-8k-2026-11-18T11-07-48.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 7528,
+   "cachedTokens": 5474,
+   "outputTokens": 5
+  },
+  "checks": {
+   "2.5m": "1/3",
+   "5m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": 150,
+  "first_all_cold_s": 300,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "google--gemini-4-hydrogen-8k",
+  "model": "google/gemini-4-hydrogen",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.6081,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Google",
+   "Google AI Studio"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "google--gemini-4-hydrogen-8k-2026-11-18T11-14-47.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 7515,
+   "cachedTokens": 5461,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "2/3",
+   "5m": "1/3",
+   "7.5m": "0/3",
+   "10m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": 300,
+  "first_all_cold_s": 450,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "kt--midm-k-3.0-pro-8k",
+  "model": "kt/midm-k-3.0-pro",
+  "state": "running",
+  "status": null,
+  "usd": 0.0973,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "KT"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "perceptron--perceptron-mk1.5-8k",
+  "model": "perceptron/perceptron-mk1.5",
+  "state": "finished",
+  "status": "no-observable-cache",
+  "usd": 0.0042,
+  "site_documented_s": null,
+  "error": "an immediate re-send was not served from cache",
+  "upstreams": [
+   "Perceptron"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "perceptron--perceptron-mk1.5-8k-2026-11-18T11-15-17.json",
+  "control": "cold",
+  "control_tokens": {
+   "promptTokens": 9385,
+   "cachedTokens": 0,
+   "outputTokens": 5
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "prism-ml--ternary-bonsai-2-9b-8k",
+  "model": "prism-ml/ternary-bonsai-2-9b",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.038,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Darkbloom"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "prism-ml--ternary-bonsai-2-9b-8k-2026-11-18T11-19-28.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 9329,
+   "cachedTokens": 8192,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "0/3",
+   "5m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": 150,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "liquid--lfm-3-1.7b-8k",
+  "model": "liquid/lfm-3-1.7b",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0364,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Liquid"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "liquid--lfm-3-1.7b-8k-2026-11-18T11-19-43.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 9033,
+   "cachedTokens": 8960,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "0/3",
+   "5m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": 150,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "prism-ml--ternary-bonsai-2-27b-8k",
+  "model": "prism-ml/ternary-bonsai-2-27b",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0496,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Darkbloom"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "prism-ml--ternary-bonsai-2-27b-8k-2026-11-18T11-19-58.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 9265,
+   "cachedTokens": 8192,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "0/1",
+   "5m": "0/3",
+   "7.5m": "0/3",
+   "10m": "0/3",
+   "15m": "0/3"
+  },
+  "late": 2,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": 150,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "liquid--lfm-2.5-24b-a2b-8k",
+  "model": "liquid/lfm-2.5-24b-a2b",
+  "state": "running",
+  "status": null,
+  "usd": 0.0268,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Liquid"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "scaledown--summarize-8k",
+  "model": "scaledown/summarize",
+  "state": "finished",
+  "status": "no-observable-cache",
+  "usd": 0.0012,
+  "site_documented_s": null,
+  "error": "an immediate re-send was not served from cache",
+  "upstreams": [
+   "ScaleDown"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "scaledown--summarize-8k-2026-11-18T11-28-00.json",
+  "control": "cold",
+  "control_tokens": {
+   "promptTokens": 9670,
+   "cachedTokens": 0,
+   "outputTokens": 1
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "nvidia--nemotron-3.5-super-vl-free-8k",
+  "model": "nvidia/nemotron-3.5-super-vl:free",
   "state": "running",
   "status": null,
   "usd": 0.0,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
-   "Recursive"
+   "Nvidia"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "alias-deepseek--deepseek-flash-latest-8k",
+  "model": "~deepseek/deepseek-flash-latest",
+  "state": "running",
+  "status": null,
+  "usd": 0.0141,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "DeepInfra",
+   "InferenceNet",
+   "Modal",
+   "Morph",
+   "Nebius",
+   "PrimeIntellect",
+   "Relace",
+   "Together",
+   "Wafer"
   ],
   "upstream_changed": [],
   "upstream_unknown": 0
@@ -1033,37 +1371,95 @@
  {
   "label": "ricursiveai--ripple-65b-preview",
   "model": "ricursiveai/ripple-65b-preview",
-  "state": "running",
-  "status": null,
-  "usd": 0.0143,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.0151,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "GMICloud"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "ricursiveai--ripple-65b-preview-2026-11-18T09-12-46.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2673,
+   "cachedTokens": 2624,
+   "outputTokens": 2
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "3/3",
+   "75m": "3/3",
+   "90m": "3/3",
+   "2h": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 5400,
+  "last_warm_s": 5400,
+  "first_all_cold_s": 7200,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
  },
  {
   "label": "nex-agi--nex-n2.6",
   "model": "nex-agi/nex-n2.6",
-  "state": "running",
-  "status": null,
-  "usd": 0.0172,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.0174,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Nex AGI"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "nex-agi--nex-n2.6-2026-11-18T09-13-01.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2652,
+   "cachedTokens": 2560,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "3/3",
+   "75m": "3/3",
+   "90m": "3/3",
+   "2h": "3/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 7200,
+  "last_warm_s": 7200,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
  },
  {
   "label": "xiaomi--mimo-v2.6-flash",
   "model": "xiaomi/mimo-v2.6-flash",
-  "state": "running",
-  "status": null,
-  "usd": 0.028,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.0288,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
@@ -1093,9 +1489,59 @@
      "Xiaomi",
      "Cohere"
     ]
+   },
+   {
+    "sample": "2h-r1",
+    "upstreams": [
+     "Xiaomi",
+     "Cohere"
+    ]
    }
   ],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "xiaomi--mimo-v2.6-flash-2026-11-18T09-13-16.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2808,
+   "cachedTokens": 2688,
+   "outputTokens": 14
+  },
+  "checks": {
+   "2.5m": "2/3",
+   "5m": "1/3",
+   "7.5m": "0/3",
+   "10m": "1/3",
+   "15m": "1/3",
+   "20m": "2/3",
+   "25m": "1/3",
+   "30m": "1/3",
+   "40m": "0/3",
+   "50m": "1/3",
+   "1h": "1/3",
+   "75m": "0/3",
+   "90m": "1/3",
+   "2h": "1/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": 7200,
+  "first_all_cold_s": 450,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "window": {
+   "kind": "context",
+   "model": "xiaomi/mimo-v2.6-flash",
+   "n": 1200000,
+   "status": 400,
+   "seconds": 0.4,
+   "promptTokens": null,
+   "message": "This endpoint's maximum context length is 1050000 tokens. However, you requested about 1800021 tokens (1800005 of text input, 16 in the output). Please reduce the length of the input, or use the context-compression plugin to compress your prompt automatically.",
+   "metadata": {
+    "provider_name": null
+   },
+   "upstream": null,
+   "at": "2026-11-18T11:15:32Z"
+  }
  },
  {
   "label": "qwen--qwen3.8-flash",
@@ -1174,9 +1620,9 @@
  {
   "label": "nvidia--nemotron-3.5-super-vl",
   "model": "nvidia/nemotron-3.5-super-vl",
-  "state": "running",
-  "status": null,
-  "usd": 0.0275,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.0287,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
@@ -1202,6 +1648,13 @@
     ]
    },
    {
+    "sample": "90m-r1",
+    "upstreams": [
+     "DeepInfra",
+     "CoreWeave"
+    ]
+   },
+   {
     "sample": "75m-r3",
     "upstreams": [
      "DeepInfra",
@@ -1209,7 +1662,50 @@
     ]
    }
   ],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "nvidia--nemotron-3.5-super-vl-2026-11-18T09-26-00.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2836,
+   "cachedTokens": 2816,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "2/3",
+   "7.5m": "1/3",
+   "10m": "2/3",
+   "15m": "3/3",
+   "20m": "1/3",
+   "25m": "1/3",
+   "30m": "0/3",
+   "40m": "2/3",
+   "50m": "2/3",
+   "1h": "1/3",
+   "75m": "1/3",
+   "90m": "2/3",
+   "2h": "2/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 150,
+  "last_warm_s": 7200,
+  "first_all_cold_s": 1800,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "window": {
+   "kind": "context",
+   "model": "nvidia/nemotron-3.5-super-vl",
+   "n": 1200000,
+   "status": 400,
+   "seconds": 0.3,
+   "promptTokens": null,
+   "message": "This endpoint's maximum context length is 1048576 tokens. However, you requested about 1800021 tokens (1800005 of text input, 16 in the output). Please reduce the length of the input, or use the context-compression plugin to compress your prompt automatically.",
+   "metadata": {
+    "provider_name": null
+   },
+   "upstream": null,
+   "at": "2026-11-18T11:29:01Z"
+  }
  },
  {
   "label": "minimax--minimax-m3.1-flash",
@@ -1311,17 +1807,78 @@
  {
   "label": "reflection--beam-1.0-501b-a23b",
   "model": "reflection/beam-1.0-501b-a23b",
-  "state": "running",
-  "status": null,
-  "usd": 0.0462,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.0503,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "BaseTen",
-   "CoreWeave"
+   "CoreWeave",
+   "DigitalOcean",
+   "Nebius",
+   "Together"
   ],
-  "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_changed": [
+   {
+    "sample": "75m-r1",
+    "upstreams": [
+     "BaseTen",
+     "DigitalOcean"
+    ]
+   },
+   {
+    "sample": "90m-r2",
+    "upstreams": [
+     "BaseTen",
+     "Nebius"
+    ]
+   },
+   {
+    "sample": "2h-r3",
+    "upstreams": [
+     "BaseTen",
+     "Together"
+    ]
+   },
+   {
+    "sample": "2h-r2",
+    "upstreams": [
+     "CoreWeave",
+     "Together"
+    ]
+   }
+  ],
+  "upstream_unknown": 0,
+  "file": "reflection--beam-1.0-501b-a23b-2026-11-18T09-41-03.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2876,
+   "cachedTokens": 2816,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "2/3",
+   "10m": "2/3",
+   "15m": "2/3",
+   "20m": "2/3",
+   "25m": "2/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "2/3",
+   "1h": "3/3",
+   "75m": "2/3",
+   "90m": "2/3",
+   "2h": "1/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 300,
+  "last_warm_s": 7200,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
  },
  {
   "label": "thinkingmachines--inkling-2-small",
@@ -1359,16 +1916,45 @@
  {
   "label": "motif-technologies--motif-3",
   "model": "motif-technologies/motif-3",
-  "state": "running",
-  "status": null,
-  "usd": 0.0364,
+  "state": "finished",
+  "status": "completed",
+  "usd": 0.0381,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "KT"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "motif-technologies--motif-3-2026-11-18T09-48-31.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2196,
+   "cachedTokens": 2048,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "2/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "2/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "3/3",
+   "75m": "3/3",
+   "90m": "3/3",
+   "2h": "3/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": 7200,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
  },
  {
   "label": "moondream--moondream3-preview",
@@ -1436,23 +2022,49 @@
  {
   "label": "z-ai--glm-5.3-flashx",
   "model": "z-ai/glm-5.3-flashx",
-  "state": "running",
-  "status": null,
-  "usd": 0.0501,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0562,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Z.AI"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "z-ai--glm-5.3-flashx-2026-11-18T10-05-42.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2646,
+   "cachedTokens": 2624,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "2/3",
+   "50m": "0/3",
+   "1h": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1800,
+  "last_warm_s": 2400,
+  "first_all_cold_s": 3000,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
  },
  {
   "label": "z-ai--glm-5.3-flashx-legal",
   "model": "z-ai/glm-5.3-flashx-legal",
   "state": "running",
   "status": null,
-  "usd": 0.0496,
+  "usd": 0.0562,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
@@ -1466,7 +2078,7 @@
   "model": "tencent/hy4",
   "state": "running",
   "status": null,
-  "usd": 0.0517,
+  "usd": 0.0535,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
@@ -1480,7 +2092,7 @@
   "model": "xiaomi/mimo-v2.6-pro",
   "state": "running",
   "status": null,
-  "usd": 0.0609,
+  "usd": 0.0736,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
@@ -1493,16 +2105,57 @@
  {
   "label": "deepseek--deepseek-v4-flash-vision-exp",
   "model": "deepseek/deepseek-v4-flash-vision-exp",
-  "state": "running",
-  "status": null,
-  "usd": 0.0546,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0694,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "GMICloud"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "deepseek--deepseek-v4-flash-vision-exp-2026-11-18T10-23-34.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2512,
+   "cachedTokens": 2304,
+   "outputTokens": 13
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "2/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "2/3",
+   "30m": "1/3",
+   "40m": "0/3",
+   "50m": "1/3",
+   "1h": "0/3",
+   "75m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 300,
+  "last_warm_s": 3000,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "none documented",
+  "window": {
+   "kind": "context",
+   "model": "deepseek/deepseek-v4-flash-vision-exp",
+   "n": 1200000,
+   "status": 400,
+   "seconds": 0.4,
+   "promptTokens": null,
+   "message": "This endpoint's maximum context length is 1048576 tokens. However, you requested about 1800021 tokens (1800005 of text input, 16 in the output). Please reduce the length of the input, or use the context-compression plugin to compress your prompt automatically.",
+   "metadata": {
+    "provider_name": null
+   },
+   "upstream": null,
+   "at": "2026-11-18T11:41:10Z"
+  }
  },
  {
   "label": "elorian--glimpse",
@@ -1539,23 +2192,51 @@
  {
   "label": "aion-labs--aion-3.5-mini",
   "model": "aion-labs/aion-3.5-mini",
-  "state": "running",
-  "status": null,
-  "usd": 0.0916,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.1117,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "AionLabs"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "aion-labs--aion-3.5-mini-2026-11-18T10-24-04.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2670,
+   "cachedTokens": 2670,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "1/3",
+   "75m": "0/3",
+   "90m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 3000,
+  "last_warm_s": 3600,
+  "first_all_cold_s": 4500,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
  },
  {
   "label": "unbiased--pareto-26.10",
   "model": "unbiased/pareto-26.10",
   "state": "running",
   "status": null,
-  "usd": 0.0913,
+  "usd": 0.1034,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
@@ -1567,23 +2248,51 @@
  {
   "label": "unbiased--pareto-26.10-preview",
   "model": "unbiased/pareto-26.10-preview",
-  "state": "running",
-  "status": null,
-  "usd": 0.0911,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.1051,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Unbiased"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "unbiased--pareto-26.10-preview-2026-11-18T10-24-34.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2661,
+   "cachedTokens": 2647,
+   "outputTokens": 2
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "3/3",
+   "50m": "3/3",
+   "1h": "3/3",
+   "75m": "0/3",
+   "90m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 3600,
+  "last_warm_s": 3600,
+  "first_all_cold_s": 4500,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
  },
  {
   "label": "tencent--hy4-preview",
   "model": "tencent/hy4-preview",
   "state": "running",
   "status": null,
-  "usd": 0.1021,
+  "usd": 0.112,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
@@ -1593,43 +2302,90 @@
    "Tencent",
    "Venice"
   ],
-  "upstream_changed": [],
+  "upstream_changed": [
+   {
+    "sample": "75m-r3",
+    "upstreams": [
+     "SiliconFlow",
+     "Venice"
+    ]
+   },
+   {
+    "sample": "90m-r2",
+    "upstreams": [
+     "SiliconFlow",
+     "Venice"
+    ]
+   },
+   {
+    "sample": "90m-r1",
+    "upstreams": [
+     "SiliconFlow",
+     "Venice"
+    ]
+   }
+  ],
   "upstream_unknown": 0
  },
  {
   "label": "stepfun--step-5-preview",
   "model": "stepfun/step-5-preview",
-  "state": "running",
-  "status": null,
-  "usd": 0.1198,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.1385,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "StepFun"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 0
+  "upstream_unknown": 0,
+  "file": "stepfun--step-5-preview-2026-11-18T10-25-05.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2538,
+   "cachedTokens": 2496,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "2/3",
+   "30m": "2/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1200,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
  },
  {
   "label": "baidu--ernie-light-dt-1.0-intl",
   "model": "baidu/ernie-light-dt-1.0-intl",
   "state": "running",
   "status": null,
-  "usd": 0.1574,
+  "usd": 0.2032,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Baidu"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 2
+  "upstream_unknown": 0
  },
  {
   "label": "meta--muse-spark-open",
   "model": "meta/muse-spark-open",
-  "state": "running",
-  "status": null,
-  "usd": 0.1536,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.1971,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
@@ -1640,20 +2396,362 @@
    "Together"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 1
+  "upstream_unknown": 0,
+  "file": "meta--muse-spark-open-2026-11-18T10-44-49.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2745,
+   "cachedTokens": 2720,
+   "outputTokens": 5
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "2/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "2/3",
+   "40m": "1/3",
+   "50m": "0/3",
+   "1h": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 450,
+  "last_warm_s": 2400,
+  "first_all_cold_s": 3000,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
  },
  {
   "label": "z-ai--glm-5.3-prime",
   "model": "z-ai/glm-5.3-prime",
   "state": "running",
   "status": null,
-  "usd": 0.1981,
+  "usd": 0.26,
   "site_documented_s": null,
   "error": null,
   "upstreams": [
    "Alibaba"
   ],
   "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "qwen--qwen3.8-max-0902",
+  "model": "qwen/qwen3.8-max-0902",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.3509,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Alibaba"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "qwen--qwen3.8-max-0902-2026-11-18T10-51-31.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2949,
+   "cachedTokens": 2048,
+   "outputTokens": 16
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "3/3",
+   "40m": "0/3",
+   "50m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1800,
+  "last_warm_s": 1800,
+  "first_all_cold_s": 2400,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "sakana--fugu-max",
+  "model": "sakana/fugu-max",
+  "state": "finished",
+  "status": "failed",
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": "HTTP 403: {\"error\":{\"message\":\"sakana/fugu-max is not available in your region: Sakana AI blocks requests originating from your location.\",\"code\":403,\"metadata\":{\"raw\":\"sakana/fugu-max is not available in your region: Sakana AI blocks requests originating from your location.\",\"provider_name\":\"Sakana AI\",\"is_b",
+  "upstreams": [],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "sakana--fugu-max-2026-11-18T11-28-31.json",
+  "control": "none",
+  "control_tokens": null,
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "anthropic--claude-sonnet-5.5",
+  "model": "anthropic/claude-sonnet-5.5",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.5339,
+  "site_documented_s": 300,
+  "error": null,
+  "upstreams": [
+   "Claude Platform on AWS"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "anthropic--claude-sonnet-5.5-2026-11-18T11-28-46.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 4275,
+   "cachedTokens": 4271,
+   "outputTokens": 4
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "0/3",
+   "10m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 300,
+  "last_warm_s": 300,
+  "first_all_cold_s": 450,
+  "probe_version": "0.3.4",
+  "verdict": "5m documented: holds (warm through 5m)"
+ },
+ {
+  "label": "openai--gpt-6-sol",
+  "model": "openai/gpt-6-sol",
+  "state": "running",
+  "status": null,
+  "usd": 0.2706,
+  "site_documented_s": 1800,
+  "error": null,
+  "upstreams": [
+   "OpenAI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "unbiased--pareto-26.9",
+  "model": "unbiased/pareto-26.9",
+  "state": "running",
+  "status": null,
+  "usd": 0.2934,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Unbiased"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "aion-labs--aion-3.5",
+  "model": "aion-labs/aion-3.5",
+  "state": "running",
+  "status": null,
+  "usd": 0.385,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "AionLabs"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "fireworks--ember-1",
+  "model": "fireworks/ember-1",
+  "state": "running",
+  "status": null,
+  "usd": 0.3774,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Fireworks"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "qwen--qwen3.8-max-prime",
+  "model": "qwen/qwen3.8-max-prime",
+  "state": "running",
+  "status": null,
+  "usd": 0.6044,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Alibaba"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "xiaomi--mimo-v2.6-pro-ultraspeed",
+  "model": "xiaomi/mimo-v2.6-pro-ultraspeed",
+  "state": "running",
+  "status": null,
+  "usd": 0.5395,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Xiaomi"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "sakana--fugu-ultra-v2",
+  "model": "sakana/fugu-ultra-v2",
+  "state": "finished",
+  "status": "failed",
+  "usd": 0.0,
+  "site_documented_s": null,
+  "error": "HTTP 403: {\"error\":{\"message\":\"sakana/fugu-ultra-v2 is not available in your region: Sakana AI blocks requests originating from your location.\",\"code\":403,\"metadata\":{\"raw\":\"sakana/fugu-ultra-v2 is not available in your region: Sakana AI blocks requests originating from your location.\",\"provider_name\":\"Sakana",
+  "upstreams": [],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "sakana--fugu-ultra-v2-2026-11-18T11-44-35.json",
+  "control": "none",
+  "control_tokens": null,
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "alias-deepseek--deepseek-flash-latest",
+  "model": "~deepseek/deepseek-flash-latest",
+  "state": "finished",
+  "status": "no-observable-cache",
+  "usd": 0.0003,
+  "site_documented_s": null,
+  "error": "an immediate re-send was not served from cache",
+  "upstreams": [
+   "InferenceNet"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "alias-deepseek--deepseek-flash-latest-2026-11-18T11-48-23.json",
+  "control": "cold",
+  "control_tokens": {
+   "promptTokens": 2520,
+   "cachedTokens": 0,
+   "outputTokens": 13
+  },
+  "checks": {},
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": null,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "alias-z-ai--glm-flash-latest",
+  "model": "~z-ai/glm-flash-latest",
+  "state": "running",
+  "status": null,
+  "usd": 0.0057,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "BaseTen",
+   "Cohere",
+   "DeepInfra",
+   "Friendli",
+   "InferenceNet",
+   "Modal",
+   "Particle AI",
+   "Reka",
+   "Relace",
+   "River",
+   "Together",
+   "Wafer"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
+ },
+ {
+  "label": "alias-z-ai--glm-latest",
+  "model": "~z-ai/glm-latest",
+  "state": "running",
+  "status": null,
+  "usd": 0.0108,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Decart",
+   "Fireworks",
+   "InferenceNet",
+   "Wafer"
+  ],
+  "upstream_changed": [],
   "upstream_unknown": 3
+ },
+ {
+  "label": "alias-deepseek--deepseek-pro-latest",
+  "model": "~deepseek/deepseek-pro-latest",
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 0.0133,
+  "site_documented_s": null,
+  "error": null,
+  "upstreams": [
+   "Sail Research",
+   "Wafer"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0,
+  "file": "alias-deepseek--deepseek-pro-latest-2026-11-18T11-56-40.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2487,
+   "cachedTokens": 2304,
+   "outputTokens": 2
+  },
+  "checks": {
+   "2.5m": "0/3",
+   "5m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": null,
+  "last_warm_s": null,
+  "first_all_cold_s": 150,
+  "probe_version": "0.3.4",
+  "verdict": "none documented"
+ },
+ {
+  "label": "openai--gpt-6-luna-pro",
+  "model": "openai/gpt-6-luna-pro",
+  "state": "running",
+  "status": null,
+  "usd": 0.0318,
+  "site_documented_s": 1800,
+  "error": null,
+  "upstreams": [
+   "OpenAI"
+  ],
+  "upstream_changed": [],
+  "upstream_unknown": 0
  }
 ]
