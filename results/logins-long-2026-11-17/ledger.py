@@ -5,7 +5,8 @@
 
 Field tests (fields-*.jsonl): one row per request, the usage of its reply. Lifetime runs: one row per run, the
 `spent` of its run file (every answered request's prompt, cached and output tokens as the replies report them), or of
-its .partial.json while it is still running. A run with no file (AG4: ended before its control was answered) used
+its .partial.json for a run that has none: CL1, CL3, ML1 and ML3 were cut off by the Mac's restart at 10:16 local
+on 2026-11-18, before their 24-hour checks, and their progress files are their run files. A run with no file (AG4: ended before its control was answered) used
 nothing that was answered.
 Price: $0 per token. Every request went to a subscription login through CLIProxyAPI (plan quota, no per-token
 charge); each reply's X-CPA-AUTH-KIND was `oauth` (a login), none `apikey`, see the column.
@@ -24,8 +25,8 @@ def login(model):
 total = {}
 lines = ["# Ledger, 2026-11-17 (logins-long)", "",
          "Price: $0 per token on every row (subscription logins through CLIProxyAPI: plan quota, no per-token charge;",
-         "every answer's `X-CPA-AUTH-KIND` was `oauth`). Written by `ledger.py` from the raw files; rerun it to update",
-         "the rows of runs still running.", "",
+         "every answer's `X-CPA-AUTH-KIND` was `oauth`). Written by `ledger.py` from the raw files. CL1, CL3, ML1 and",
+         "ML3 were cut off by the Mac's restart at 10:16 local on 2026-11-18: their rows are their progress files.", "",
          "## Field tests (one row per request)", "",
          "| Login | Model | Sent | Status | Answered by | Input tokens (reply) | of them cached | Output tokens | Price | Running input total of the login |",
          "|---|---|---|---|---|---|---|---|---|---|"]
@@ -54,7 +55,8 @@ for label in sorted(files):
     lg = login(j["model"])
     total[lg] = total.get(lg, 0) + s.get("promptTokens", 0)
     kinds = ", ".join(f"{k} ×{v}" for k, v in (s.get("replyHeaders") or {}).get("x-cpa-auth-kind", {}).items())
-    status = j["status"] + (" (progress file: still running)" if files[label].endswith(".partial.json") else "")
+    status = j["status"] + (" (progress file: cut off by the restart of 2026-11-18 10:16 local)"
+                            if files[label].endswith(".partial.json") else "")
     lines.append(f"| {lg} | {label} | `{j['model']}` | {status} | {s.get('requests', 0)} | {kinds} | {s.get('promptTokens', 0):,} | "
                  f"{s.get('cachedTokens', 0):,} | {s.get('outputTokens', 0):,} | $0 | {total[lg]:,} |")
 lines += ["", "AG4 (`gemini-3.8-flash-tiered`) left no run file: every request was answered 503 (Google's server capacity)",

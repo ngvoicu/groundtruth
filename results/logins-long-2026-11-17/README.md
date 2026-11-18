@@ -17,8 +17,11 @@ event, nothing in these request paths). Probe 0.3.3, which records CLIProxyAPI's
 - **Antigravity: no observable cache on four more models** (Gemini 3.1 Flash Lite, 3.5 Flash Lite, 3 Flash, GPT-OSS
   120B Medium): an immediate re-send read part of the prompt from cache, less than the probe's half. Gemini 3.8 Flash
   (Tiered) could not be measured: Google had no capacity for it for ten minutes.
-- **Muse Ember and Muse Wonder on the Meta login** continue LM1 and LM3 (warm in every check to 2 h) at 4, 8, 12 and
-  24 h. Running.
+- **Muse Ember and Muse Wonder on the Meta login** continue LM1 and LM3 (warm in every check to 2 h), each read with
+  its continuation as one run: **Ember warm through 2 h, all cold at 4 h; Wonder warm through 4 h, no data at 8 h,
+  all cold at 12 h.** Both runs were cut off before 24 h (section 5).
+- **The Mac was restarted at 10:16 local on 2026-11-18** and ended CL1, CL3, ML1 and ML3 before their 24-hour checks.
+  A run cannot be resumed: their progress files are their run files, committed unchanged (section 5).
 
 ## 1. What the proxy does with the long setting
 
@@ -63,13 +66,16 @@ at 2.5, 5 and 7.5 min and 24 h). Pinned by temporary aliases `probe/<model>` on 
 
 | Run | Model | Control | Warm / checks per age | Warm through | Last warm | First all cold | Published short today |
 |---|---|---|---|---|---|---|---|
-| CL1 | `gpt-6.1-sol` | hit (2,560 / 2,707) | 2, 3, 1, 2, 3, 1, 3, 2, 2, 1, 2, 1, 2, 2 of 3 (2.5 min – 2 h); from 4 h refused by the proxy (errors, below) | – | 2 h | – | 5 min |
+| CL1 | `gpt-6.1-sol` | hit (2,560 / 2,707) | 2, 3, 1, 2, 3, 1, 3, 2, 2, 1, 2, 1, 2, 2 of 3 (2.5 min – 2 h); 4, 8, 12 h refused by the proxy (errors, below); 24 h never ran (section 5) | – | 2 h | – | 5 min |
 | CL2 | `gpt-6.1-terra` | hit (2,560 / 2,682) | 1, 1, 1, 0, 0 of 3 (2.5 – 15 min), stopped | – | 7.5 min | 10 min | 0 |
-| CL3 | `gpt-6-astra` | hit (2,560 / 2,714) | 3, 3, 3, 3, 2, 3, 1, 3, 1, 2, 2, 1, 2, 1 of 3 (2.5 min – 2 h); from 4 h refused by the proxy (errors, below) | 10 min | 2 h | – | 2 h |
+| CL3 | `gpt-6-astra` | hit (2,560 / 2,714) | 3, 3, 3, 3, 2, 3, 1, 3, 1, 2, 2, 1, 2, 1 of 3 (2.5 min – 2 h); 4, 8, 12 h refused by the proxy (errors, below); 24 h never ran (section 5) | 10 min | 2 h | – | 2 h |
 | CL4 | `gpt-6-luna` | **missed** (0 / 2,659, at 3 s and at 10 s) | none: ended at the control | – | – | – | 5 min |
 
 Each continues LCn (`continues`): the entry carries LCn's checks and its own, in the short profile (no lifetime asked).
-CL4 continues LC4 with only its missed control; Luna was not started again. The safe values the site derives are those
+CL4 continues LC4 with only its missed control; Luna was not started again. Read as one run with LC1 and LC3, CL1 and
+CL3 give: Sol 4, 6, 2, 4, 5, 3, 6, 5, 4, 3, 2, 2, 4, 4 of 6, Astra 5, 6, 5, 5, 5, 5, 4, 4, 3, 4, 3, 4, 5, 2 of 6
+(2.5 min – 2 h); for both no age through which every check hit, last warm 2 h, no age all cold (LC1's 0 of 3 at 1 h
+is 2 of 6 with CL1), and no data after 2 h. The safe values the site derives are those
 of the merged checks; LC1 – LC4 already had misses at 2.5 minutes.
 
 **The checks from 4 hours on were refused by the proxy; CL1's and CL3's data end at 2 hours.** At 20:50 local the
@@ -81,8 +87,8 @@ owner's session emptied it, the files and the management API do not say. It is t
 and plan in the file unchanged against the backup of 18:22, compared by script, not printed). The 2-hour checks (about
 20:28 and 20:30 local) were still answered by the login; the 4-hour checks (22:28 and 22:31 local) were answered 400
 `unknown provider for model probe/gpt-6.1-sol` / `probe/gpt-6-astra` by the proxy itself: nothing reached OpenAI. The
-8-, 12- and 24-hour checks get the same answer: each is recorded as an error (it counts neither warm nor cold), and the
-runs end by themselves after the 24-hour age. The aliases were not put back, by the chief's decision: they would point
+8- and 12-hour checks got the same answer: each is recorded as an error (it counts neither warm nor cold). The 24-hour
+checks never ran: the restart of 2026-11-18 cut both runs off (section 5). The aliases were not put back, by the chief's decision: they would point
 at models the owner had excluded from the login. No alias of this part is left in the proxy, and its backup
 (`pre-logins-long-aliases-20261117-182253`) was deleted at 22:46 after one read for that comparison: it predates the owner's changes and must never be restored.
 
@@ -126,8 +132,43 @@ have one account, the Meta login; every answer `oauth`; its counter was 0 before
 
 | Run | Continues | Control | So far | Last check due |
 |---|---|---|---|---|
-| ML1 | LM1 (`muse-ember-1.0`) | hit (2,548 / 2,649) | 3/3 at 2.5, 5, 7.5 min; running | ≈ 2026-11-18 18:31 local |
-| ML3 | LM3 (`muse-wonder-1.0`) | hit (2,548 / 2,618) | 3/3 at 2.5, 5, 7.5 min; running | ≈ 2026-11-18 18:31 local |
+| ML1 | LM1 (`muse-ember-1.0`) | hit (2,548 / 2,649) | 3/3 at 2.5, 5, 7.5 min; 4 h 0/3; 8 h no data (3 errors); 12 h 0/3; 24 h never ran | cut off |
+| ML3 | LM3 (`muse-wonder-1.0`) | hit (2,548 / 2,618) | 3/3 at 2.5, 5, 7.5 min; 4 h 3/3; 8 h no data (3 errors); 12 h 0/3; 24 h never ran | cut off |
+
+**8 hours: no data.** All three 8-hour checks of each run failed after their retries: CLIProxyAPI answered HTTP 504
+between 02:32 and 02:58 local on 2026-11-18, its lookup of Meta's API host having timed out (the run logs, local). The
+Mac was awake. An errored check counts neither warm nor cold, so 8 h is an age without data, not a cold age.
+
+**Each pair read as one run** (`continues`; LM1 and LM3 were held back to be published with these, whatever they
+showed, a decision of 2026-11-17 taken before any of their later checks):
+
+| Chain | Warm / checks per age (2.5, 5, 7.5 min; 10 min – 2 h; 4 h; 8 h; 12 h) | Warm through | Last warm | First all cold |
+|---|---|---|---|---|
+| LM1 + ML1 (Ember) | 6/6, 6/6, 6/6; 3/3 at every age; 0/3; –; 0/3 | 2 h | 2 h | 4 h |
+| LM3 + ML3 (Wonder) | 6/6, 6/6, 6/6; 3/3 at every age; 3/3; –; 0/3 | 4 h | 4 h | 12 h |
+
+Ember is gone between 2 and 4 hours; Wonder between 4 and 12 hours (8 h has no data, so it cannot be narrowed).
+
+## 5. The restart that cut off CL1, CL3, ML1 and ML3
+
+The Mac was restarted at 10:16 local on 2026-11-18 (an ordinary restart; the chief's record). It ended the four
+day-long runs before their 24-hour checks (due about 18:27 – 18:31 local). No process of theirs is left. A run cannot
+be resumed, so each is kept as the restart left it: the probe's progress file (`<label>-<start>.partial.json`, status
+`"running"`), committed unchanged with `git add -f` (`*.partial.json` is ignored elsewhere), with no `.md`. The last
+lines of their logs are from 06:28 – 06:32 local (the 12-hour checks).
+
+| Run | Model | Checks in the file (warm / cold / error) | What happened |
+|---|---|---|---|
+| CL1 | `gpt-6.1-sol` | 51: 27 / 15 / 9 | answered through 2 h; the 4-, 8- and 12-hour checks refused by the proxy (HTTP 400, section 2; nothing reached OpenAI); 24 h never ran |
+| CL3 | `gpt-6-astra` | 51: 30 / 12 / 9 | the same |
+| ML1 | `muse-ember-1.0` | 18: 9 / 6 / 3 | 4 h: 0 of 3 warm; 8 h: all three failed (HTTP 504, section 4); 12 h: 0 of 3; 24 h never ran |
+| ML3 | `muse-wonder-1.0` | 18: 12 / 3 / 3 | 4 h: 3 of 3 warm; 8 h: as ML1; 12 h: 0 of 3; 24 h never ran |
+
+What the build makes of them (`scripts/build_observed.py`, `read_plain`): it reads a progress file as it reads a final
+one; a check with an error is left out (neither warm nor cold), an age whose checks all errored has no row, and an age
+that never ran has none either. So CL1 and CL3 add data to 2 h only (to LC1 and LC3), and the chains above are what
+ML1 and ML3 give. Each manifest entry says the run was cut off and which ages have no data. No tooling change was
+needed.
 
 ## Tooling changes (each its own commit)
 
@@ -139,8 +180,8 @@ have one account, the Meta login; every answer `oauth`; its counter was 0 before
 
 ## Files
 
-- `CL*`, `AG*`, `ML*` `-2026-11-17T*.json` / `.md`: the runs (a run still running has only its git-ignored
-  `.partial.json` until it ends).
+- `CL*`, `AG*`, `ML*` `-2026-11-17T*.json` / `.md`: the runs that ended by themselves; CL1, CL3, ML1 and ML3 are
+  their progress files `*.partial.json`, unchanged (section 5).
 - `fields-codex.jsonl`, `fields-devin.jsonl`, `fieldtest.py`: the requests of section 1.
 - `manifest-entries.json` (`make_entries.py`): 10 runs, 3 excluded entries (AG4, the Codex long setting, the Devin
   long setting). CL1 – CL4 continue `logins-2026-11-17/LC1` – `LC4` (runs in that part); ML1 and ML3 continue LM1 and
@@ -148,11 +189,9 @@ have one account, the Meta login; every answer `oauth`; its counter was 0 before
 - `ledger.md` (`ledger.py`), `run.sh`, `sequence.py` (one run of a login priming at a time, a login stopped at its
   refusal), `status.py` (`logs/status.md`). `logs/` stays local.
 
-**Collecting and the proxy.** CL1, CL3, ML1 and ML3 end by themselves after their 24-hour ages (about 18:27 –
-18:31 local, 2026-11-18); then `git add` their final `.json` / `.md`, rerun `ledger.py`, and rerun the scratch build.
-Nothing of this part is left to put back in the proxy: its four `probe/` aliases are gone (see section 2) and its
+**The proxy.** Nothing of this part is left to put back in the proxy: its four `probe/` aliases are gone (see section 2) and its
 backup is deleted.
 
-If this window is lost: `python3 results/logins-long-2026-11-17/status.py` rebuilds `logs/status.md` from the files;
-the supervisors log every process id in `logs/sequence-<login>.log`. A run cannot be resumed; one that was cut off is
-kept as it is.
+`python3 results/logins-long-2026-11-17/status.py` rebuilds `logs/status.md` from the files (a process id written
+down before the machine's last boot counts as ended); the supervisors logged every process id in
+`logs/sequence-<login>.log`. A run cannot be resumed; one that was cut off is kept as it is.

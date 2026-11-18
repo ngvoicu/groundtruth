@@ -1,0 +1,656 @@
+{
+  "probeVersion": "0.3.3",
+  "label": "CL1",
+  "baseUrl": "http://127.0.0.1:8317/v1",
+  "format": "responses",
+  "model": "probe/gpt-6.1-sol",
+  "request": {
+    "method": "POST",
+    "path": "/responses",
+    "bodyExtra": {
+      "prompt_cache_retention": "24h"
+    },
+    "prefixTokens": 2500,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "probe/gpt-6.1-sol",
+      "input": [
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "<prefix: about 2500 tokens of words filler, one per sample>"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "Reply with the single word OK."
+            }
+          ]
+        }
+      ],
+      "max_output_tokens": 16,
+      "store": false,
+      "stream": false,
+      "prompt_cache_key": "groundtruth-7n07i2v3-<sample>",
+      "prompt_cache_retention": "24h"
+    }
+  },
+  "runSalt": "7n07i2v3",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    600000,
+    900000,
+    1200000,
+    1500000,
+    1800000,
+    2400000,
+    3000000,
+    3600000,
+    4500000,
+    5400000,
+    7200000,
+    14400000,
+    28800000,
+    43200000,
+    86400000
+  ],
+  "startedAt": "2026-11-17T16:27:48.038Z",
+  "status": "running",
+  "spent": {
+    "requests": 98,
+    "promptTokens": 263558,
+    "cachedTokens": 71040,
+    "outputTokens": 490,
+    "requestsWithoutOutput": 0,
+    "replyHeaders": {
+      "x-cpa-auth-kind": {
+        "oauth": 98
+      }
+    }
+  },
+  "checks": [
+    {
+      "sampleId": "2.5m-r1",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 150004,
+      "promptTokens": 2695,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "2.5m-r2",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 152225,
+      "promptTokens": 2680,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "2.5m-r3",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 153625,
+      "promptTokens": 2675,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "5m-r1",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300003,
+      "promptTokens": 2690,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "5m-r2",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 301026,
+      "promptTokens": 2681,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "5m-r3",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 303310,
+      "promptTokens": 2698,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "7.5m-r1",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450009,
+      "promptTokens": 2705,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "7.5m-r2",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 453091,
+      "promptTokens": 2691,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "7.5m-r3",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 453765,
+      "promptTokens": 2649,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "10m-r1",
+      "targetAgeMs": 600000,
+      "actualAgeMs": 600002,
+      "promptTokens": 2673,
+      "cachedTokens": 2432,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "10m-r2",
+      "targetAgeMs": 600000,
+      "actualAgeMs": 600476,
+      "promptTokens": 2718,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "10m-r3",
+      "targetAgeMs": 600000,
+      "actualAgeMs": 602050,
+      "promptTokens": 2676,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "15m-r1",
+      "targetAgeMs": 900000,
+      "actualAgeMs": 900005,
+      "promptTokens": 2695,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "15m-r2",
+      "targetAgeMs": 900000,
+      "actualAgeMs": 903101,
+      "promptTokens": 2678,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "15m-r3",
+      "targetAgeMs": 900000,
+      "actualAgeMs": 903617,
+      "promptTokens": 2673,
+      "cachedTokens": 2432,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "20m-r1",
+      "targetAgeMs": 1200000,
+      "actualAgeMs": 1200010,
+      "promptTokens": 2655,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "20m-r2",
+      "targetAgeMs": 1200000,
+      "actualAgeMs": 1200001,
+      "promptTokens": 2681,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "20m-r3",
+      "targetAgeMs": 1200000,
+      "actualAgeMs": 1201580,
+      "promptTokens": 2701,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "25m-r1",
+      "targetAgeMs": 1500000,
+      "actualAgeMs": 1500006,
+      "promptTokens": 2706,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "25m-r2",
+      "targetAgeMs": 1500000,
+      "actualAgeMs": 1501763,
+      "promptTokens": 2680,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "25m-r3",
+      "targetAgeMs": 1500000,
+      "actualAgeMs": 1502913,
+      "promptTokens": 2701,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "30m-r1",
+      "targetAgeMs": 1800000,
+      "actualAgeMs": 1800006,
+      "promptTokens": 2704,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "30m-r2",
+      "targetAgeMs": 1800000,
+      "actualAgeMs": 1800692,
+      "promptTokens": 2684,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "30m-r3",
+      "targetAgeMs": 1800000,
+      "actualAgeMs": 1800976,
+      "promptTokens": 2700,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "40m-r1",
+      "targetAgeMs": 2400000,
+      "actualAgeMs": 2400011,
+      "promptTokens": 2706,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "40m-r2",
+      "targetAgeMs": 2400000,
+      "actualAgeMs": 2400526,
+      "promptTokens": 2658,
+      "cachedTokens": 2432,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "40m-r3",
+      "targetAgeMs": 2400000,
+      "actualAgeMs": 2402078,
+      "promptTokens": 2681,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "50m-r1",
+      "targetAgeMs": 3000000,
+      "actualAgeMs": 3000011,
+      "promptTokens": 2656,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "50m-r2",
+      "targetAgeMs": 3000000,
+      "actualAgeMs": 3003143,
+      "promptTokens": 2717,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "50m-r3",
+      "targetAgeMs": 3000000,
+      "actualAgeMs": 3002842,
+      "promptTokens": 2654,
+      "cachedTokens": 2432,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "1h-r1",
+      "targetAgeMs": 3600000,
+      "actualAgeMs": 3600002,
+      "promptTokens": 2686,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "1h-r2",
+      "targetAgeMs": 3600000,
+      "actualAgeMs": 3600383,
+      "promptTokens": 2668,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "1h-r3",
+      "targetAgeMs": 3600000,
+      "actualAgeMs": 3602857,
+      "promptTokens": 2715,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "75m-r1",
+      "targetAgeMs": 4500000,
+      "actualAgeMs": 4500006,
+      "promptTokens": 2723,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "75m-r2",
+      "targetAgeMs": 4500000,
+      "actualAgeMs": 4501267,
+      "promptTokens": 2679,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "75m-r3",
+      "targetAgeMs": 4500000,
+      "actualAgeMs": 4502983,
+      "promptTokens": 2673,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "90m-r1",
+      "targetAgeMs": 5400000,
+      "actualAgeMs": 5400007,
+      "promptTokens": 2673,
+      "cachedTokens": 2432,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "90m-r2",
+      "targetAgeMs": 5400000,
+      "actualAgeMs": 5402239,
+      "promptTokens": 2688,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "90m-r3",
+      "targetAgeMs": 5400000,
+      "actualAgeMs": 5403871,
+      "promptTokens": 2667,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "2h-r1",
+      "targetAgeMs": 7200000,
+      "actualAgeMs": 7200031,
+      "promptTokens": 2746,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "2h-r2",
+      "targetAgeMs": 7200000,
+      "actualAgeMs": 7202616,
+      "promptTokens": 2721,
+      "cachedTokens": 2560,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "2h-r3",
+      "targetAgeMs": 7200000,
+      "actualAgeMs": 7203091,
+      "promptTokens": 2709,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "4h-r1",
+      "error": "HTTP 400: {\"error\":{\"message\":\"unknown provider for model probe/gpt-6.1-sol\",\"type\":\"invalid_request_error\",\"code\":\"model_not_found\",\"param\":\"model\"}}",
+      "targetAgeMs": 14400000,
+      "actualAgeMs": 14400194,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "4h-r2",
+      "error": "HTTP 400: {\"error\":{\"message\":\"unknown provider for model probe/gpt-6.1-sol\",\"type\":\"invalid_request_error\",\"code\":\"model_not_found\",\"param\":\"model\"}}",
+      "targetAgeMs": 14400000,
+      "actualAgeMs": 14400019,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "4h-r3",
+      "error": "HTTP 400: {\"error\":{\"message\":\"unknown provider for model probe/gpt-6.1-sol\",\"type\":\"invalid_request_error\",\"code\":\"model_not_found\",\"param\":\"model\"}}",
+      "targetAgeMs": 14400000,
+      "actualAgeMs": 14400013,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "8h-r1",
+      "error": "HTTP 400: {\"error\":{\"message\":\"unknown provider for model probe/gpt-6.1-sol\",\"type\":\"invalid_request_error\",\"code\":\"model_not_found\",\"param\":\"model\"}}",
+      "targetAgeMs": 28800000,
+      "actualAgeMs": 28800068,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "8h-r2",
+      "error": "HTTP 400: {\"error\":{\"message\":\"unknown provider for model probe/gpt-6.1-sol\",\"type\":\"invalid_request_error\",\"code\":\"model_not_found\",\"param\":\"model\"}}",
+      "targetAgeMs": 28800000,
+      "actualAgeMs": 28800018,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "8h-r3",
+      "error": "HTTP 400: {\"error\":{\"message\":\"unknown provider for model probe/gpt-6.1-sol\",\"type\":\"invalid_request_error\",\"code\":\"model_not_found\",\"param\":\"model\"}}",
+      "targetAgeMs": 28800000,
+      "actualAgeMs": 28800016,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "12h-r1",
+      "error": "HTTP 400: {\"error\":{\"message\":\"unknown provider for model probe/gpt-6.1-sol\",\"type\":\"invalid_request_error\",\"code\":\"model_not_found\",\"param\":\"model\"}}",
+      "targetAgeMs": 43200000,
+      "actualAgeMs": 43200050,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "12h-r2",
+      "error": "HTTP 400: {\"error\":{\"message\":\"unknown provider for model probe/gpt-6.1-sol\",\"type\":\"invalid_request_error\",\"code\":\"model_not_found\",\"param\":\"model\"}}",
+      "targetAgeMs": 43200000,
+      "actualAgeMs": 43200010,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "12h-r3",
+      "error": "HTTP 400: {\"error\":{\"message\":\"unknown provider for model probe/gpt-6.1-sol\",\"type\":\"invalid_request_error\",\"code\":\"model_not_found\",\"param\":\"model\"}}",
+      "targetAgeMs": 43200000,
+      "actualAgeMs": 43200008,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    }
+  ],
+  "control": {
+    "prime": {
+      "promptTokens": 2707,
+      "cachedTokens": 0,
+      "outputTokens": 5
+    },
+    "check": {
+      "promptTokens": 2707,
+      "cachedTokens": 2560,
+      "outputTokens": 5
+    },
+    "warm": true,
+    "replyHeaders": {
+      "prime": {
+        "x-cpa-auth-kind": "oauth"
+      },
+      "check": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    }
+  }
+}

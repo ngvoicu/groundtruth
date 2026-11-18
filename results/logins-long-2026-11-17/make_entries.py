@@ -3,8 +3,9 @@
 
     python3 results/logins-long-2026-11-17/make_entries.py
 
-The file names are those the probes write when they end (`<label>-<start>.json`); a run still running has only its
-`.partial.json` under the same name until then.
+CL1, CL3, ML1 and ML3 were cut off by the Mac's restart at 10:16 local on 2026-11-18, before their 24-hour checks:
+their run files are the probes' progress files (`<label>-<start>.partial.json`) as the restart left them, committed
+unchanged. Every other run ended by itself (`<label>-<start>.json`).
 """
 import json, os
 
@@ -26,6 +27,32 @@ PIN = ("Pinned to the Codex login by a temporary alias probe/{m} on that login o
        "only the Codex login for it; the plain id also has an OpenAI API key); every answer's X-CPA-AUTH-KIND was "
        "oauth, and the OpenAI API key's counter stayed at 0.")
 
+# The note on the Codex login's zeros (the same on LC1, LC3, LC4 in ../logins-2026-11-17 and on GS1, GA1 in
+# ../logins-gpt-6-2-2026-11-17).
+ZERO = ("The published 0 means that there is no tested age through which every check hit, not that this route does "
+        "not cache. Misses at 2.5 minutes came back on this login without load at priming: GS1 and GA1 "
+        "(logins-gpt-6-2-2026-11-17, GPT-6.2 Sol and Astra) missed 1 of 3 at 2.5 minutes with no large request "
+        "before the priming, the two models primed one after the other, and nothing else using the login (its request "
+        "counter rose by exactly their own requests), so load at priming does not explain the misses. Their cause is "
+        "not established.")
+CUT = {"CL1", "CL3", "ML1", "ML3"}  # cut off by the restart: their progress files
+CUT_CODEX = (" Cut off: the 4-, 8- and 12-hour checks were refused by CLIProxyAPI itself (HTTP 400 \"unknown provider for "
+             "model probe/{m}\"; the owner's configuration of 20:50 local had excluded {m} from the Codex login; nothing "
+             "reached OpenAI), and the Mac was restarted at 10:16 local on 2026-11-18, before the 24-hour check, which "
+             "ended the run. The run file is the probe's progress file as the restart left it (status \"running\"), "
+             "unchanged. A check that errored counts neither warm nor cold, so this run adds data to 2 h only: no data "
+             "at 4, 8, 12 or 24 h.")
+CUT_META = (" Cut off: all three 8-hour checks failed after their retries (HTTP 504 from CLIProxyAPI between 02:32 and "
+            "02:58 local on 2026-11-18: its lookup of Meta's API host timed out), and the Mac was restarted at 10:16 "
+            "local on 2026-11-18, before the 24-hour check, which ended the run. The run file is the probe's progress "
+            "file as the restart left it (status \"running\"), unchanged. A check that errored counts neither warm nor "
+            "cold, so this run has data at 2.5, 5, 7.5 min, 4 h and 12 h, none at 8 h or 24 h.")
+
+
+def run_file(label, stamp):
+    return f"{F}/{label}-{stamp}" + (".partial.json" if label in CUT else ".json")
+
+
 runs = []
 codex = [("CL1", "gpt-6.1-sol", "2026-11-17T16-27-48", "LC1", ""),
          ("CL2", "gpt-6.1-terra", "2026-11-17T16-28-58", "LC2", ""),
@@ -36,25 +63,28 @@ codex = [("CL1", "gpt-6.1-sol", "2026-11-17T16-27-48", "LC1", ""),
           "was not started again.")]
 for label, m, stamp, base, extra in codex:
     runs.append({
-        "id": f"logins-long-2026-11-17/{label}", "file": f"{F}/{label}-{stamp}.json",
+        "id": f"logins-long-2026-11-17/{label}", "file": run_file(label, stamp),
         "route": "codex-subscription", "client": "cliproxyapi", "model": m, "models_dev": None,
         "base_model": f"openai/{m}", "options": {}, "removed_by_proxy": {"prompt_cache_retention": "24h"},
         "continues": f"logins-2026-11-17/{base}",
         "note": (f"probe 0.3.3 through CLIProxyAPI, the request of {base} with ages out to 24 h (the long schedule plus "
-                 f"24 h). {PROOF} {PIN.format(m=m)} Served by {B1}.{extra}")})
+                 f"24 h). {PROOF} {PIN.format(m=m)} Served by {B1}.{extra}"
+                 + (CUT_CODEX.format(m=m) if label in CUT else "") + f" {ZERO}")})
 
 meta = [("ML1", "muse-ember-1.0", "2026-11-17T16-31-20", "LM1"), ("ML3", "muse-wonder-1.0", "2026-11-17T16-31-45", "LM3")]
 for label, m, stamp, base in meta:
     runs.append({
-        "id": f"logins-long-2026-11-17/{label}", "file": f"{F}/{label}-{stamp}.json",
+        "id": f"logins-long-2026-11-17/{label}", "file": run_file(label, stamp),
         "route": "meta-subscription", "client": "cliproxyapi", "model": m, "models_dev": None,
         "base_model": f"meta/{m}", "options": {"prompt_cache_retention": "24h"},
         "continues": f"logins-2026-11-17/{base}",
-        "note": (f"continues {base} (warm in all its checks to 2 h) at 4, 8, 12 and 24 h, made as it was: the plain "
+        "note": (f"continues {base} (warm in all its checks to 2 h), planned at 4, 8, 12 and 24 h, made as it was: the plain "
                  "probe, no body extra; CLIProxyAPI's payload rule for muse-* adds prompt_cache_retention \"24h\" to "
                  "every request to the Meta login. muse-* ids have one account, the Meta login "
                  "(/v1/models?include=accounts); every answer's X-CPA-AUTH-KIND was oauth. The probe also checks at "
-                 f"2.5, 5 and 7.5 min (always), which adds samples to those ages of {base}. Served by {B1}.")})
+                 f"2.5, 5 and 7.5 min (always), which adds samples to those ages of {base}. Served by {B1}.{CUT_META} "
+                 f"{base} and this run are published together, as one evaluation, whatever they show (decided on "
+                 "2026-11-17, before any of this run's later checks).")})
 
 PART = ("a control that read part of the prompt from cache but less than the probe's half (warm = at least half of "
         "the prompt and 500 tokens): part of the prompt was read from cache, the rule's half was not reached, so the "
@@ -114,8 +144,9 @@ excluded = [
 out = {"comment": "Entries the runs of results/logins-long-2026-11-17 would add to observed/manifest.json (T-75, branch "
                   "campaign/logins-long). runs: appended to runs; excluded: appended to excluded. Nothing here is a "
                   "result. The runs that continue logins-2026-11-17/LC1 - LC4 and LM1, LM3 need those as runs: LC1 - LC4 "
-                  "are runs in that part's entries, LM1 and LM3 are in its excluded and must move to runs (their "
-                  "reason for being left out, ending at 2 h while warm, ends with ML1 and ML3).",
+                  "are runs in that part's entries, LM1 and LM3 are in its excluded and must move to runs (they were "
+                  "held back to be published with ML1 and ML3, as one evaluation each, whatever those show). CL1, CL3, "
+                  "ML1 and ML3 were cut off by a restart of the Mac: their files are the probes' progress files.",
        "runs": runs, "excluded": excluded}
 open(f"{D}/manifest-entries.json", "w").write(json.dumps(out, indent=1, ensure_ascii=False) + "\n")
 print(len(runs), "runs,", len(excluded), "excluded")

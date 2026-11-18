@@ -1,8 +1,8 @@
 # Ledger, 2026-11-17 (logins-long)
 
 Price: $0 per token on every row (subscription logins through CLIProxyAPI: plan quota, no per-token charge;
-every answer's `X-CPA-AUTH-KIND` was `oauth`). Written by `ledger.py` from the raw files; rerun it to update
-the rows of runs still running.
+every answer's `X-CPA-AUTH-KIND` was `oauth`). Written by `ledger.py` from the raw files. CL1, CL3, ML1 and
+ML3 were cut off by the Mac's restart at 10:16 local on 2026-11-18: their rows are their progress files.
 
 ## Field tests (one row per request)
 
@@ -34,12 +34,12 @@ the rows of runs still running.
 | Antigravity login | AG2 | `gemini-3.5-flash-lite` | no-observable-cache | 3 | oauth ×3 | 14,094 | 4,062 | 3 | $0 | 28,104 |
 | Antigravity login | AG3 | `gemini-3-flash` | no-observable-cache | 3 | oauth ×3 | 13,911 | 4,062 | 3 | $0 | 42,015 |
 | Antigravity login | AG5 | `gpt-oss-120b-medium` | no-observable-cache | 3 | oauth ×3 | 14,340 | 201 | 111 | $0 | 56,355 |
-| Codex login | CL1 | `probe/gpt-6.1-sol` | running (progress file: still running) | 74 | oauth ×74 | 198,963 | 33,024 | 370 | $0 | 212,552 |
-| Codex login | CL2 | `probe/gpt-6.1-terra` | stopped-early | 71 | oauth ×71 | 190,895 | 10,240 | 355 | $0 | 403,447 |
-| Codex login | CL3 | `probe/gpt-6-astra` | running (progress file: still running) | 71 | oauth ×71 | 190,936 | 38,272 | 355 | $0 | 594,383 |
-| Codex login | CL4 | `probe/gpt-6-luna` | no-observable-cache | 3 | oauth ×3 | 7,977 | 0 | 15 | $0 | 602,360 |
-| Meta login | ML1 | `muse-ember-1.0` | running (progress file: still running) | 32 | oauth ×32 | 84,214 | 25,480 | 512 | $0 | 84,214 |
-| Meta login | ML3 | `muse-wonder-1.0` | running (progress file: still running) | 32 | oauth ×32 | 84,391 | 25,608 | 511 | $0 | 168,605 |
+| Codex login | CL1 | `probe/gpt-6.1-sol` | running (progress file: cut off by the restart of 2026-11-18 10:16 local) | 98 | oauth ×98 | 263,558 | 71,040 | 490 | $0 | 277,147 |
+| Codex login | CL2 | `probe/gpt-6.1-terra` | stopped-early | 71 | oauth ×71 | 190,895 | 10,240 | 355 | $0 | 468,042 |
+| Codex login | CL3 | `probe/gpt-6-astra` | running (progress file: cut off by the restart of 2026-11-18 10:16 local) | 98 | oauth ×98 | 263,335 | 78,464 | 490 | $0 | 731,377 |
+| Codex login | CL4 | `probe/gpt-6-luna` | no-observable-cache | 3 | oauth ×3 | 7,977 | 0 | 15 | $0 | 739,354 |
+| Meta login | ML1 | `muse-ember-1.0` | running (progress file: cut off by the restart of 2026-11-18 10:16 local) | 38 | oauth ×38 | 100,000 | 25,480 | 608 | $0 | 100,000 |
+| Meta login | ML3 | `muse-wonder-1.0` | running (progress file: cut off by the restart of 2026-11-18 10:16 local) | 38 | oauth ×38 | 100,224 | 33,380 | 607 | $0 | 200,224 |
 
 AG4 (`gemini-3.8-flash-tiered`) left no run file: every request was answered 503 (Google's server capacity)
 until it was ended after 10 minutes; nothing was answered.
@@ -49,6 +49,6 @@ until it was ended after 10 minutes; nothing was answered.
 | Login | Input tokens answered |
 |---|---|
 | Antigravity login | 56,355 |
-| Codex login | 602,360 |
+| Codex login | 739,354 |
 | Devin login | 3,503 |
-| Meta login | 168,605 |
+| Meta login | 200,224 |
