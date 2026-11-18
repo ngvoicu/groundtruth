@@ -196,6 +196,20 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   warm through 5 minutes beside the documented 5; twelve entries measure 0 s. Left out: the paced Ernie 5.5 Flash
   Preview free (upstream 429), Inkling 2 Small free and Sakana Fugu Max and Ultra v2 (region refusals), Ling 3.2 Flash
   free (first answered check at 5 minutes), and the failures of batch 1. See its README and `results.md`.
+- `openrouter-2026-11-18/`, **batch 3, the last** (from `campaign/openrouter` at `6637b58`; every run has ended): one
+  run more, `~openai/gpt-astra-latest` (resolved to GPT-6.2 Astra), warm through 25 minutes and 0 of 3 at 30 and 40,
+  every sample primed and checked on the same upstream (Amazon Bedrock, or OpenAI for three samples): no crossing.
+  `openai/gpt-6.2-astra-pro` and `openai/gpt-6-astra-pro` were never run (left out for money). Notes added to rows,
+  no number changed, each from the raw files and logs; the assembly writes them in `observed/manifest.json`, where
+  they differ from the folder's `manifest-entries.json`: the five Pro models of OpenAI (the probe sent its default
+  ~2,500-token prefix, the replies reported 8,649 to 9,175 prompt tokens: input was added that the probe did not send,
+  and the cached counts are of that whole prompt), the nine `~` alias rows (the model each alias resolved to in the
+  run's replies, and that OpenRouter may point it elsewhere later), and the four window rows (the request was
+  1,200,000 repetitions of " hello", which OpenRouter estimated at 1,800,005 tokens of text input, in place of "about
+  1.2 million tokens"). For `~deepseek/deepseek-flash-latest` the manifest keeps the reviewed note and reason that name
+  the upstreams of its two controls (InferenceNet, Wafer); the folder's text omits them. Run L1 of
+  `cpa-latest-2026-11-06` is excluded with what it showed (its control read 0 of 2,334 with the ~2.3k-token prefix;
+  L1b's read 5,407 of 7,461 with ~8,000), no longer with a cause.
 
 ## The limits rows of observed.json (2026-11-17)
 
