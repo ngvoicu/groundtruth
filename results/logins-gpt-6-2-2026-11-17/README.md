@@ -11,7 +11,9 @@ the plan of the Codex login (ChatGPT plan). No money was spent; `ledger.md` has 
   at 2.5 min, 3 of 3 at 5 – 30 min, 2, 2, 1 of 3 at 40, 50 and 60 min, 0 of 3 at 75 and 90 min).
 - **Both missed one of three checks at 2.5 minutes, as LC1 and LC3 did this afternoon**, although this time no large
   request went to the login before or during the runs, the two models were not primed at the same moment, and nothing
-  else used the login (below). So load at priming does not explain the early misses; the records don't say what does.
+  else used the login (below). Early misses thus also occurred without a large request before the priming and
+  without two models priming at once. That does not rule out every kind of load, and it says nothing certain about
+  the misses of LC1 and LC3; the cause is not established.
 - **Window: both refused 930,000 tokens** with "Your input exceeds the context window of this model. Please adjust your
   input and try again.", which names no limit. No accepted request was sent, so there is no limits row.
 
@@ -49,7 +51,7 @@ primed side by side.
 | LC3 (this afternoon) | `gpt-6-astra` | hit (2,560 / 2,711) | 2, 3, 2, 2, 3, 2, 3, 1, 2, 2, 1, 3, 3, 1 | – | 2.5 min | – |
 
 "Warm through" is the oldest age through which every check hit; a miss at 2.5 minutes makes it none for all four.
-GA1 is warm in all 18 checks from 5 to 30 minutes and then fades; GS1 is gone by 5 minutes. A miss is total: every
+GA1 is warm in all 21 checks from 5 to 30 minutes and then fades; GS1 is gone by 5 minutes. A miss is total: every
 cold check read 0 tokens from cache. The latest check ran 6.4 s after its age; none was late or failed.
 
 ## Window (`window.py`, `limits-codex.jsonl`)

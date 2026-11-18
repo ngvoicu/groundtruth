@@ -30,11 +30,10 @@ PIN = ("Pinned to the Codex login by a temporary alias probe/{m} on that login o
 # The note on the Codex login's zeros (the same on LC1, LC3, LC4 in ../logins-2026-11-17 and on GS1, GA1 in
 # ../logins-gpt-6-2-2026-11-17).
 ZERO = ("The published 0 means that there is no tested age through which every check hit, not that this route does "
-        "not cache. Misses at 2.5 minutes came back on this login without load at priming: GS1 and GA1 "
-        "(logins-gpt-6-2-2026-11-17, GPT-6.2 Sol and Astra) missed 1 of 3 at 2.5 minutes with no large request "
-        "before the priming, the two models primed one after the other, and nothing else using the login (its request "
-        "counter rose by exactly their own requests), so load at priming does not explain the misses. Their cause is "
-        "not established.")
+        "not cache. Early misses also occurred without a large request before the priming and without two models "
+        "priming at once: GS1 and GA1 (logins-gpt-6-2-2026-11-17, GPT-6.2 Sol and Astra) each missed 1 of 3 at "
+        "2.5 minutes. That does not rule out every kind of load, and it says nothing certain about the misses of the "
+        "earlier models. Their cause is not established.")
 CUT = {"CL1", "CL3", "ML1", "ML3"}  # cut off by the restart: their progress files
 CUT_CODEX = (" Cut off: the 4-, 8- and 12-hour checks were refused by CLIProxyAPI itself (HTTP 400 \"unknown provider for "
              "model probe/{m}\"; the owner's configuration of 20:50 local had excluded {m} from the Codex login; nothing "
@@ -86,39 +85,41 @@ for label, m, stamp, base in meta:
                  f"{base} and this run are published together, as one evaluation, whatever they show (decided on "
                  "2026-11-17, before any of this run's later checks).")})
 
-PART = ("a control that read part of the prompt from cache but less than the probe's half (warm = at least half of "
-        "the prompt and 500 tokens): part of the prompt was read from cache, the rule's half was not reached, so the "
-        "run records no observable cache and ended there; nothing was repeated. On the same login today "
-        "gemini-3.8-flash-high read 2,647 of 4,686 (logins-2026-11-17/LA1).")
-AGN = ("Responses format with a per-sample prompt_cache_key and a 5,000-token prefix as A3 and LA1; the id is served "
-       "by the Antigravity login only (/v1/models?include=accounts), so the plain id; every answer's "
-       "X-CPA-AUTH-KIND was oauth.")
-ag = [("AG1", "gemini-3.1-flash-lite", "2026-11-17T16-27-48", "google/gemini-3.1-flash-lite", "re-send read 2,031 of 4,670 tokens: " + PART, ""),
-      ("AG2", "gemini-3.5-flash-lite", "2026-11-17T16-28-08", "google/gemini-3.5-flash-lite", "re-send read 2,031 of 4,698 tokens: " + PART, ""),
-      ("AG3", "gemini-3-flash", "2026-11-17T16-28-28", None, "re-send read 2,031 of 4,637 tokens: " + PART,
-       " base_model null: models.dev has only google/gemini-3-flash-preview, which is not shown to be the model this "
-       "login calls Gemini 3 Flash."),
-      ("AG5", "gpt-oss-120b-medium", "2026-11-17T16-38-49", None,
-       "re-send read 67 of 4,780 tokens (as the prime): no observable cache.",
-       " base_model null: models.dev lists openai/gpt-oss-120b, the site's catalog does not.")]
-for label, m, stamp, bm, ctl, extra in ag:
-    build = B1 if label == "AG5" else "build ngvoicu-local-c52243ab (process of 18:09:07 local)"
-    if label == "AG5":
-        build = ("its three requests ran 18:38:49 - 18:39:05 local, across the owner's restart of the proxy at "
-                 "18:38:51 (build ngvoicu-local-c52243ab before, ngvoicu-local-4c071f30 after)")
-    runs.append({
-        "id": f"logins-long-2026-11-17/{label}", "file": f"{F}/{label}-{stamp}.json",
-        "route": "antigravity", "client": "cliproxyapi", "model": m, "models_dev": None, "base_model": bm,
-        "options": {"prefix_tokens": 5000},
-        "note": f"Control: the {ctl} {AGN}{extra} Served by {build}."})
+# AG1 - AG3, AG5: no timed check, a control under the probe's criterion. Inconclusive about the lifetime, so excluded
+# (the chief's decision after the review of round two); the raw files stay.
+INCONCLUSIVE = ("Lifetime inconclusive: the control did not establish observable caching under this probe's criterion "
+                "(warm = at least half of the prompt and at least 500 tokens read from cache), and the run has no timed "
+                "check, so it ended at the control. It does not show a cache that expired, and it does not show that "
+                "there is none: it is not a measured lifetime of 0. ")
+AGN = ("Responses format with a per-sample prompt_cache_key and a 5,000-token prefix as A3 and LA1, probe 0.3.3 "
+       "through CLIProxyAPI; the id is served by the Antigravity login only, every answer's X-CPA-AUTH-KIND was oauth. "
+       "On the same login that day gemini-3.8-flash-high's control read 2,647 of 4,686 (logins-2026-11-17/LA1, a hit).")
+ag = [("AG1", "gemini-3.1-flash-lite", "2026-11-17T16-27-48",
+       "the prime read 0 of 4,670 prompt tokens from cache, the immediate re-send 2,031 of 4,670"),
+      ("AG2", "gemini-3.5-flash-lite", "2026-11-17T16-28-08",
+       "the prime read 0 of 4,698 prompt tokens from cache, the immediate re-send 2,031 of 4,698"),
+      ("AG3", "gemini-3-flash", "2026-11-17T16-28-28",
+       "the prime read 0 of 4,637 prompt tokens from cache, the immediate re-send 2,031 of 4,637"),
+      ("AG5", "gpt-oss-120b-medium", "2026-11-17T16-38-49",
+       "the prime and the immediate re-send each read 67 of 4,780 prompt tokens from cache")]
+ag_excluded = []
+for label, m, stamp, figures in ag:
+    same = (" The same 2,031 tokens on AG1 - AG3 suggests a fixed block read from cache; the records do not show what "
+            "it is.") if label != "AG5" else ""
+    ag_excluded.append({
+        "id": f"logins-long-2026-11-17/{label}",
+        "reason": (f"{m} on the Antigravity login (antigravity / cliproxyapi, prefix_tokens 5000): {figures}. "
+                   f"{INCONCLUSIVE}{AGN}{same} Raw file: {F}/{label}-{stamp}.json (and .md).")})
 
-excluded = [
+excluded = ag_excluded + [
     {"id": "logins-long-2026-11-17/AG4",
-     "reason": "gemini-3.8-flash-tiered on the Antigravity login: Google answered 503 MODEL_CAPACITY_EXHAUSTED (\"No "
-               "capacity available for model ... on the server\", then CLIProxyAPI's auth_unavailable for it) to every "
-               "request from 18:28:54 local; the run could not answer its control in 10 minutes and was ended by the "
-               "chief's rule at 18:38:48. No run file; its log is AG4-2026-11-17T16-28-48.not-primed.log. Google's "
-               "server capacity, not the account: no 429, no refusal of the login."},
+     "reason": "gemini-3.8-flash-tiered on the Antigravity login: its control was answered (warm, 2,620 of 4,659 "
+               "tokens read from cache, 18:30:48 local) after five retries of Google's 503 \"No capacity available "
+               "for model ... on the server\" and CLIProxyAPI's auth_unavailable; the priming of its 42 samples then "
+               "did not complete (the same 503s, one TLS handshake timeout answered 500 by the proxy), and the run was "
+               "ended by the chief's 10-minute rule at 18:38:48 local. No timed evidence and no run file; its log is "
+               "AG4-2026-11-17T16-28-48.not-primed.log. Google's server capacity, not the account: no 429, no "
+               "refusal of the login."},
     {"id": "logins-long-2026-11-17/codex-subscription long setting (gpt-6.1-sol, gpt-6.1-terra, gpt-6-astra, gpt-6-luna)",
      "reason": "Not measured because it does not exist on this route through CLIProxyAPI: the proxy deletes both "
                "prompt_cache_retention and prompt_cache_options from every Codex request to the login (commits "

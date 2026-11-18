@@ -14,9 +14,11 @@ event, nothing in these request paths). Probe 0.3.3, which records CLIProxyAPI's
 - **The Codex runs that asked (CL1 – CL4) are therefore plain runs** and are recorded as such (`options: {}`,
   `removed_by_proxy: {"prompt_cache_retention": "24h"}`), each continuing today's plain run of the same model
   (`../logins-2026-11-17`, LC1 – LC4) with ages out to 24 hours.
-- **Antigravity: no observable cache on four more models** (Gemini 3.1 Flash Lite, 3.5 Flash Lite, 3 Flash, GPT-OSS
-  120B Medium): an immediate re-send read part of the prompt from cache, less than the probe's half. Gemini 3.8 Flash
-  (Tiered) could not be measured: Google had no capacity for it for ten minutes.
+- **Antigravity: four more models, lifetime inconclusive** (Gemini 3.1 Flash Lite, 3.5 Flash Lite, 3 Flash, GPT-OSS
+  120B Medium): the immediate re-send read part of the prompt from cache, less than the probe's half, so the runs
+  ended at the control with no timed check. That shows neither a cache that expired nor that there is none; the four
+  runs are under `excluded`, not published as a lifetime. Gemini 3.8 Flash (Tiered): its control was answered (warm),
+  then its priming did not complete (Google had no capacity); no timed evidence, excluded.
 - **Muse Ember and Muse Wonder on the Meta login** continue LM1 and LM3 (warm in every check to 2 h), each read with
   its continuation as one run: **Ember warm through 2 h, all cold at 4 h; Wonder warm through 4 h, no data at 8 h,
   all cold at 12 h.** Both runs were cut off before 24 h (section 5).
@@ -99,29 +101,35 @@ one request at a time (`--concurrency 1 --prime-pause 1000`), one run at a time,
 a run not primed in 10 minutes is ended. Each id is served by the Antigravity login only, so the plain ids; every
 answer was `oauth`. The probe's rule: warm = at least half of the prompt (and 500 tokens) read from cache.
 
-| Run | Model | Control: re-send read from cache | Result | `base_model` |
+| Run | Model | Control: prime / re-send read from cache | Result | In `observed/manifest.json` |
 |---|---|---|---|---|
-| AG1 | `gemini-3.1-flash-lite` | 2,031 of 4,670 | no observable cache | `google/gemini-3.1-flash-lite` |
-| AG2 | `gemini-3.5-flash-lite` | 2,031 of 4,698 | no observable cache | `google/gemini-3.5-flash-lite` |
-| AG3 | `gemini-3-flash` | 2,031 of 4,637 | no observable cache | null (models.dev has only `google/gemini-3-flash-preview`) |
-| AG4 | `gemini-3.8-flash-tiered` | – | no run: 503 `MODEL_CAPACITY_EXHAUSTED` for 10 minutes | (`google/gemini-3.8-flash`) |
-| AG5 | `gpt-oss-120b-medium` | 67 of 4,780 | no observable cache | null (models.dev lists `openai/gpt-oss-120b`, the site's catalog does not) |
+| AG1 | `gemini-3.1-flash-lite` | 0 / 2,031 of 4,670 | under the criterion; no timed check: lifetime inconclusive | `excluded` |
+| AG2 | `gemini-3.5-flash-lite` | 0 / 2,031 of 4,698 | the same | `excluded` |
+| AG3 | `gemini-3-flash` | 0 / 2,031 of 4,637 | the same | `excluded` |
+| AG4 | `gemini-3.8-flash-tiered` | warm, 2,620 of 4,659 (re-send) | control answered; priming did not complete; no timed evidence, no run file | `excluded` |
+| AG5 | `gpt-oss-120b-medium` | 67 / 67 of 4,780 | under the criterion; no timed check: lifetime inconclusive | `excluded` |
 
-On AG1 – AG3 part of the prompt was read from cache, but less than the rule's half, so the runs record no observable
-cache and ended there; nothing was repeated to get over the line. On the same login today `gemini-3.8-flash-high`
-read 2,647 of 4,686 (LA1, warm). The same 2,031 tokens on three models suggests a fixed cached block, but the records
-alone don't show it. AG4: Google answered 503 "No capacity available for model gemini-3.8-flash-tiered on the server"
-(then CLIProxyAPI's `auth_unavailable` while it paused the model) to every request from 18:28:54; ended by the
-10-minute rule at 18:38:48, before its control was answered (`AG4-2026-11-17T16-28-48.not-primed.log`). AG5's three
-requests ran across the proxy restart (18:38:49 – 18:39:05).
+On AG1 – AG3 part of the prompt was read from cache on the re-send, but less than the rule's half, so the runs ended
+at the control; nothing was repeated to get over the line. On the same login that day `gemini-3.8-flash-high` read
+2,647 of 4,686 (LA1, warm). The same 2,031 tokens on three models suggests a fixed block read from cache, but the
+records alone don't show it. A control under the criterion with no timed check is inconclusive about the lifetime:
+it shows neither a cache that expired nor that there is none, so AG1 – AG3 and AG5 are not published as a lifetime
+(they were entered as runs in the first assembly and moved to `excluded` after its review).
+
+AG4 (`AG4-2026-11-17T16-28-48.not-primed.log`, times in UTC): Google answered 503 "No capacity available for model
+gemini-3.8-flash-tiered on the server" (then CLIProxyAPI's `auth_unavailable` while it paused the model) from 18:28:54
+local; after five retries the control was answered at 18:30:48 local, warm (2,620 of 4,659 read from cache). The
+priming of its 42 samples then did not complete (the same 503s and one TLS handshake timeout, answered 500 by the
+proxy), and the run was ended by the 10-minute rule at 18:38:48 local. It left no run file and no timed evidence.
+AG5's three requests ran across the proxy restart (18:38:49 – 18:39:05).
 
 **What this means for the owner's own use of the login:** no refusal of the account. No 429, no quota or rate
-answer; the only errors were Google's server capacity for `gemini-3.8-flash-tiered`, which the probe retried. The two
+answer; the only errors were Google's server capacity for `gemini-3.8-flash-tiered` and one TLS handshake timeout
+on the way to Google, which the probe retried. The two
 Claude ids of the login were not sent anything.
 
-The website has no entry yet for these ids under `antigravity` (only `gemini-3.8-flash-high`). It adds one for a
-model measured on a mapped route that models.dev does not list (`site/src/core/resolve.ts`, "Models that exist only
-because we measured them"), filled from `base_model` where models.dev has it, so these rows make their own entries.
+The website has no entry for these ids under `antigravity` (only `gemini-3.8-flash-high`); with the runs under
+`excluded` it gets none from this folder.
 
 ## 4. Meta login: Ember and Wonder to 24 hours (ML1, ML3)
 
@@ -176,15 +184,16 @@ needed.
 - `build_observed.py`: `removed_by_proxy` (a field the client sent that the proxy is shown to delete; not in
   `options`; the proof in the note). The site reads observed runs as loose objects, so the key passes into
   `observed.json`.
-- `build_observed.py`: a run whose control missed is accepted without ages (the rule of 14 November had refused it).
+- `build_observed.py`: a run whose control missed is accepted without ages (the rule of 14 November had refused it). Since
+  AG1 – AG3 and AG5 went to `excluded`, no published row relies on it.
 
 ## Files
 
 - `CL*`, `AG*`, `ML*` `-2026-11-17T*.json` / `.md`: the runs that ended by themselves; CL1, CL3, ML1 and ML3 are
   their progress files `*.partial.json`, unchanged (section 5).
 - `fields-codex.jsonl`, `fields-devin.jsonl`, `fieldtest.py`: the requests of section 1.
-- `manifest-entries.json` (`make_entries.py`): 10 runs, 3 excluded entries (AG4, the Codex long setting, the Devin
-  long setting). CL1 – CL4 continue `logins-2026-11-17/LC1` – `LC4` (runs in that part); ML1 and ML3 continue LM1 and
+- `manifest-entries.json` (`make_entries.py`): 6 runs (CL1 – CL4, ML1, ML3), 7 excluded entries (AG1 – AG3 and AG5:
+  lifetime inconclusive; AG4; the Codex long setting; the Devin long setting). CL1 – CL4 continue `logins-2026-11-17/LC1` – `LC4` (runs in that part); ML1 and ML3 continue LM1 and
   LM3, which that part put in `excluded` and the assembly must move to `runs`.
 - `ledger.md` (`ledger.py`), `run.sh`, `sequence.py` (one run of a login priming at a time, a login stopped at its
   refusal), `status.py` (`logs/status.md`). `logs/` stays local.

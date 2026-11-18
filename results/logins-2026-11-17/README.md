@@ -140,10 +140,11 @@ over the published evaluations of the entry and profile (`site/design/safe-cache
   at 5 minutes; H1 and H2 were made by coding tools with low reasoning and larger prompts. None of this is a
   comparison that shows a change. The window walk sent three requests of 921,500 tokens to the same login one to two minutes
   before the priming (every sample, the late ones too, was primed in those first minutes), and the owner's own sessions
-  use the login. **Load at priming does not explain the misses at 2.5 minutes:** that evening GS1 and GA1
+  use the login. **Early misses also occurred without that:** that evening GS1 and GA1
   (`../logins-gpt-6-2-2026-11-17`, GPT-6.2 Sol and Astra, made as LC1 and LC3) missed 1 of 3 at 2.5 minutes too, with
-  no large request before the priming, the two models primed one after the other, and nothing else using the login
-  (its request counter rose by exactly their own requests). The cause of the misses is not established. The missing
+  no large request before the priming and the two models primed one after the other (the login's request counter rose
+  by exactly their own requests). That does not rule out every kind of load, and it says nothing certain about the
+  misses here. The cause of the misses is not established. The missing
   `session_id` in the request record is not the cause: CLIProxyAPI copies the request's `prompt_cache_key` into the
   upstream session id. CL1, CL3 and CL4 (`../logins-long-2026-11-17`) continue LC1, LC3 and LC4 and are published
   with them: primed about four hours after these, with no window request before them, Sol and Astra missed again

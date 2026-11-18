@@ -19,8 +19,9 @@ NOTE = ("plain probe 0.3.3 through CLIProxyAPI (build ngvoicu-local-4c071f30, pr
         # ../logins-long-2026-11-17).
         "The published 0 means that there is no tested age through which every check hit, not that this route does "
         "not cache. GS1 and GA1 each missed 1 of 3 at 2.5 minutes (LC1, LC3 and LC4 had missed there too that "
-        "afternoon), with no large request before the priming, the two models primed one after the other, and nothing else using the "
-        "login, so load at priming does not explain the misses at 2.5 minutes. Their cause is not established.")
+        "afternoon): early misses also occurred without a large request before the priming and without two models "
+        "priming at once. That does not rule out every kind of load, and it says nothing certain about the misses of "
+        "the earlier models. Their cause is not established.")
 runs = []
 for label, m, stamp, base in (("GS1", "gpt-6.2-sol", "2026-11-17T21-26-51", "LC1"),
                               ("GA1", "gpt-6.2-astra", "2026-11-17T21-27-51", "LC3")):
