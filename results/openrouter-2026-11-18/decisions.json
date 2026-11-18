@@ -1,7 +1,8 @@
 {
  "halt": false,
  "left_out": {
-  "openai--gpt-6.2-astra-pro": "worst case $7.94 did not fit: committed $15.10 of $18.0"
+  "openai--gpt-6.2-astra-pro": "worst case $7.94 did not fit: committed $15.10 of $18.0",
+  "openai--gpt-6-astra-pro": "worst case $9.93 did not fit: committed $16.31 of $18.0"
  },
  "refusals_seen": {
   "baidu--ernie-5.5-flash-preview-free": {

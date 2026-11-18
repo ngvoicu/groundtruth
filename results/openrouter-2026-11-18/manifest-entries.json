@@ -808,6 +808,16 @@
    "base_model": null,
    "options": {},
    "note": "OpenRouter's default route: 2 check(s) were answered by another upstream than the one their sample was primed on (5m-r2: primed on Azure, answered by Amazon Bedrock: cold (0/2378 cached); 15m-r1: primed on Amazon Bedrock, answered by OpenAI: cold (0/2428 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream"
+  },
+  {
+   "id": "openrouter-2026-11-18/alias-openai--gpt-astra-latest",
+   "file": "results/openrouter-2026-11-18/alias-openai--gpt-astra-latest-2026-11-18T13-54-06.json",
+   "route": "openrouter",
+   "client": "direct",
+   "model": "~openai/gpt-astra-latest",
+   "models_dev": "openrouter/~openai/gpt-astra-latest",
+   "base_model": null,
+   "options": {}
   }
  ],
  "excluded": [

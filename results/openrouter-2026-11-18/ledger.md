@@ -2,7 +2,7 @@
 
 Computed by `ledger.py` from the usage each reply reported (`logs/*.usage.jsonl`), at OpenRouter's prices read before each run (`offered.jsonl`; `sources/openrouter-models.json` otherwise). Every request is in `ledger.jsonl` with its tokens, upstream, price, OpenRouter's own cost figure and the running total.
 
-**Total: $16.0531** by the ledger (OpenRouter's own per-reply `usage.cost` summed: $16.1492), 5403 requests, stop at $18.
+**Total: $16.2185** by the ledger (OpenRouter's own per-reply `usage.cost` summed: $16.3146), 5427 requests, stop at $18.
 
 What OpenRouter reported as used by the key (`GET /api/v1/key`, `key-readings.jsonl`):
 
@@ -101,6 +101,20 @@ What OpenRouter reported as used by the key (`GET /api/v1/key`, `key-readings.js
 | 2026-11-18T13:54:06Z | 15.104656221 | 20 | status.py --launch pass |
 | 2026-11-18T13:57:22Z | 16.145741421 | 20 | status.py --launch pass |
 | 2026-11-18T13:57:27Z | 16.149190621 | 20 | batch 3 |
+| 2026-11-18T14:00:24Z | 16.152681021 | 20 | status.py --launch pass |
+| 2026-11-18T14:03:26Z | 16.152681021 | 20 | status.py --launch pass |
+| 2026-11-18T14:06:30Z | 16.156190221 | 20 | status.py --launch pass |
+| 2026-11-18T14:09:33Z | 16.159656221 | 20 | status.py --launch pass |
+| 2026-11-18T14:12:34Z | 16.163153421 | 20 | status.py --launch pass |
+| 2026-11-18T14:15:37Z | 16.166629021 | 20 | status.py --launch pass |
+| 2026-11-18T14:18:38Z | 16.166629021 | 20 | status.py --launch pass |
+| 2026-11-18T14:21:41Z | 16.170145021 | 20 | status.py --launch pass |
+| 2026-11-18T14:24:43Z | 16.170145021 | 20 | status.py --launch pass |
+| 2026-11-18T14:27:44Z | 16.242385021 | 20 | status.py --launch pass |
+| 2026-11-18T14:30:45Z | 16.242385021 | 20 | status.py --launch pass |
+| 2026-11-18T14:33:46Z | 16.242385021 | 20 | status.py --launch pass |
+| 2026-11-18T14:36:49Z | 16.314639021 | 20 | status.py --launch pass |
+| 2026-11-18T14:41:03Z | 16.314639021 | 20 | end |
 
 | Model | Requests | USD (ledger) | USD (OpenRouter) |
 |---|---|---|---|
@@ -180,7 +194,7 @@ What OpenRouter reported as used by the key (`GET /api/v1/key`, `key-readings.js
 | `z-ai/glm-5.3-prime` | 86 | 0.2923 | 0.2923 |
 | `~deepseek/deepseek-flash-latest` | 89 | 0.0194 | 0.0441 |
 | `~deepseek/deepseek-pro-latest` | 50 | 0.0133 | 0.0205 |
-| `~openai/gpt-astra-latest` | 47 | 1.0445 | 1.0445 |
+| `~openai/gpt-astra-latest` | 71 | 1.2100 | 1.2100 |
 | `~openai/gpt-luna-latest` | 74 | 0.0154 | 0.0154 |
 | `~openai/gpt-sol-latest` | 74 | 0.3199 | 0.3199 |
 | `~openai/gpt-terra-latest` | 74 | 0.1512 | 0.1512 |
@@ -195,7 +209,7 @@ What OpenRouter reported as used by the key (`GET /api/v1/key`, `key-readings.js
 | `alias-deepseek--deepseek-flash-latest` | 3 | 0.0003 | 0.0006 |
 | `alias-deepseek--deepseek-flash-latest-8k` | 86 | 0.0191 | 0.0435 |
 | `alias-deepseek--deepseek-pro-latest` | 50 | 0.0133 | 0.0205 |
-| `alias-openai--gpt-astra-latest` | 47 | 1.0445 | 1.0445 |
+| `alias-openai--gpt-astra-latest` | 71 | 1.2100 | 1.2100 |
 | `alias-openai--gpt-luna-latest` | 74 | 0.0154 | 0.0154 |
 | `alias-openai--gpt-sol-latest` | 74 | 0.3199 | 0.3199 |
 | `alias-openai--gpt-terra-latest` | 74 | 0.1512 | 0.1512 |

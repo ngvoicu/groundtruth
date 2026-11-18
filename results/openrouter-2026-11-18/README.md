@@ -1,8 +1,8 @@
 # OpenRouter's chat models released since 2026-08-17: cache lifetimes, straight with a key of its own, 2026-11-18
 
-**State of this folder: batch 3, pushed 2026-11-18 about 14:00 UTC; one run still going** (batch 1 `f1cca4d`,
-batch 2 `6abf96d`, the reviewer's rulings `c40cc28`). Runs still running or not yet started are listed as such in
-`results.md`; a run gets its entry
+**State of this folder: final, 2026-11-18 about 14:45 UTC. Every run has ended; nothing runs.** Batches were pushed
+while the measuring went on: batch 1 `f1cca4d`, batch 2 `6abf96d`, the reviewer's rulings `c40cc28`, batch 3 `87e12f4`,
+the chief's rulings of m-10781 `d78171e`. A run gets its entry
 only once it has finished. The folder is complete in
 itself at every pushed commit.
 
@@ -201,9 +201,9 @@ Failed runs, kept with their files and in `excluded` of `manifest-entries.json`:
   `inkling-2-small` was measured). `baidu/ernie-5.5-flash-preview:free`, paced: HTTP 429 "…temporarily rate-limited
   upstream" after its control (warm, 2,304 of 2,413): the upstream's limit, as for Ling and LFM; no free runs are left.
 - **Left out for money**: `openai/gpt-6.2-astra-pro` (worst case $7.94 with its ~9,000-token prompts; at 13:54 UTC
-  nothing else ran and $15.10 was committed of $18) and `openai/gpt-6-astra-pro` (worst case $9.93: it cannot fit
-  either; it is listed as left out when the last run has ended). `~openai/gpt-astra-latest` (worst case $2.72) did
-  fit and runs.
+  nothing else ran and $15.10 was committed of $18) and `openai/gpt-6-astra-pro` (worst case $9.93; at 14:36 UTC,
+  after the last run, $16.31 was spent). `~openai/gpt-astra-latest` (worst case $2.72) did fit and ran: warm through
+  25 minutes, 0 of 3 at 30 (documented 30 minutes: contradicted in the site's sense), $1.21.
 
 Runs whose entry waits for OpenRouter's generation record of their last replies (a few minutes late) are marked
 "entry pending" in `results.md`. Nothing was left out for money up to batch 2; see above for batch 3.
@@ -230,9 +230,17 @@ At batch 3 (13:57 UTC, one run still going): ledger **$16.05**, OpenRouter's own
 **$16.15**. `~openai/gpt-astra-latest`, still running, spent $1.04 of it on its priming; what it may still cost is
 reserved (about $1.4 at most).
 
+**At the end (14:41 UTC): ledger $16.22, OpenRouter's own per-reply figure $16.31, the key's usage $16.31** of the
+$20 limit, under the $18 stop. Readings of the key before the first run (08:40, $0), at every launch pass and at the
+end are in `key-readings.jsonl` and `ledger.md`. 5,427 requests. The dearest models: Claude Fable 5.2 $2.13, GPT-6.2
+Astra $1.23, `~gpt-astra-latest` $1.21, GPT-6.2 Sol Pro $0.77, Gemini 4 Carbon $0.76 (both runs), GPT-6 Sol Pro $0.75,
+GPT-6.1 Sol Pro $0.72, Qwen3.8 Max Prime $0.70, GPT-6.2 Sol $0.63 (both runs), Gemini 4 Hydrogen $0.62 (both runs);
+every model and run in `ledger.md`.
+
 ## Picking up
 
-`python3 results/openrouter-2026-11-18/status.py` rebuilds from the files what has finished, what runs (a live pid of
+Nothing runs: every probe and the supervisor have ended (the supervisor ended by itself at 14:36 UTC, nothing left
+to start). `python3 results/openrouter-2026-11-18/status.py` rebuilds from the files what has finished, what runs (a live pid of
 `logs/<label>.pid` whose command names the label) and what is left, the money and the upstreams; it sends nothing. The
 supervisor's pid is in `logs/supervisor.pid`; if it is gone, start it again (the command is in `supervise.py`). A run
 cut off (pid gone, no final file) is kept as it is and not resumed. `summary.py` writes `results.md`,
