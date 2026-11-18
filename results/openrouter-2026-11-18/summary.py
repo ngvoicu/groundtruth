@@ -41,15 +41,21 @@ def fmt_s(s):
 
 
 def verdict(doc, through, first_cold, checks):
-    """The site's documented lifetime against the run: holds when every check up to it was warm, contradicted when a
-    check at or below it was cold (by how much: the first age with a cold check)."""
+    """The site's documented lifetime against the run, in the site's sense (the reviewer's ruling 4, m-10767): holds
+    when every check up to it was warm; contradicted only when at an age at or below it fewer than half the checks hit
+    (by how much: the first such age); otherwise the misses are told as they are (n of m at an age, warm through)."""
     if doc is None:
         return "none documented"
-    cold_at = [a for a, v in sorted(checks.items()) if a <= doc and not all(v)]
-    if cold_at:
-        return f"{fmt_s(doc)} documented: contradicted, a check cold at {fmt_s(cold_at[0])}"
+    under = [a for a, v in sorted(checks.items()) if a <= doc and sum(v) * 2 < len(v)]
+    if under:
+        return f"{fmt_s(doc)} documented: contradicted, fewer than half the checks hit at {fmt_s(under[0])}"
     if through is not None and through >= doc:
         return f"{fmt_s(doc)} documented: holds (warm through {fmt_s(through)})"
+    missed = [(a, v) for a, v in sorted(checks.items()) if a <= doc and not all(v)]
+    if missed:
+        a, v = missed[0]
+        return (f"{fmt_s(doc)} documented: {sum(v)} of {len(v)} at {fmt_s(a)}; all warm through "
+                f"{fmt_s(through) if through is not None else 'no age'}")
     return f"{fmt_s(doc)} documented: not reached by the run"
 
 
@@ -96,27 +102,37 @@ for r in S.runs:
                    "models_dev": e.get("ref"), "base_model": e.get("canonical_id"), "options": r["options"]}
             if r["group"] == "free":
                 ent["note"] = "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute)"
-            if changed or r.get("separate"):
-                # The chief's decision (m-10723): such a run is kept in a list of its own, for the reviewer.
-                outcome = {c["sampleId"]: c for c in j.get("checks", [])}
-                crossings = []
-                for c in changed:
-                    if c["sample"] == "control":
-                        res = "warm" if (j.get("control") or {}).get("warm") else "cold"
-                        ct = (j.get("control") or {}).get("check") or {}
-                    else:
-                        ck = outcome.get(c["sample"]) or {}
-                        res = "warm" if ck.get("warm") else ("cold" if ck else "not checked (run stopped first)")
-                        ct = ck
-                    crossings.append(f"{c['sample']}: primed on {c['upstreams'][0]}, answered by {c['upstreams'][-1]}"
-                                     + (f" (replies {' → '.join(map(str, c['upstreams']))})" if len(c["upstreams"]) > 2 else "")
-                                     + f": {res}" + (f" ({ct.get('cachedTokens')}/{ct.get('promptTokens')} cached)" if ct.get("promptTokens") else ""))
-                why = ("pinned to one upstream (provider.order, allow_fallbacks false): evidence whether the lifetime holds "
-                       "when the upstream cannot change" if r.get("separate") else
-                       "OpenRouter's default route: the upstream changed between a sample's priming and its check")
-                separate.append({"entry": ent, "why": why, "crossings": crossings,
-                                 "note": f"{len(crossings)} check(s) answered by another upstream than the one primed: " + "; ".join(crossings) if crossings else "no check crossed upstreams"})
+            outcome = {c["sampleId"]: c for c in j.get("checks", [])}
+            crossings, control_crossed = [], False
+            for c in changed:
+                if c["sample"] == "control":
+                    control_crossed = True
+                    res = "warm" if (j.get("control") or {}).get("warm") else "cold"
+                    ct = (j.get("control") or {}).get("check") or {}
+                else:
+                    ck = outcome.get(c["sample"]) or {}
+                    res = "warm" if ck.get("warm") else ("cold" if ck else "not checked (run stopped first)")
+                    ct = ck
+                crossings.append(f"{c['sample']}: primed on {c['upstreams'][0]}, answered by {c['upstreams'][-1]}"
+                                 + (f" (replies {' → '.join(map(str, c['upstreams']))})" if len(c["upstreams"]) > 2 else "")
+                                 + f": {res}" + (f" ({ct.get('cachedTokens')}/{ct.get('promptTokens')} cached)" if ct.get("promptTokens") else ""))
+            row["crossings"] = crossings
+            # The reviewer's rulings (m-10767): a pinned run is never a manifest run (excluded, its provider option
+            # stated); a crossing in a control that missed, with no timed checks, is excluded; a run with crossings in
+            # its timed checks is published as what the default route gives, the crossings told in its note.
+            if r.get("separate"):
+                excluded.append({"id": rid, "reason": "supplemental evidence, not a manifest run (the reviewer's ruling, "
+                                 "m-10767): pinned to one upstream, options.provider = " + json.dumps(r["options"].get("provider"))
+                                 + f"; {('crossings: ' + '; '.join(crossings)) if crossings else 'no check crossed upstreams'}"})
+            elif control_crossed and data["control"] == [False] and not data["checks"]:
+                excluded.append({"id": rid, "reason": "the control's re-send was answered by another upstream than the one "
+                                 "primed, the control missed and there is no timed check: no lifetime measured (" + "; ".join(crossings) + ")"})
             else:
+                if crossings:
+                    ent["note"] = ((ent.get("note") + "; ") if ent.get("note") else "") + (
+                        f"OpenRouter's default route: {len(crossings)} check(s) were answered by another upstream than the "
+                        "one their sample was primed on (" + "; ".join(crossings) + "). Such a miss shows failed reuse "
+                        "through the default route, not expiry at the upstream")
                 entries.append(ent)
     elif st["state"] == "cut off":
         excluded.append({"id": f"{FOLDER}/{r['label']}", "reason": "cut off before its end (the process ended without a result file); the partial file is kept"})
@@ -144,15 +160,38 @@ for model, w in windows.items():
                      "near a limit), so no accepted size; the output limit was not tested"),
             "file": f"results/{FOLDER}/windows.jsonl",
             "evidence": [{"row_model": model, "message_has": f"maximum context length is {m.group(1)} tokens"}]})
+
+json.dump({"comment": f"Empty since the reviewer's rulings on batch 1 (m-10767): runs with crossings in their timed "
+           "checks are in manifest-entries.json with the crossings in their note; a pinned run and a control crossing "
+           "with no timed check are in its excluded. Kept so that the earlier commits (f1cca4d, 6abf96d) read the same.",
+           "runs": separate}, open(os.path.join(HERE, "manifest-entries-upstream-changed.json"), "w"), indent=1)
+# The reviewer's ruling 5 (m-10767): a first run and its larger-prompt run that both read 0 with a valid control and
+# known upstream are both published, with that said in their notes.
+ent_by_id = {e["id"]: e for e in entries}
+
+
+def zero(x):
+    return x.get("status") == "no-observable-cache" and not (x.get("control_tokens") or {}).get("cachedTokens") \
+        and not x.get("upstream_unknown") and not x.get("upstream_changed")
+
+
+for r in S.runs:
+    if not r.get("larger_prompt_of"):
+        continue
+    first, big = ent_by_id.get(f"{FOLDER}/{r['larger_prompt_of']}"), ent_by_id.get(f"{FOLDER}/{r['label']}")
+    fx = next((x for x in rows if x["label"] == r["larger_prompt_of"]), {})
+    bx = next((x for x in rows if x["label"] == r["label"]), {})
+    if first and big and zero(fx) and zero(bx):
+        for ent, other in ((first, r["label"]), (big, r["larger_prompt_of"])):
+            ent["note"] = ((ent["note"] + "; ") if ent.get("note") else "") + (
+                f"no cache read observed with about 2,500- and 8,000-token prompts (this run and {FOLDER}/{other}: "
+                "neither control read a cached token)")
+
 json.dump({"comment": f"Entries for observed/manifest.json from results/{FOLDER} (branch campaign/openrouter): add runs "
            "to runs, excluded to excluded and limits to limits. Finished runs only; not applied here; a later task "
            "assembles the manifest.",
            "runs": entries, "excluded": excluded, "limits": limits}, open(os.path.join(HERE, "manifest-entries.json"), "w"), indent=1)
-json.dump({"comment": f"Runs of results/{FOLDER} kept apart from manifest-entries.json for the reviewer (the chief's "
-           "decision, m-10723): runs on OpenRouter's default route in which a check was answered by another upstream "
-           "than the one its sample was primed on, and runs pinned to one upstream. Each has the entry it would have and "
-           "a note naming the checks that crossed upstreams and their outcome. Not applied anywhere.",
-           "runs": separate}, open(os.path.join(HERE, "manifest-entries-upstream-changed.json"), "w"), indent=1)
+
 # The chief's decision (m-10759): first runs whose control read 0 cached tokens at the default ~2,500 tokens, each
 # with its run of about 8,000 tokens once that exists (the assembler holds the cold rows out until then).
 by_label = {x["label"]: x for x in rows}

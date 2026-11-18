@@ -35,14 +35,7 @@
   },
   {
    "run": {
-    "id": "openrouter-2026-11-18/google--gemini-4-carbon",
-    "file": "results/openrouter-2026-11-18/google--gemini-4-carbon-2026-11-18T08-42-45.json",
-    "route": "openrouter",
-    "client": "direct",
-    "model": "google/gemini-4-carbon",
-    "models_dev": "openrouter/google/gemini-4-carbon",
-    "base_model": "google/gemini-4-carbon",
-    "options": {}
+    "id": "openrouter-2026-11-18/google--gemini-4-carbon"
    },
    "control": "0 of 2384 tokens cached",
    "larger_prompt_run": {
@@ -85,7 +78,8 @@
     "model": "scaledown/summarize",
     "models_dev": "openrouter/scaledown/summarize",
     "base_model": null,
-    "options": {}
+    "options": {},
+    "note": "no cache read observed with about 2,500- and 8,000-token prompts (this run and openrouter-2026-11-18/scaledown--summarize-8k: neither control read a cached token)"
    },
    "control": "0 of 3093 tokens cached",
    "larger_prompt_run": {
@@ -99,7 +93,8 @@
      "base_model": null,
      "options": {
       "prefix_tokens": 8000
-     }
+     },
+     "note": "no cache read observed with about 2,500- and 8,000-token prompts (this run and openrouter-2026-11-18/scaledown--summarize: neither control read a cached token)"
     },
     "status": "no-observable-cache",
     "control": "0 of 9670 tokens cached",
@@ -231,7 +226,8 @@
     "model": "perceptron/perceptron-mk1.5",
     "models_dev": "openrouter/perceptron/perceptron-mk1.5",
     "base_model": null,
-    "options": {}
+    "options": {},
+    "note": "no cache read observed with about 2,500- and 8,000-token prompts (this run and openrouter-2026-11-18/perceptron--perceptron-mk1.5-8k: neither control read a cached token)"
    },
    "control": "0 of 2874 tokens cached",
    "larger_prompt_run": {
@@ -245,7 +241,8 @@
      "base_model": null,
      "options": {
       "prefix_tokens": 8000
-     }
+     },
+     "note": "no cache read observed with about 2,500- and 8,000-token prompts (this run and openrouter-2026-11-18/perceptron--perceptron-mk1.5: neither control read a cached token)"
     },
     "status": "no-observable-cache",
     "control": "0 of 9385 tokens cached",

@@ -44,6 +44,13 @@ try:
     if "--separate" in sys.argv:
         runs += [x["entry"] for x in json.load(open(os.path.join(HERE, "manifest-entries-upstream-changed.json")))["runs"]]
     # Runs already on main (released, or held there under excluded by the assembly) are not added again.
+    # A run main holds under excluded that this folder now lists as a run (a ruling moved it) is moved: dropped from
+    # main's excluded, added as a run.
+    my_ids = {r["id"] for r in runs}
+    moved = [e["id"] for e in main_manifest["excluded"] if e["id"] in my_ids]
+    main_manifest["excluded"] = [e for e in main_manifest["excluded"] if e["id"] not in my_ids]
+    if moved:
+        print(f"{len(moved)} runs held on main under excluded are moved to runs: {', '.join(i.split('/')[-1] for i in moved)}")
     on_main = {r["id"] for r in main_manifest["runs"]} | {e["id"] for e in main_manifest["excluded"]}
     skipped = [r["id"] for r in runs if r["id"] in on_main] + [e["id"] for e in add["excluded"] if e["id"] in on_main]
     main_manifest["runs"] += [r for r in runs if r["id"] not in on_main]

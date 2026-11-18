@@ -46,13 +46,19 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
   (logged by the probe since 0.3.4) is looked up once in `GET /api/v1/generation` (free) by `upstream.py`:
   `upstreams.jsonl` has, per reply, the upstream that answered, every attempt OpenRouter made (a fallback shows there),
   the model version and the session id OpenRouter used (the `prompt_cache_key`). Each check is paired with its sample's
-  priming by that key. A run in which a check (the control included) was answered by another upstream than its
-  sample's priming is **not in `manifest-entries.json`**: it is in `manifest-entries-upstream-changed.json`, with the
-  entry it would have and the checks that crossed upstreams and their outcome, for the reviewer (the chief's decision,
-  m-10723: such a check says nothing about one upstream's lifetime but is what a caller of the default route gets).
+  priming by that key. **Crossings** (the reviewer's rulings on batch 1, m-10767): a run whose timed checks include
+  checks answered by another upstream than their sample's priming is published as what the default route gives, in
+  `manifest-entries.json`, with the crossings told in its entry's `note` (which checks, primed where, answered where,
+  the outcome, and that such a miss shows failed reuse through the default route, not expiry at the upstream); the
+  observed crossings stay out of `options`. A crossing in a control that missed, with no timed check (Gemini 4
+  Carbon), is excluded: no lifetime measured. Until batch 2 these runs were kept apart in
+  `manifest-entries-upstream-changed.json` (the chief's decision, m-10723); that list is now empty and kept only so
+  that the earlier commits read the same.
 - **GPT-6.2 Sol pinned to OpenAI** (`openai--gpt-6.2-sol-pinned-openai`): a second Sol run with
   `{"provider": {"order": ["openai"], "allow_fallbacks": false}}` (in its recorded options), as evidence whether the
-  lifetime holds when the upstream cannot change; the chief's go (m-10723), in the separate list too.
+  lifetime holds when the upstream cannot change; the chief's go (m-10723). A pinned run is never a manifest run (the
+  site would pool it with the default route's row): it is in `excluded` as supplemental evidence, its `provider`
+  option stated (ruling 2, m-10767).
 - **Free models** (`:free`): OpenRouter allows 20 free requests a minute. The first free run
   (`baidu/ernie-5.5-flash-preview:free`, unpaced, 08:44) was refused during its priming (HTTP 429
   "free-models-per-min"); on the chief's go (m-10711 B) the free runs are **paced**, `--concurrency 1 --prime-pause
@@ -85,21 +91,22 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
 
 `results.md` (written by `summary.py`) has one row per run: the control, warm checks per age, warm through, first all
 cold, the upstreams, the checks that crossed upstreams, the cost, and the entry's documented lifetime on providers.dev
-on 2026-11-18 (holds, contradicted, by how much). 
+on 2026-11-18: holds (every check up to it warm), contradicted only in the site's sense (fewer than half the checks
+of an age at or below it hit), otherwise the misses as they are ("2 of 3 at 30m; all warm through 25m"). 
 
 **The seven big releases** (warm through = every check of every age up to there warm; first all cold = the first age
 with no warm check):
 
 | Model | Control | Warm checks per age | Warm through | First all cold | Upstreams | Where it stands |
 |---|---|---|---|---|---|---|
-| `openai/gpt-6.2-sol` | warm | 3/3 to 10 min, 1/3 at 15 and 20, 3/3 at 25, 0/3 at 30 and 40 | 10 min | 30 min | Amazon Bedrock, OpenAI | the four misses at 15 and 20 min are the four checks primed on Bedrock and answered by OpenAI: separate list |
-| same, pinned to OpenAI | warm | 3/3 at every age to 30 min, 0/3 at 40 and 50 | **30 min** | 40 min | OpenAI | separate list (pinned) |
+| `openai/gpt-6.2-sol` | warm | 3/3 to 10 min, 1/3 at 15 and 20, 3/3 at 25, 0/3 at 30 and 40 | 10 min | 30 min | Amazon Bedrock, OpenAI | the four misses at 15 and 20 min are the four checks primed on Bedrock and answered by OpenAI: in the entries, the crossings in its note |
+| same, pinned to OpenAI | warm | 3/3 at every age to 30 min, 0/3 at 40 and 50 | **30 min** | 40 min | OpenAI | supplemental evidence, excluded (pinned) |
 | `google/gemini-4-hydrogen` | **cold** (0 of 2,345) | – | – | – | Google | no observable cache with the default ~2,500-token prompt |
-| `google/gemini-4-carbon` | **cold** (0 of 2,384) | – | – | – | Google, Google AI Studio | the control's last re-send fell back from Google (504) to Google AI Studio: separate list |
+| `google/gemini-4-carbon` | **cold** (0 of 2,384) | – | – | – | Google, Google AI Studio | the control's last re-send fell back from Google (504) to Google AI Studio, the control missed and there is no timed check: excluded; its larger-prompt run failed (below) |
 | `qwen/qwen4-max` | warm | 2/3 at 2.5 min, 3/3 from 5 to 20, 1/3 at 25, 2/3 at 30, 0/3 at 40 and 50 | none (2/3 at 2.5) | 40 min | Alibaba | in the entries |
-| `meta/muse-ember` | warm | 3/3 to 15 min, 2/3 at 20, 3/3 at 25 and 30, 0/3 at 40, 1/3 at 50 min to 75 min, 3/3 at 90, 2/3 at 2 h | 15 min | 40 min | Google, Meta | 2h r3 primed on Google, answered by Meta, cold: separate list |
+| `meta/muse-ember` | warm | 3/3 to 15 min, 2/3 at 20, 3/3 at 25 and 30, 0/3 at 40, 1/3 at 50 min to 75 min, 3/3 at 90, 2/3 at 2 h | 15 min | 40 min | Google, Meta | 2h r3 primed on Google, answered by Meta, cold: in the entries, the crossing in its note |
 | `anthropic/claude-fable-5.2` | warm | 3/3 at 2.5 and 5 min, 0/3 at 7.5 and 10 | **5 min** | 7.5 min | Anthropic, Azure, Google | in the entries; Anthropic's 5-minute default, as on Anthropic's API (`../direct-2026-11-17`) |
-| `openai/gpt-6.2-astra` | warm | 3/3 to 25 min, 2/3 at 30, 0/3 at 40 and 50 | 25 min | 40 min | Azure, OpenAI | in the entries; providers.dev documents 30 min: **contradicted**, one of three cold at 30 min (no upstream change in that check) |
+| `openai/gpt-6.2-astra` | warm | 3/3 to 25 min, 2/3 at 30, 0/3 at 40 and 50 | 25 min | 40 min | Azure, OpenAI | in the entries; providers.dev documents 30 min: 2 of 3 at 30 min, all warm through 25 (not a contradiction in the site's sense, which needs fewer than half the checks of an age to hit); no upstream change in that check |
 
 providers.dev documented no lifetime for six of the seven on 2026-11-18; for GPT-6.2 Astra 30 minutes. Every other run
 is in `results.md` with the same columns.
@@ -111,7 +118,9 @@ age was fully warm (2/3 at 2.5 min, 1/3 at 5, cold at 7.5), ScaleDown Summarize 
 at 2.5 minutes; long lifetimes on single upstreams (Nex N2.6 warm in every check to 2 hours, Ripple 65B through 90
 minutes, Pareto 26.10 Preview through 1 hour, Aion 3.5 Mini through 50 minutes, GLM 5.3 FlashX and Qwen3.8 Max 0902
 through 30 minutes, Flint v1.0 free through 40 minutes); and three models spread over several upstreams that crossed
-(MiMo v2.6 Flash, Nemotron 3.5 Super VL, Beam 1.0), in the separate list.
+(MiMo v2.6 Flash, Nemotron 3.5 Super VL, Beam 1.0), in the entries with their crossings in the note. Where a
+larger-prompt run read 0 again (ScaleDown Summarize, Perceptron Mk1.5), both runs' notes say "no cache read observed
+with about 2,500- and 8,000-token prompts" (ruling 5, m-10767).
 
 ## Input windows, from a refusal only
 
@@ -183,7 +192,7 @@ takes the higher figure. The larger-prompt runs of the two Gemini cost $0.75 (Ca
 `logs/<label>.pid` whose command names the label) and what is left, the money and the upstreams; it sends nothing. The
 supervisor's pid is in `logs/supervisor.pid`; if it is gone, start it again (the command is in `supervise.py`). A run
 cut off (pid gone, no final file) is kept as it is and not resumed. `summary.py` writes `results.md`,
-`manifest-entries.json` and the separate list; `scratch_build.py` proves the entries against `main`.
+`manifest-entries.json`, the cold-control list and the (now empty) upstream-changed list; `scratch_build.py` proves the entries against `main`.
 
 ## Files
 

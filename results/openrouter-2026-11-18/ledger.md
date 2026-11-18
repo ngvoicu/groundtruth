@@ -2,7 +2,7 @@
 
 Computed by `ledger.py` from the usage each reply reported (`logs/*.usage.jsonl`), at OpenRouter's prices read before each run (`offered.jsonl`; `sources/openrouter-models.json` otherwise). Every request is in `ledger.jsonl` with its tokens, upstream, price, OpenRouter's own cost figure and the running total.
 
-**Total: $11.3933** by the ledger (OpenRouter's own per-reply `usage.cost` summed: $11.4679), 4498 requests, stop at $18.
+**Total: $11.4487** by the ledger (OpenRouter's own per-reply `usage.cost` summed: $11.5235), 4574 requests, stop at $18.
 
 What OpenRouter reported as used by the key (`GET /api/v1/key`, `key-readings.jsonl`):
 
@@ -64,26 +64,27 @@ What OpenRouter reported as used by the key (`GET /api/v1/key`, `key-readings.js
 | 2026-11-18T12:01:09Z | 11.450040114 | 20 | status.py --launch pass |
 | 2026-11-18T12:01:20Z | 11.450040114 | 20 | batch 2 |
 | 2026-11-18T12:02:42Z | 11.46731341 | 20 | batch 2 commit |
+| 2026-11-18T12:04:12Z | 11.476695178 | 20 | status.py --launch pass |
 
 | Model | Requests | USD (ledger) | USD (OpenRouter) |
 |---|---|---|---|
-| `aion-labs/aion-3.5` | 62 | 0.3850 | 0.3850 |
+| `aion-labs/aion-3.5` | 65 | 0.3912 | 0.3912 |
 | `aion-labs/aion-3.5-mini` | 83 | 0.1117 | 0.1117 |
 | `anthropic/claude-fable-5.2` | 56 | 2.1277 | 2.1277 |
 | `anthropic/claude-sonnet-5.5` | 56 | 0.5339 | 0.5339 |
 | `baidu/ernie-5.5-flash-preview:free` | 29 | 0.0000 | 0.0000 |
-| `baidu/ernie-light-dt-1.0-intl` | 81 | 0.2032 | 0.2032 |
+| `baidu/ernie-light-dt-1.0-intl` | 84 | 0.2072 | 0.2072 |
 | `deepseek/deepseek-v4-flash-vision-exp` | 81 | 0.0694 | 0.0694 |
 | `deepseek/deepseek-v4.1-flash-1017` | 65 | 0.0056 | 0.0111 |
 | `elorian/glimpse` | 53 | 0.0940 | 0.0940 |
-| `fireworks/ember-1` | 62 | 0.3774 | 0.3774 |
+| `fireworks/ember-1` | 65 | 0.3806 | 0.3806 |
 | `google/gemini-4-carbon` | 55 | 0.7634 | 0.7634 |
 | `google/gemini-4-hydrogen` | 59 | 0.6190 | 0.6190 |
 | `ibm-granite/granite-4.2-8b` | 56 | 0.0087 | 0.0088 |
 | `inclusionai/ling-3.0-flash-vl` | 50 | 0.0084 | 0.0084 |
 | `inclusionai/ling-3.1-flash` | 80 | 0.0078 | 0.0078 |
 | `inclusionai/ling-3.2-flash:free` | 49 | 0.0000 | 0.0000 |
-| `kt/midm-k-3.0-pro` | 74 | 0.0992 | 0.0992 |
+| `kt/midm-k-3.0-pro` | 77 | 0.1008 | 0.1008 |
 | `liquid/lfm-2.5-24b-a2b` | 71 | 0.0273 | 0.0273 |
 | `liquid/lfm-3-1.7b` | 54 | 0.0371 | 0.0371 |
 | `liquid/lfm-3-1.7b:free` | 1 | 0.0000 | 0.0000 |
@@ -100,8 +101,8 @@ What OpenRouter reported as used by the key (`GET /api/v1/key`, `key-readings.js
 | `nex-agi/nex-n2.6` | 86 | 0.0174 | 0.0174 |
 | `nvidia/nemotron-3.5-super-vl` | 87 | 0.0287 | 0.0288 |
 | `nvidia/nemotron-3.5-super-vl:free` | 74 | 0.0000 | 0.0000 |
-| `openai/gpt-6-luna-pro` | 50 | 0.0318 | 0.0318 |
-| `openai/gpt-6-sol` | 66 | 0.2711 | 0.2711 |
+| `openai/gpt-6-luna-pro` | 53 | 0.0322 | 0.0322 |
+| `openai/gpt-6-sol` | 68 | 0.2722 | 0.2722 |
 | `openai/gpt-6.2-astra` | 74 | 1.2324 | 1.2324 |
 | `openai/gpt-6.2-sol` | 145 | 0.6274 | 0.6274 |
 | `particle-ai/particle-1` | 65 | 0.0092 | 0.0092 |
@@ -111,7 +112,7 @@ What OpenRouter reported as used by the key (`GET /api/v1/key`, `key-readings.js
 | `prism-ml/ternary-bonsai-2-9b` | 54 | 0.0387 | 0.0387 |
 | `qwen/qwen3.8-flash` | 83 | 0.0328 | 0.0328 |
 | `qwen/qwen3.8-max-0902` | 74 | 0.3509 | 0.3509 |
-| `qwen/qwen3.8-max-prime` | 62 | 0.6044 | 0.6044 |
+| `qwen/qwen3.8-max-prime` | 65 | 0.6186 | 0.6186 |
 | `qwen/qwen3.8-omni-flash` | 53 | 0.0235 | 0.0235 |
 | `qwen/qwen4-max` | 74 | 0.2289 | 0.2289 |
 | `recursive/flint-v1.0:free` | 80 | 0.0000 | 0.0000 |
@@ -128,36 +129,38 @@ What OpenRouter reported as used by the key (`GET /api/v1/key`, `key-readings.js
 | `thinkingmachines/inkling-2-small` | 50 | 0.0483 | 0.0481 |
 | `unbiased/pareto-26.10` | 83 | 0.1034 | 0.1034 |
 | `unbiased/pareto-26.10-preview` | 83 | 0.1051 | 0.1051 |
-| `unbiased/pareto-26.9` | 65 | 0.2934 | 0.2934 |
+| `unbiased/pareto-26.9` | 68 | 0.2955 | 0.2955 |
 | `upstage/solar-mini4` | 51 | 0.0067 | 0.0067 |
 | `xiaomi/mimo-v2.6-flash` | 87 | 0.0288 | 0.0288 |
 | `xiaomi/mimo-v2.6-pro` | 83 | 0.0736 | 0.0682 |
-| `xiaomi/mimo-v2.6-pro-ultraspeed` | 59 | 0.5395 | 0.5395 |
+| `xiaomi/mimo-v2.6-pro-ultraspeed` | 62 | 0.5408 | 0.5408 |
 | `z-ai/glm-5.3-flashx` | 77 | 0.0562 | 0.0562 |
 | `z-ai/glm-5.3-flashx-legal` | 83 | 0.0562 | 0.0562 |
-| `z-ai/glm-5.3-prime` | 77 | 0.2600 | 0.2600 |
+| `z-ai/glm-5.3-prime` | 80 | 0.2682 | 0.2682 |
 | `~deepseek/deepseek-flash-latest` | 59 | 0.0144 | 0.0335 |
 | `~deepseek/deepseek-pro-latest` | 50 | 0.0133 | 0.0205 |
-| `~z-ai/glm-flash-latest` | 56 | 0.0057 | 0.0161 |
+| `~openai/gpt-luna-latest` | 44 | 0.0130 | 0.0130 |
+| `~z-ai/glm-flash-latest` | 59 | 0.0060 | 0.0167 |
 | `~z-ai/glm-latest` | 56 | 0.0108 | 0.0263 |
 
 | Run | Requests | USD (ledger) | USD (OpenRouter) |
 |---|---|---|---|
-| `aion-labs--aion-3.5` | 62 | 0.3850 | 0.3850 |
+| `aion-labs--aion-3.5` | 65 | 0.3912 | 0.3912 |
 | `aion-labs--aion-3.5-mini` | 83 | 0.1117 | 0.1117 |
 | `alias-deepseek--deepseek-flash-latest` | 3 | 0.0003 | 0.0006 |
 | `alias-deepseek--deepseek-flash-latest-8k` | 56 | 0.0141 | 0.0328 |
 | `alias-deepseek--deepseek-pro-latest` | 50 | 0.0133 | 0.0205 |
-| `alias-z-ai--glm-flash-latest` | 56 | 0.0057 | 0.0161 |
+| `alias-openai--gpt-luna-latest` | 44 | 0.0130 | 0.0130 |
+| `alias-z-ai--glm-flash-latest` | 59 | 0.0060 | 0.0167 |
 | `alias-z-ai--glm-latest` | 56 | 0.0108 | 0.0263 |
 | `anthropic--claude-fable-5.2` | 56 | 2.1277 | 2.1277 |
 | `anthropic--claude-sonnet-5.5` | 56 | 0.5339 | 0.5339 |
 | `baidu--ernie-5.5-flash-preview-free` | 29 | 0.0000 | 0.0000 |
-| `baidu--ernie-light-dt-1.0-intl` | 81 | 0.2032 | 0.2032 |
+| `baidu--ernie-light-dt-1.0-intl` | 84 | 0.2072 | 0.2072 |
 | `deepseek--deepseek-v4-flash-vision-exp` | 80 | 0.0694 | 0.0694 |
 | `deepseek--deepseek-v4.1-flash-1017` | 65 | 0.0056 | 0.0111 |
 | `elorian--glimpse` | 53 | 0.0940 | 0.0940 |
-| `fireworks--ember-1` | 62 | 0.3774 | 0.3774 |
+| `fireworks--ember-1` | 65 | 0.3806 | 0.3806 |
 | `google--gemini-4-carbon` | 3 | 0.0145 | 0.0145 |
 | `google--gemini-4-carbon-8k` | 52 | 0.7489 | 0.7489 |
 | `google--gemini-4-hydrogen` | 3 | 0.0109 | 0.0109 |
@@ -167,7 +170,7 @@ What OpenRouter reported as used by the key (`GET /api/v1/key`, `key-readings.js
 | `inclusionai--ling-3.1-flash` | 80 | 0.0078 | 0.0078 |
 | `inclusionai--ling-3.2-flash-free` | 49 | 0.0000 | 0.0000 |
 | `kt--midm-k-3.0-pro` | 3 | 0.0019 | 0.0019 |
-| `kt--midm-k-3.0-pro-8k` | 71 | 0.0973 | 0.0973 |
+| `kt--midm-k-3.0-pro-8k` | 74 | 0.0988 | 0.0988 |
 | `liquid--lfm-2.5-24b-a2b` | 3 | 0.0005 | 0.0005 |
 | `liquid--lfm-2.5-24b-a2b-8k` | 68 | 0.0268 | 0.0268 |
 | `liquid--lfm-3-1.7b` | 3 | 0.0007 | 0.0007 |
@@ -187,8 +190,8 @@ What OpenRouter reported as used by the key (`GET /api/v1/key`, `key-readings.js
 | `nvidia--nemotron-3.5-super-vl` | 86 | 0.0287 | 0.0288 |
 | `nvidia--nemotron-3.5-super-vl-free` | 3 | 0.0000 | 0.0000 |
 | `nvidia--nemotron-3.5-super-vl-free-8k` | 71 | 0.0000 | 0.0000 |
-| `openai--gpt-6-luna-pro` | 50 | 0.0318 | 0.0318 |
-| `openai--gpt-6-sol` | 66 | 0.2711 | 0.2711 |
+| `openai--gpt-6-luna-pro` | 53 | 0.0322 | 0.0322 |
+| `openai--gpt-6-sol` | 68 | 0.2722 | 0.2722 |
 | `openai--gpt-6.2-astra` | 74 | 1.2324 | 1.2324 |
 | `openai--gpt-6.2-sol` | 71 | 0.3245 | 0.3245 |
 | `openai--gpt-6.2-sol-pinned-openai` | 74 | 0.3029 | 0.3029 |
@@ -202,7 +205,7 @@ What OpenRouter reported as used by the key (`GET /api/v1/key`, `key-readings.js
 | `prism-ml--ternary-bonsai-2-9b-8k` | 51 | 0.0380 | 0.0380 |
 | `qwen--qwen3.8-flash` | 83 | 0.0328 | 0.0328 |
 | `qwen--qwen3.8-max-0902` | 74 | 0.3509 | 0.3509 |
-| `qwen--qwen3.8-max-prime` | 62 | 0.6044 | 0.6044 |
+| `qwen--qwen3.8-max-prime` | 65 | 0.6186 | 0.6186 |
 | `qwen--qwen3.8-omni-flash` | 53 | 0.0235 | 0.0235 |
 | `qwen--qwen4-max` | 74 | 0.2289 | 0.2289 |
 | `recursive--flint-v1.0-free` | 80 | 0.0000 | 0.0000 |
@@ -220,13 +223,13 @@ What OpenRouter reported as used by the key (`GET /api/v1/key`, `key-readings.js
 | `thinkingmachines--inkling-2-small` | 50 | 0.0483 | 0.0481 |
 | `unbiased--pareto-26.10` | 83 | 0.1034 | 0.1034 |
 | `unbiased--pareto-26.10-preview` | 83 | 0.1051 | 0.1051 |
-| `unbiased--pareto-26.9` | 65 | 0.2934 | 0.2934 |
+| `unbiased--pareto-26.9` | 68 | 0.2955 | 0.2955 |
 | `upstage--solar-mini4` | 51 | 0.0067 | 0.0067 |
 | `windows` | 3 | 0.0000 | 0.0000 |
 | `xiaomi--mimo-v2.6-flash` | 86 | 0.0288 | 0.0288 |
 | `xiaomi--mimo-v2.6-pro` | 83 | 0.0736 | 0.0682 |
-| `xiaomi--mimo-v2.6-pro-ultraspeed` | 59 | 0.5395 | 0.5395 |
+| `xiaomi--mimo-v2.6-pro-ultraspeed` | 62 | 0.5408 | 0.5408 |
 | `z-ai--glm-5.3-flashx` | 77 | 0.0562 | 0.0562 |
 | `z-ai--glm-5.3-flashx-legal` | 83 | 0.0562 | 0.0562 |
-| `z-ai--glm-5.3-prime` | 77 | 0.2600 | 0.2600 |
+| `z-ai--glm-5.3-prime` | 80 | 0.2682 | 0.2682 |
 
