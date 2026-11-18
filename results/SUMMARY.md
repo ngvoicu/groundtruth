@@ -202,9 +202,9 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   `openai/gpt-6.2-astra-pro` and `openai/gpt-6-astra-pro` were never run (left out for money). Notes added to rows,
   no number changed, each from the raw files and logs; the assembly writes them in `observed/manifest.json`, where
   they differ from the folder's `manifest-entries.json`: the five Pro models of OpenAI (the probe sent its default
-  ~2,500-token prefix, the replies reported 8,649 to 9,175 prompt tokens: input was added that the probe did not send,
-  and the cached counts are of that whole prompt), the nine `~` alias rows (the model each alias resolved to in the
-  run's replies, and that OpenRouter may point it elsewhere later), and the four window rows (the request was
+  ~2,500-token prefix, the replies reported 8,649 to 9,175 prompt tokens; the records do not show what the difference
+  consists of, and the cached counts are of that whole prompt), the nine `~` alias rows (the model each alias resolved
+  to in the run's replies, and that OpenRouter may point it elsewhere later), and the four window rows (the request was
   1,200,000 repetitions of " hello", which OpenRouter estimated at 1,800,005 tokens of text input, in place of "about
   1.2 million tokens"). For `~deepseek/deepseek-flash-latest` the manifest keeps the reviewed note and reason that name
   the upstreams of its two controls (InferenceNet, Wafer); the folder's text omits them. Run L1 of

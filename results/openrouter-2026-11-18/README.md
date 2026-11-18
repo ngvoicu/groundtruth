@@ -67,9 +67,11 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
   (`…-paced`). Only a refusal that names OpenRouter's free limit leaves the remaining free ones; an upstream's 429
   ("Provider returned error") ends that run only.
 - **OpenAI's `-pro` variants answer with ~8,900-token prompts** where the same request to the plain model counts
-  ~2,400 (OpenRouter's reply; the probe sent the same ~2,500-token prefix): something in front of the model adds
-  about 6,300 tokens. Their checks count as warm on the cached share of that whole prompt (e.g. 8,670 of 8,878 at the
-  control). From 12:38 UTC the `-pro` runs not yet started were planned with 9,000 prompt tokens per request.
+  ~2,400 (OpenRouter's reply; the probe sent the same ~2,500-token prefix): for GPT-6 Sol and GPT-6.2 Sol, the
+  `-pro` versions reported about 6,400 and 6,600 more tokens on average than their plain models, respectively; the
+  records do not show what the difference consists of. Their checks count as warm on the cached share of that whole
+  prompt (e.g. 8,670 of 8,878 at the control). From 12:38 UTC the `-pro` runs not yet started were planned with 9,000
+  prompt tokens per request.
 - **The money guard**, changed twice during the day (`status.py`): from 12:28 UTC `--enforce` stops runs only when
   the money spent comes within $0.75 of the stop, not when reservations alone pass it (a `-pro` run's grown worst
   case would otherwise have stopped it); from 12:50 UTC a running run reserves its worst case for its requests not
