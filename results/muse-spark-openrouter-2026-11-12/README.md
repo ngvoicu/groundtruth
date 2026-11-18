@@ -21,7 +21,7 @@ second age in a row.
 - **No age was fully warm, so there is no safe lifetime.** Between 5 and 15 minutes about half the checks found the
   cache (7 of 12); by 30 minutes it was gone.
 - **A miss is total** (0 cached tokens), and the three cold checks at 2.5 minutes came before warm ones at 5 to 15
-  minutes: this is a hit-or-miss route, not a cache with a fixed lifetime. OpenRouter can send each request to a
+  minutes: this is a hit-or-miss route. OpenRouter can send each request to a
   different upstream, which would explain it; the run can't tell.
 - On Meta's own API the same model was reliable to about 7 minutes (`../cpa-8.0.53`, run M3) and to 5 minutes with
   the 24h retention option (`../meta-24h-2026-11-10`, run M3). Muse Wonder on OpenRouter behaved like this run

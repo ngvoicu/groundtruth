@@ -28,12 +28,12 @@ reported as cached. The immediate re-send (control) was warm in every run.
   times. No safe lifetime.
 - **DeepSeek V4.1 Flash: reliable at 2.5 minutes, nearly at 5, hit-or-miss after.** 13 of 13 at 2.5 minutes, 12 of
   13 at 5 minutes, then 13 of 18 between 7.5 minutes and 1 hour with no trend: 30 and 40 minutes were fully warm
-  after misses at 7.5, 10 and 15. The cache outlives an hour; what fails is finding it. By the rule used for
+  after misses at 7.5, 10 and 15. Checks found it as late as 1 hour; the records do not show why others missed. By the rule used for
   `observed.json` (every check at an age warm) the safe value is 2.5 minutes, under the 5 minutes a client would
   plan for. An earlier run with 2 samples per age (`../cpa-latest-2026-11-06`, L3) also found it about half the
   time out to 2 hours.
-- **A miss is total** (0 cached tokens), on both models and at every age. These are hit-or-miss routes, not caches
-  with a fixed lifetime. OpenRouter can send each request to a different upstream, which would explain it; the
+- **A miss is total** (0 cached tokens), on both models and at every age. These are hit-or-miss routes: misses at
+  one age came before hits at later ones. OpenRouter can send each request to a different upstream, which would explain it; the
   runs can't tell.
 - **GLM hits are often partial**: between 3,800 and 6,300 tokens of the prompt, and 19 in one check at 30 minutes.
   DeepSeek hits return nearly the whole prompt.

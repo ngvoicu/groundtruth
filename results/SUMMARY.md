@@ -5,7 +5,8 @@ age; 3 samples per age. A check is warm when ≥ 50 % of the prompt (and ≥ 500
 the OpenAI Responses format with a per-sample `prompt_cache_key`, the way pi and Codex send one per conversation.
 
 **Lifetime** = last age where all checks were warm – first age where all were cold. Mixed rows (some warm, some cold at
-the same age) mean the provider spreads requests over cache nodes or evicts early; treat the lower bound as the safe value.
+the same age) are ages at which the checks gave both outcomes; the records do not show why. Treat the lower bound as the
+safe value.
 
 - `cpa-8.0.53/`: through a local [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 8.0.53, each row pinned to
   one account by a temporary alias (removed afterwards).
@@ -169,7 +170,7 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   GPT-6.2 Astra warm through 25 minutes, 2 of 3 at 30, cold at 40; Qwen4 Max 2 of 3 at 2.5 minutes, cold at 40.
   **Held back in this batch, under `excluded`** (the folder lists them otherwise; the assembly holds them): the nine
   runs of `manifest-entries.json` whose control read 0 cached tokens (Gemini 4 Hydrogen and eight others), until a run
-  with a larger prompt shows whether the ~2,500-token prompt was under the upstream's smallest cacheable size; and the
+  with a larger prompt shows whether that larger prompt reads from cache; and the
   five runs of `manifest-entries-upstream-changed.json` (GPT-6.2 Sol unpinned and pinned to OpenAI, Gemini 4 Carbon,
   Muse Ember, DeepSeek V4.1 Flash 1017), until it is decided how a run whose check crossed upstreams is published. Six
   failed runs are under `excluded` with the folder's reasons (one free model refused by OpenRouter's free-request

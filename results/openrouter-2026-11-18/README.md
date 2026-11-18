@@ -41,7 +41,8 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
   (whose 0.2.0 file records no request) carries `"top-level"`. No lifetime is asked in either, so both land in the short
   profile (`lifetimeAsked` in `site/src/core/cache.ts` reads `ttl`, `prompt_cache_retention`,
   `prompt_cache_options.ttl`); `scratch_build.py` prints it.
-- **Upstreams.** OpenRouter can serve a model from several upstream providers, and a cache lives at one of them. The
+- **Upstreams.** OpenRouter can serve a model from several upstream providers; the runs' records (`upstreams.jsonl`,
+  below) name the upstream that answered a priming and a check, not where a cache is kept. The
   existing direct rows pinned nothing (no `provider` field), so these runs pin nothing either: they measure OpenRouter's
   default route, the website's entry. OpenRouter's Responses replies do not name the upstream, so every reply id
   (logged by the probe since 0.3.4) is looked up once in `GET /api/v1/generation` (free) by `upstream.py`:
@@ -50,7 +51,8 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
   priming by that key. **Crossings** (the reviewer's rulings on batch 1, m-10767): a run whose timed checks include
   checks answered by another upstream than their sample's priming is published as what the default route gives, in
   `manifest-entries.json`, with the crossings told in its entry's `note` (which checks, primed where, answered where,
-  the outcome, and that such a miss shows failed reuse through the default route, not expiry at the upstream); the
+  the outcome, and that such a check was not answered by the upstream its sample was primed on, so its miss is what
+  the default route gave and does not show whether a cache at that upstream had expired); the
   observed crossings stay out of `options`. A crossing in a control that missed, with no timed check (Gemini 4
   Carbon), is excluded: no lifetime measured. Until batch 2 these runs were kept apart in
   `manifest-entries-upstream-changed.json` (the chief's decision, m-10723); that list is now empty and kept only so
@@ -164,8 +166,8 @@ For the four models whose two OpenRouter figures disagree (`context_length` / `t
 `xiaomi/mimo-v2.6-pro` 1,050,000 / 1,048,576, `deepseek/deepseek-v4-flash-vision-exp` 1,048,576 / 1,048,575):
 after the model's cache run, one Chat Completions request of " hello" × 1,200,000 (about 1.2 million tokens), 16
 output tokens, `transforms: []` (`window.py`, `windows.jsonl`, as `../logins-2026-11-17` recorded Fable's refusal).
-No accepted request near a limit. Every refusal so far came from OpenRouter itself, before any upstream, and names
-the endpoint's window; `manifest-entries.json` has a limits row for each (the window named, no accepted size, as
+No accepted request near a limit. Every refusal carries OpenRouter's own message, names no upstream (`provider_name`
+null in its `metadata`) and gives the endpoint's window; `manifest-entries.json` has a limits row for each (the window named, no accepted size, as
 `../logins-2026-11-17`'s Fable row):
 
 | Model | OpenRouter's figures (context_length / top_provider) | The refusal |
@@ -249,6 +251,8 @@ to start). `python3 results/openrouter-2026-11-18/status.py` rebuilds from the f
 supervisor's pid is in `logs/supervisor.pid`; if it is gone, start it again (the command is in `supervise.py`). A run
 cut off (pid gone, no final file) is kept as it is and not resumed. `summary.py` writes `results.md`,
 `manifest-entries.json`, the cold-control list and the (now empty) upstream-changed list; `scratch_build.py` proves the entries against `main`.
+The notes published in `observed/manifest.json` were reworded after the measuring and may differ from those in
+`manifest-entries.json` and `manifest-entries-cold-control.json`, which stay as the measuring record.
 
 ## Files
 

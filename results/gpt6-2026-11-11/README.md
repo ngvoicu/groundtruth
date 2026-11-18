@@ -28,8 +28,8 @@ Every route of a local CLIProxyAPI that serves GPT-6 Astra and GPT-6 Luna, plus 
 
 ## Reading it
 
-- **The OpenAI API keeps the cache exactly as documented**: warm at 30 minutes, cold at 40, on all three models. So does
-  OpenRouter, which routes these models to OpenAI.
+- **The OpenAI API keeps the cache exactly as documented**: warm at 30 minutes, cold at 40, on all three models. OpenRouter
+  gave the same on Astra and Luna (G8, G9); the run does not record which upstream answered.
 - **Devin: 30 minutes**, cold by 1 hour, on both models. An earlier run with 2 samples (`../devin-harness-2026-11-08`,
   D5p) missed one Astra check at 15 minutes; with 3 samples every check through 30 minutes was warm.
 - **The ChatGPT plan (Codex login) depends on the model.** Astra was warm in every check through 2 hours. Luna missed

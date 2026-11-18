@@ -159,8 +159,9 @@ for r in S.runs:
                 if crossings:
                     ent["note"] = ((ent.get("note") + "; ") if ent.get("note") else "") + (
                         f"OpenRouter's default route: {len(crossings)} check(s) were answered by another upstream than the "
-                        "one their sample was primed on (" + "; ".join(crossings) + "). Such a miss shows failed reuse "
-                        "through the default route, not expiry at the upstream")
+                        "one their sample was primed on (" + "; ".join(crossings) + "). Such a check was not answered by the "
+                        "upstream its sample was primed on: its miss is what the default route gave and does not show "
+                        "whether a cache at that upstream had expired")
                 entries.append(ent)
     elif st["state"] == "cut off":
         excluded.append({"id": f"{FOLDER}/{r['label']}", "reason": "cut off before its end (the process ended without a result file); the partial file is kept"})
