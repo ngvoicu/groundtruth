@@ -9319,7 +9319,7 @@
    "all_warm_through_s": null,
    "last_warm_s": 150,
    "first_all_cold_s": 300,
-   "note": "the run ended after its 5m checks, at the next check, on an upstream's answer (HTTP 504 \"The operation was aborted\", after a 429 of Google AI Studio (\"google/gemini-4-carbon is temporarily rate-limited upstream. Please retry shortly, or add …\")), which the probe's --stop-on-refusal read as a rate refusal and did not retry; the checks answered before it stand, later ages untested; OpenRouter's default route: 4 check(s) were answered by another upstream than the one their sample was primed on (5m-r1: primed on Google, answered by Google AI Studio: cold (0/7501 cached); 5m-r3: primed on Google, answered by Google AI Studio: cold (0/7548 cached); 2.5m-r2: primed on Google, answered by Google AI Studio: cold (0/7539 cached); 2.5m-r3~2: primed on Google, answered by Google AI Studio: cold (0/7534 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream; the same request with a ~2,500-token prompt (openrouter-2026-11-18/google--gemini-4-carbon) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement",
+   "note": "the run ended after its 5m checks, at the next check, on an upstream's answer (HTTP 504 \"The operation was aborted\", after a 429 of Google AI Studio (\"google/gemini-4-carbon is temporarily rate-limited upstream. Please retry shortly, or add …\")), which the probe's --stop-on-refusal read as a rate refusal and did not retry; the checks answered before it stand, later ages untested; OpenRouter's default route: 4 check(s) were answered by another upstream than the one their sample was primed on (5m-r1: primed on Google, answered by Google AI Studio: cold (0/7501 cached); 5m-r3: primed on Google, answered by Google AI Studio: cold (0/7548 cached); 2.5m-r2: primed on Google, answered by Google AI Studio: cold (0/7539 cached); 2.5m-r3~2: primed on Google, answered by Google AI Studio: cold (0/7534 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream; the same request with a ~2,500-token prompt (openrouter-2026-11-18/google--gemini-4-carbon) read no cached token at its control; this run with ~8,000 tokens read from cache at its control and is the measurement",
    "latest": true
   },
   {
@@ -9368,7 +9368,7 @@
    "all_warm_through_s": null,
    "last_warm_s": 300,
    "first_all_cold_s": 450,
-   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/google--gemini-4-hydrogen) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement",
+   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/google--gemini-4-hydrogen) read no cached token at its control; this run with ~8,000 tokens read from cache at its control and is the measurement",
    "latest": true
   },
   {
@@ -9651,7 +9651,7 @@
    "all_warm_through_s": 7200,
    "last_warm_s": 7200,
    "first_all_cold_s": null,
-   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/kt--midm-k-3.0-pro) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement",
+   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/kt--midm-k-3.0-pro) read no cached token at its control; this run with ~8,000 tokens read from cache at its control and is the measurement",
    "latest": true
   },
   {
@@ -9754,7 +9754,7 @@
    "all_warm_through_s": 3600,
    "last_warm_s": 3600,
    "first_all_cold_s": 4500,
-   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement",
+   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b) read no cached token at its control; this run with ~8,000 tokens read from cache at its control and is the measurement",
    "latest": true
   },
   {
@@ -9791,7 +9791,7 @@
    "all_warm_through_s": null,
    "last_warm_s": null,
    "first_all_cold_s": 150,
-   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/liquid--lfm-3-1.7b) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement",
+   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/liquid--lfm-3-1.7b) read no cached token at its control; this run with ~8,000 tokens read from cache at its control and is the measurement",
    "latest": true
   },
   {
@@ -11160,7 +11160,7 @@
    "all_warm_through_s": 5400,
    "last_warm_s": 5400,
    "first_all_cold_s": 7200,
-   "note": "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute); the same request with a ~2,500-token prompt (openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement",
+   "note": "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute); the same request with a ~2,500-token prompt (openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free) read no cached token at its control; this run with ~8,000 tokens read from cache at its control and is the measurement",
    "latest": true
   },
   {
@@ -12464,7 +12464,7 @@
    "all_warm_through_s": null,
    "last_warm_s": null,
    "first_all_cold_s": 150,
-   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement",
+   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b) read no cached token at its control; this run with ~8,000 tokens read from cache at its control and is the measurement",
    "latest": true
   },
   {
@@ -12501,7 +12501,7 @@
    "all_warm_through_s": null,
    "last_warm_s": null,
    "first_all_cold_s": 150,
-   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement",
+   "note": "the same request with a ~2,500-token prompt (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b) read no cached token at its control; this run with ~8,000 tokens read from cache at its control and is the measurement",
    "latest": true
   },
   {
@@ -15149,7 +15149,7 @@
    "all_warm_through_s": 150,
    "last_warm_s": 7200,
    "first_all_cold_s": null,
-   "note": "OpenRouter's default route: 2 check(s) were answered by another upstream than the one their sample was primed on (75m-r1: primed on InferenceNet, answered by Wafer: cold (0/7950 cached); 90m-r3: primed on InferenceNet, answered by Morph: cold (0/7962 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream; the same request with a ~2,500-token prompt (openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest) read no cached token at its control: that prompt was under the smallest cacheable size; this run with ~8,000 tokens is the measurement",
+   "note": "OpenRouter's default route: 2 check(s) were answered by another upstream than the one their sample was primed on (75m-r1: primed on InferenceNet, answered by Wafer: cold (0/7950 cached); 90m-r3: primed on InferenceNet, answered by Morph: cold (0/7962 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream; the same request with a ~2,500-token prompt (openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest) read no cached token at its control (answered by InferenceNet); this run with ~8,000 tokens read from cache at its control (answered by Wafer) and is the measurement",
    "latest": true
   },
   {
@@ -16230,31 +16230,31 @@
   },
   {
    "id": "openrouter-2026-11-18/google--gemini-4-hydrogen",
-   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/google--gemini-4-hydrogen-8k) shows the prompt was under the smallest cacheable size (raw file: results/openrouter-2026-11-18/google--gemini-4-hydrogen-2026-11-18T08-42-30.json)"
+   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). its control read no cached token with a ~2,500-token prompt; the ~8,000-token run (openrouter-2026-11-18/google--gemini-4-hydrogen-8k) read from cache at its control and is the manifest run; why the small prompt read nothing is not established (raw file: results/openrouter-2026-11-18/google--gemini-4-hydrogen-2026-11-18T08-42-30.json)"
   },
   {
    "id": "openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free",
-   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free-8k) shows the prompt was under the smallest cacheable size (raw file: results/openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free-2026-11-18T09-29-46.json)"
+   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). its control read no cached token with a ~2,500-token prompt; the ~8,000-token run (openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free-8k) read from cache at its control and is the manifest run; why the small prompt read nothing is not established (raw file: results/openrouter-2026-11-18/nvidia--nemotron-3.5-super-vl-free-2026-11-18T09-29-46.json)"
   },
   {
    "id": "openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b",
-   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b-8k) shows the prompt was under the smallest cacheable size (raw file: results/openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b-2026-11-18T08-50-40.json)"
+   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). its control read no cached token with a ~2,500-token prompt; the ~8,000-token run (openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b-8k) read from cache at its control and is the manifest run; why the small prompt read nothing is not established (raw file: results/openrouter-2026-11-18/liquid--lfm-2.5-24b-a2b-2026-11-18T08-50-40.json)"
   },
   {
    "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b",
-   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b-8k) shows the prompt was under the smallest cacheable size (raw file: results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b-2026-11-18T09-07-59.json)"
+   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). its control read no cached token with a ~2,500-token prompt; the ~8,000-token run (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b-8k) read from cache at its control and is the manifest run; why the small prompt read nothing is not established (raw file: results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-27b-2026-11-18T09-07-59.json)"
   },
   {
    "id": "openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b",
-   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b-8k) shows the prompt was under the smallest cacheable size (raw file: results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b-2026-11-18T09-08-14.json)"
+   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). its control read no cached token with a ~2,500-token prompt; the ~8,000-token run (openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b-8k) read from cache at its control and is the manifest run; why the small prompt read nothing is not established (raw file: results/openrouter-2026-11-18/prism-ml--ternary-bonsai-2-9b-2026-11-18T09-08-14.json)"
   },
   {
    "id": "openrouter-2026-11-18/liquid--lfm-3-1.7b",
-   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/liquid--lfm-3-1.7b-8k) shows the prompt was under the smallest cacheable size (raw file: results/openrouter-2026-11-18/liquid--lfm-3-1.7b-2026-11-18T09-08-29.json)"
+   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). its control read no cached token with a ~2,500-token prompt; the ~8,000-token run (openrouter-2026-11-18/liquid--lfm-3-1.7b-8k) read from cache at its control and is the manifest run; why the small prompt read nothing is not established (raw file: results/openrouter-2026-11-18/liquid--lfm-3-1.7b-2026-11-18T09-08-29.json)"
   },
   {
    "id": "openrouter-2026-11-18/kt--midm-k-3.0-pro",
-   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/kt--midm-k-3.0-pro-8k) shows the prompt was under the smallest cacheable size (raw file: results/openrouter-2026-11-18/kt--midm-k-3.0-pro-2026-11-18T09-37-28.json)"
+   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). its control read no cached token with a ~2,500-token prompt; the ~8,000-token run (openrouter-2026-11-18/kt--midm-k-3.0-pro-8k) read from cache at its control and is the manifest run; why the small prompt read nothing is not established (raw file: results/openrouter-2026-11-18/kt--midm-k-3.0-pro-2026-11-18T09-37-28.json)"
   },
   {
    "id": "openrouter-2026-11-18/google--gemini-4-carbon",
@@ -16306,7 +16306,7 @@
   },
   {
    "id": "openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest",
-   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). no cache read at about 2,500 tokens (the control read 0 cached tokens); the 8,000-token run (openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest-8k) shows the prompt was under the smallest cacheable size (raw file: results/openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest-2026-11-18T11-48-23.json)"
+   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). its control read no cached token with a ~2,500-token prompt; the ~8,000-token run (openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest-8k) read from cache at its control and is the manifest run (the small control was answered by InferenceNet, the large one by Wafer); why the small prompt read nothing is not established (raw file: results/openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest-2026-11-18T11-48-23.json)"
   }
  ]
 }

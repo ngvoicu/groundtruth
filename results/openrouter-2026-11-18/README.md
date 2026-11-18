@@ -93,8 +93,9 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
   is asked, so it lands in the short profile like the first run (`scratch_build.py`). `manifest-entries-cold-control.json`
   lists every first run whose control read 0, with its larger-prompt run and what that showed. Where the larger
   prompt's control hit, only the larger-prompt run is a manifest run (the chief's ruling, m-10781): the ~2,500-token run
-  is under `excluded` ("no cache read at about 2,500 tokens; the 8,000-token run shows the prompt was under the
-  smallest cacheable size") and the larger run's note says the small prompt read nothing. The site would not keep the
+  is under `excluded` ("its control read no cached token with a ~2,500-token prompt; the ~8,000-token run read
+  from cache at its control and is the manifest run; why the small prompt read nothing is not established") and the
+  larger run's note says the small prompt read nothing and the large one read from cache. The site would not keep the
   two apart by itself: `observed.json` gives them different options (`{}` and `{"prefix_tokens": 8000}`), so both are
   `latest`, but neither asks a lifetime, so `site/src/core/resolve.ts` puts both in the short profile of the same
   entry and their results would be pooled. Where both sizes read 0 (ScaleDown Summarize, Perceptron Mk1.5), both runs
@@ -147,7 +148,8 @@ with about 2,500- and 8,000-token prompts" (ruling 5, m-10767).
 **Batch 3** adds 30 finished runs. The larger-prompt runs of MiDM K 3.0 Pro (warm in every check to 2 hours at
 ~9,500 tokens), LFM 2.5 24B (through 1 hour), Nemotron 3.5 Super VL free (through 90 minutes) and
 `~deepseek/deepseek-flash-latest` (2.5 minutes, then hit-or-miss to 2 hours over 9 upstreams, 2 crossings) all read
-the cache: their first runs' zeros were the prompt size. OpenAI's models on OpenRouter hold OpenAI's 30 minutes when
+the cache, where their first runs' controls at ~2,500 tokens read nothing (why is not established; for the
+alias the two controls were also answered by different upstreams, InferenceNet and Wafer). OpenAI's models on OpenRouter hold OpenAI's 30 minutes when
 OpenAI answers (GPT-6 Sol, the Luna, Terra and Sol `-pro` variants, `~gpt-luna-latest`, `~gpt-terra-latest`: warm
 through 30, cold at 40); where Azure or Bedrock also answered (GPT-6.2 Sol Pro, `~gpt-sol-latest`) checks crossed and
 missed. Long lifetimes: Hy4 and MiMo v2.6 Pro Ultraspeed warm to 2 hours (the latter one miss at 15 minutes), GLM 5.3
