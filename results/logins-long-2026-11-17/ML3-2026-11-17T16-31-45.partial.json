@@ -1,0 +1,291 @@
+{
+  "probeVersion": "0.3.3",
+  "label": "ML3",
+  "baseUrl": "http://127.0.0.1:8317/v1",
+  "format": "responses",
+  "model": "muse-wonder-1.0",
+  "request": {
+    "method": "POST",
+    "path": "/responses",
+    "bodyExtra": null,
+    "prefixTokens": 2500,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "muse-wonder-1.0",
+      "input": [
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "<prefix: about 2500 tokens of words filler, one per sample>"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "Reply with the single word OK."
+            }
+          ]
+        }
+      ],
+      "max_output_tokens": 16,
+      "store": false,
+      "stream": false,
+      "prompt_cache_key": "groundtruth-p4row7yb-<sample>"
+    }
+  },
+  "runSalt": "p4row7yb",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    14400000,
+    28800000,
+    43200000,
+    86400000
+  ],
+  "startedAt": "2026-11-17T16:31:45.375Z",
+  "status": "running",
+  "spent": {
+    "requests": 38,
+    "promptTokens": 100224,
+    "cachedTokens": 33380,
+    "outputTokens": 607,
+    "requestsWithoutOutput": 0,
+    "replyHeaders": {
+      "x-cpa-auth-kind": {
+        "oauth": 38
+      }
+    }
+  },
+  "checks": [
+    {
+      "sampleId": "2.5m-r1",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 150015,
+      "promptTokens": 2657,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "2.5m-r2",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 151428,
+      "promptTokens": 2680,
+      "cachedTokens": 2676,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "2.5m-r3",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 151526,
+      "promptTokens": 2660,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "5m-r1",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300009,
+      "promptTokens": 2651,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "5m-r2",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300177,
+      "promptTokens": 2640,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "5m-r3",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 301690,
+      "promptTokens": 2621,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "7.5m-r1",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450009,
+      "promptTokens": 2606,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "7.5m-r2",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450844,
+      "promptTokens": 2619,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "7.5m-r3",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 451092,
+      "promptTokens": 2634,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "4h-r1",
+      "targetAgeMs": 14400000,
+      "actualAgeMs": 14400057,
+      "promptTokens": 2692,
+      "cachedTokens": 2676,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "4h-r2",
+      "targetAgeMs": 14400000,
+      "actualAgeMs": 14401243,
+      "promptTokens": 2609,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "4h-r3",
+      "targetAgeMs": 14400000,
+      "actualAgeMs": 14402275,
+      "promptTokens": 2649,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "8h-r1",
+      "error": "HTTP 504: {\"error\":{\"message\":\"Post \\\"https://api.meta.ai/v1/responses\\\": dial tcp: lookup api.meta.ai: i/o timeout\",\"type\":\"server_error\",\"code\":\"internal_server_error\"}}",
+      "targetAgeMs": 28800000,
+      "actualAgeMs": 29310227,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "8h-r2",
+      "error": "HTTP 504: {\"error\":{\"message\":\"Post \\\"https://api.meta.ai/v1/responses\\\": dial tcp: lookup api.meta.ai: i/o timeout\",\"type\":\"server_error\",\"code\":\"internal_server_error\"}}",
+      "targetAgeMs": 28800000,
+      "actualAgeMs": 29842350,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "8h-r3",
+      "error": "HTTP 504: {\"error\":{\"message\":\"Post \\\"https://api.meta.ai/v1/responses\\\": dial tcp: lookup api.meta.ai: i/o timeout\",\"type\":\"server_error\",\"code\":\"internal_server_error\"}}",
+      "targetAgeMs": 28800000,
+      "actualAgeMs": 30373727,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "12h-r1",
+      "targetAgeMs": 43200000,
+      "actualAgeMs": 43200001,
+      "promptTokens": 2634,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "12h-r2",
+      "targetAgeMs": 43200000,
+      "actualAgeMs": 43201072,
+      "promptTokens": 2653,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "12h-r3",
+      "targetAgeMs": 43200000,
+      "actualAgeMs": 43201811,
+      "promptTokens": 2596,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    }
+  ],
+  "control": {
+    "prime": {
+      "promptTokens": 2618,
+      "cachedTokens": 0,
+      "outputTokens": 16
+    },
+    "check": {
+      "promptTokens": 2618,
+      "cachedTokens": 2548,
+      "outputTokens": 16
+    },
+    "warm": true,
+    "replyHeaders": {
+      "prime": {
+        "x-cpa-auth-kind": "oauth"
+      },
+      "check": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    }
+  }
+}

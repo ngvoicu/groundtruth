@@ -1,0 +1,291 @@
+{
+  "probeVersion": "0.3.3",
+  "label": "ML1",
+  "baseUrl": "http://127.0.0.1:8317/v1",
+  "format": "responses",
+  "model": "muse-ember-1.0",
+  "request": {
+    "method": "POST",
+    "path": "/responses",
+    "bodyExtra": null,
+    "prefixTokens": 2500,
+    "maxOutput": 16,
+    "stream": false,
+    "cacheKey": "per-sample",
+    "sessionId": "none",
+    "warmFraction": 0.5,
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "(not recorded)",
+      "x-api-key": "(not recorded)"
+    },
+    "body": {
+      "model": "muse-ember-1.0",
+      "input": [
+        {
+          "role": "developer",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "<prefix: about 2500 tokens of words filler, one per sample>"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "input_text",
+              "text": "Reply with the single word OK."
+            }
+          ]
+        }
+      ],
+      "max_output_tokens": 16,
+      "store": false,
+      "stream": false,
+      "prompt_cache_key": "groundtruth-ma1bnh1n-<sample>"
+    }
+  },
+  "runSalt": "ma1bnh1n",
+  "replicas": 3,
+  "cacheKey": true,
+  "plannedAges": [
+    150000,
+    300000,
+    450000,
+    14400000,
+    28800000,
+    43200000,
+    86400000
+  ],
+  "startedAt": "2026-11-17T16:31:20.318Z",
+  "status": "running",
+  "spent": {
+    "requests": 38,
+    "promptTokens": 100000,
+    "cachedTokens": 25480,
+    "outputTokens": 608,
+    "requestsWithoutOutput": 0,
+    "replyHeaders": {
+      "x-cpa-auth-kind": {
+        "oauth": 38
+      }
+    }
+  },
+  "checks": [
+    {
+      "sampleId": "2.5m-r1",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 150002,
+      "promptTokens": 2667,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "2.5m-r2",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 151580,
+      "promptTokens": 2637,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "2.5m-r3",
+      "targetAgeMs": 150000,
+      "actualAgeMs": 154427,
+      "promptTokens": 2634,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "5m-r1",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300010,
+      "promptTokens": 2620,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "5m-r2",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300211,
+      "promptTokens": 2645,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "5m-r3",
+      "targetAgeMs": 300000,
+      "actualAgeMs": 300001,
+      "promptTokens": 2628,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "7.5m-r1",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450013,
+      "promptTokens": 2605,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "7.5m-r2",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450002,
+      "promptTokens": 2637,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "7.5m-r3",
+      "targetAgeMs": 450000,
+      "actualAgeMs": 450003,
+      "promptTokens": 2639,
+      "cachedTokens": 2548,
+      "warm": true,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "4h-r1",
+      "targetAgeMs": 14400000,
+      "actualAgeMs": 14400058,
+      "promptTokens": 2617,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "4h-r2",
+      "targetAgeMs": 14400000,
+      "actualAgeMs": 14401166,
+      "promptTokens": 2650,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "4h-r3",
+      "targetAgeMs": 14400000,
+      "actualAgeMs": 14402099,
+      "promptTokens": 2651,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "8h-r1",
+      "error": "HTTP 504: {\"error\":{\"message\":\"Post \\\"https://api.meta.ai/v1/responses\\\": dial tcp: lookup api.meta.ai: i/o timeout\",\"type\":\"server_error\",\"code\":\"internal_server_error\"}}",
+      "targetAgeMs": 28800000,
+      "actualAgeMs": 29332517,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "8h-r2",
+      "error": "HTTP 504: {\"error\":{\"message\":\"Post \\\"https://api.meta.ai/v1/responses\\\": dial tcp: lookup api.meta.ai: i/o timeout\",\"type\":\"server_error\",\"code\":\"internal_server_error\"}}",
+      "targetAgeMs": 28800000,
+      "actualAgeMs": 29863273,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "8h-r3",
+      "error": "HTTP 504: {\"error\":{\"message\":\"Post \\\"https://api.meta.ai/v1/responses\\\": dial tcp: lookup api.meta.ai: i/o timeout\",\"type\":\"server_error\",\"code\":\"internal_server_error\"}}",
+      "targetAgeMs": 28800000,
+      "actualAgeMs": 30394651,
+      "promptTokens": 0,
+      "cachedTokens": 0,
+      "warm": false
+    },
+    {
+      "sampleId": "12h-r1",
+      "targetAgeMs": 43200000,
+      "actualAgeMs": 43199998,
+      "promptTokens": 2600,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "12h-r2",
+      "targetAgeMs": 43200000,
+      "actualAgeMs": 43202169,
+      "promptTokens": 2643,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    },
+    {
+      "sampleId": "12h-r3",
+      "targetAgeMs": 43200000,
+      "actualAgeMs": 43203017,
+      "promptTokens": 2625,
+      "cachedTokens": 0,
+      "warm": false,
+      "replyHeaders": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    }
+  ],
+  "control": {
+    "prime": {
+      "promptTokens": 2649,
+      "cachedTokens": 0,
+      "outputTokens": 16
+    },
+    "check": {
+      "promptTokens": 2649,
+      "cachedTokens": 2548,
+      "outputTokens": 16
+    },
+    "warm": true,
+    "replyHeaders": {
+      "prime": {
+        "x-cpa-auth-kind": "oauth"
+      },
+      "check": {
+        "x-cpa-auth-kind": "oauth"
+      }
+    }
+  }
+}

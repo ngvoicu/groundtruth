@@ -1,0 +1,2 @@
+{"kind": "context", "model": "probe/gpt-6.2-sol", "n": 929989, "status": 400, "seconds": 2.8, "promptTokens": null, "outputTokens": null, "message": "Your input exceeds the context window of this model. Please adjust your input and try again.", "at": "2026-11-18T01:04:39"}
+{"kind": "context", "model": "probe/gpt-6.2-astra", "n": 929989, "status": 400, "seconds": 2.5, "promptTokens": null, "outputTokens": null, "message": "Your input exceeds the context window of this model. Please adjust your input and try again.", "at": "2026-11-18T01:04:41"}

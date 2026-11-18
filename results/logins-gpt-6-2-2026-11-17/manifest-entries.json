@@ -1,0 +1,33 @@
+{
+ "comment": "Entries the runs of results/logins-gpt-6-2-2026-11-17 would add to observed/manifest.json (T-86, branch campaign/logins-long). runs: appended to runs; excluded: appended to excluded. Nothing here is a result.",
+ "runs": [
+  {
+   "id": "logins-gpt-6-2-2026-11-17/GS1",
+   "file": "results/logins-gpt-6-2-2026-11-17/GS1-2026-11-17T21-26-51.json",
+   "route": "codex-subscription",
+   "client": "cliproxyapi",
+   "model": "gpt-6.2-sol",
+   "models_dev": null,
+   "base_model": "openai/gpt-6.2-sol",
+   "options": {},
+   "note": "plain probe 0.3.3 through CLIProxyAPI (build ngvoicu-local-4c071f30, process of 18:38:51 local), made as logins-2026-11-17/LC1 (no option, 2,500-token prefix, standard schedule, 3 samples per age, 2 primes at a time), pinned to the Codex login by a temporary alias probe/gpt-6.2-sol on that login only (/v1/models?include=accounts lists only the Codex login for it; the plain id also has an OpenAI API key); every answer's X-CPA-AUTH-KIND was oauth. Unlike LC1: no large request went to the login before or during the run, and the two models were not primed at the same moment (Astra started once Sol had finished priming); the login's request counter rose by exactly the runs' own requests, so nothing else used it meanwhile, and the OpenAI API key's stayed at 0. Released by OpenAI on 2026-11-17. The published 0 means that there is no tested age through which every check hit, not that this route does not cache. GS1 and GA1 each missed 1 of 3 at 2.5 minutes (LC1, LC3 and LC4 had missed there too that afternoon), with no large request before the priming, the two models primed one after the other, and nothing else using the login, so load at priming does not explain the misses at 2.5 minutes. Their cause is not established."
+  },
+  {
+   "id": "logins-gpt-6-2-2026-11-17/GA1",
+   "file": "results/logins-gpt-6-2-2026-11-17/GA1-2026-11-17T21-27-51.json",
+   "route": "codex-subscription",
+   "client": "cliproxyapi",
+   "model": "gpt-6.2-astra",
+   "models_dev": null,
+   "base_model": "openai/gpt-6.2-astra",
+   "options": {},
+   "note": "plain probe 0.3.3 through CLIProxyAPI (build ngvoicu-local-4c071f30, process of 18:38:51 local), made as logins-2026-11-17/LC3 (no option, 2,500-token prefix, standard schedule, 3 samples per age, 2 primes at a time), pinned to the Codex login by a temporary alias probe/gpt-6.2-astra on that login only (/v1/models?include=accounts lists only the Codex login for it; the plain id also has an OpenAI API key); every answer's X-CPA-AUTH-KIND was oauth. Unlike LC3: no large request went to the login before or during the run, and the two models were not primed at the same moment (Astra started once Sol had finished priming); the login's request counter rose by exactly the runs' own requests, so nothing else used it meanwhile, and the OpenAI API key's stayed at 0. Released by OpenAI on 2026-11-17. The published 0 means that there is no tested age through which every check hit, not that this route does not cache. GS1 and GA1 each missed 1 of 3 at 2.5 minutes (LC1, LC3 and LC4 had missed there too that afternoon), with no large request before the priming, the two models primed one after the other, and nothing else using the login, so load at priming does not explain the misses at 2.5 minutes. Their cause is not established."
+  }
+ ],
+ "excluded": [
+  {
+   "id": "logins-gpt-6-2-2026-11-17/limits-codex.jsonl probe/gpt-6.2-sol, probe/gpt-6.2-astra",
+   "reason": "One window request per model on the Codex login (temporary aliases on that login only), 2026-11-18 01:04 local: N = 929,989 (\"Reply with just OK.\" + \" hello\" x N, Responses, low effort; 930,000 tokens with the 11-token overhead of the login's earlier walks), refused by both with 400 \"Your input exceeds the context window of this model. Please adjust your input and try again.\", which names no limit. No accepted request was sent (by the chief's decision: a refusal only), so there is no limits row: a row with a refused size needs an accepted one. It shows only that the window is below 930,000 tokens, as for GPT-6.1 Sol, GPT-6 Astra and GPT-6 Luna (refused at 922,300, accepted at 921,500, logins-2026-11-17)."
+  }
+ ]
+}

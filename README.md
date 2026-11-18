@@ -83,18 +83,22 @@ cached at all and that the route reports cache hits), then checked at 2.5, 5 and
 A cache that is gone inside five minutes only shows in the first ages, and two results can only be compared when they
 share them. `harness/probe.py` (the same evaluation through a real coding tool) has the same schedules, and
 `scripts/build_observed.py` refuses a run dated 14 November 2026 or later that has no control or does not start at
-2.5 minutes. Runs before that date keep the ages they were made with.
+2.5 minutes. A run whose control missed (no observable cache) has no ages and is accepted as it is. Runs before that date keep the ages they were made with.
 
 Options: `--schedule std|long|quick`, `--ages 30m,65m`, `--replicas 3`, `--prefix-tokens 2500`, `--filler words|list`, `--max-output 16`,
 `--stream`, `--ttl`, `--beta`, `--header k:v`, `--body-extra '<json>'`, `--label`, `--salt`, `--out`,
 `--stop-on-refusal`, `--prime-pause <ms>`, `--usage-log <file>` (one JSON line per reply with the usage as reported,
-for a cost ledger). See `--help`.
+for a cost ledger), `--record-header <name>`. See `--help`.
 
 `--stop-on-refusal` (from 0.3.1) ends a run at the first quota or rate refusal (HTTP 429, or an answer that names a
 quota or usage limit) instead of retrying it: for a subscription whose quota must not be pressed again. From 0.3.1
 every run file also sums what its answered requests used (`spent`: requests, prompt, cached and output tokens as the
 replies report them). `--prime-pause` (from 0.3.2) waits after each priming request, for a request-rate limit; with
 `--concurrency 1` the priming then sends one request at a time, and the log says when it is done (`priming done`).
+From 0.3.3 every run file records, for every answered request, the value of CLIProxyAPI's reply header
+`X-CPA-AUTH-KIND` (`oauth` for a login, `apikey` for an API key: the kind of credential that answered): per check
+(`replyHeaders`), for the control, and counted over the run (`spent.replyHeaders`; a reply without it counts as
+`(absent)`). `--record-header <name>` records other reply headers instead; one that can carry a credential is refused.
 
 ## observed.json
 
@@ -122,6 +126,11 @@ subscription routes that have no public API (a ChatGPT plan through Codex, Devin
 - `continues` names an earlier run that this one adds checks to: older ages, or more samples of an age (same route,
   client, model and options). Its `checks` and its three summary numbers then cover that run too, and any run that
   one continues; `source` is the file with its own checks.
+- `removed_by_proxy` (from 2026-11-17): body fields the client sent (the run file records them) that are shown not
+  to reach the provider on that route and build, because the proxy deletes them. `options` hold what the provider
+  received, so such a field is not in `options` and asks for nothing; the run's `note` must give the proof (the
+  proxy's source, and requests showing it). `build_observed.py` accepts a recorded field only when it is in
+  `options` or here with the same value, and refuses this key without a note.
 - `requires` / `lacks` name a CLIProxyAPI change the run had or did not have yet (for OpenRouter, the cache markers
   and session id of router-for-me/CLIProxyAPI#7284). A reader on a build with that change should skip `lacks` runs.
 - `models_dev` is the matching entry in models.dev (`provider/model`) when that route exists there, and
