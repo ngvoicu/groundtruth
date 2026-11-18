@@ -83,7 +83,7 @@ cached at all and that the route reports cache hits), then checked at 2.5, 5 and
 A cache that is gone inside five minutes only shows in the first ages, and two results can only be compared when they
 share them. `harness/probe.py` (the same evaluation through a real coding tool) has the same schedules, and
 `scripts/build_observed.py` refuses a run dated 14 November 2026 or later that has no control or does not start at
-2.5 minutes. Runs before that date keep the ages they were made with.
+2.5 minutes; a run whose control missed (no observable cache) has no checks and is accepted as it is. Runs before that date keep the ages they were made with.
 
 Options: `--schedule std|long|quick`, `--ages 30m,65m`, `--replicas 3`, `--prefix-tokens 2500`, `--filler words|list`, `--max-output 16`,
 `--stream`, `--ttl`, `--beta`, `--header k:v`, `--body-extra '<json>'`, `--label`, `--salt`, `--out`,
