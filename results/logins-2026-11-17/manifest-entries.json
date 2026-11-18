@@ -10,7 +10,7 @@
    "models_dev": null,
    "base_model": "openai/gpt-6.1-sol",
    "options": {},
-   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6.1-sol). Hit 2 of 3 at 2.5 minutes and 3 of 3 at 5 minutes, then misses at some later ages (0 of 3 at 1 h, 2 of 3 at 2 h). The published 0 means that there is no tested age through which every check hit, not that this route does not cache. Of the earlier runs of this model on this route, C1 (cpa-8.0.53, 2026-11-04, plain probe with a cache key) also checked from 2.5 minutes and missed at 5 and 7.5 minutes (2 and 1 of 3), X1 started at 5 minutes, and H1, H2 were made by other clients (coding tools, low reasoning, larger prompts), so this is not a comparison that shows a change. Three window requests of 921,500 tokens went to the same login one to two minutes before the priming, and the owner's own sessions use the login, so an effect of load at priming is not excluded. The missing session_id is not the cause: CLIProxyAPI copies prompt_cache_key into the upstream session id. A run that continues this one, primed about four hours later with no window request before it (branch campaign/logins-long, CL1), missed again; it is running and will be published together with this run. Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58); its 2-hour checks ran at 14:27 UTC through build ngvoicu-local-a64b6855 (the owner restarted the proxy at 16:18:13 local), every earlier request through e8d8d777. The Codex login answered those checks: from the restart to 16:29:29 its request counter rose by exactly the 6 two-hour checks of LC1 and LC3 and the OpenAI API key by none, and the alias probe/... exists on that login only"
+   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6.1-sol). Hit 2 of 3 at 2.5 minutes and 3 of 3 at 5 minutes, then misses at some later ages (0 of 3 at 1 h, 2 of 3 at 2 h). The published 0 means that there is no tested age through which every check hit, not that this route does not cache. Of the earlier runs of this model on this route, C1 (cpa-8.0.53, 2026-11-04, plain probe with a cache key) also checked from 2.5 minutes and missed at 5 and 7.5 minutes (2 and 1 of 3), X1 started at 5 minutes, and H1, H2 were made by other clients (coding tools, low reasoning, larger prompts), so this is not a comparison that shows a change. Three window requests of 921,500 tokens went to the same login one to two minutes before the priming, and the owner's own sessions use the login. Misses at 2.5 minutes came back on this login without load at priming: GS1 and GA1 (logins-gpt-6-2-2026-11-17, GPT-6.2 Sol and Astra, the same evening) missed 1 of 3 at 2.5 minutes with no large request before the priming, the two models primed one after the other, and nothing else using the login (its request counter rose by exactly their own requests), so load at priming does not explain the misses. Their cause is not established. The missing session_id is not the cause: CLIProxyAPI copies prompt_cache_key into the upstream session id. CL1 (logins-long-2026-11-17), primed about four hours later with no window request before it, continues this run and is published with it: it missed again, and its data end at 2 h (the proxy refused its 4-, 8- and 12-hour checks, and a restart of the Mac cut it off before 24 h). Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58); its 2-hour checks ran at 14:27 UTC through build ngvoicu-local-a64b6855 (the owner restarted the proxy at 16:18:13 local), every earlier request through e8d8d777. The Codex login answered those checks: from the restart to 16:29:29 its request counter rose by exactly the 6 two-hour checks of LC1 and LC3 and the OpenAI API key by none, and the alias probe/... exists on that login only"
   },
   {
    "id": "logins-2026-11-17/LC2",
@@ -32,7 +32,7 @@
    "models_dev": null,
    "base_model": "openai/gpt-6-astra",
    "options": {},
-   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6-astra). Hit 2 of 3 at 2.5 minutes and 3 of 3 at 5 minutes, then misses at some later ages (1 of 3 at 30 min, 1 h and 2 h). The published 0 means that there is no tested age through which every check hit, not that this route does not cache. Earlier runs of this route started at 5 minutes, or were made by another client (pi, low reasoning, larger prompts), so this is a first look at 2.5 minutes with plain requests, not a comparison that shows a change. Three window requests of 921,500 tokens went to the same login one to two minutes before the priming, and the owner's own sessions use the login, so an effect of load at priming is not excluded. The missing session_id is not the cause: CLIProxyAPI copies prompt_cache_key into the upstream session id. A run that continues this one, primed about four hours later with no window request before it (branch campaign/logins-long, CL3), missed again; it is running and will be published together with this run. Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58); its 2-hour checks ran at 14:27 UTC through build ngvoicu-local-a64b6855 (the owner restarted the proxy at 16:18:13 local), every earlier request through e8d8d777. The Codex login answered those checks: from the restart to 16:29:29 its request counter rose by exactly the 6 two-hour checks of LC1 and LC3 and the OpenAI API key by none, and the alias probe/... exists on that login only"
+   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6-astra). Hit 2 of 3 at 2.5 minutes and 3 of 3 at 5 minutes, then misses at some later ages (1 of 3 at 30 min, 1 h and 2 h). The published 0 means that there is no tested age through which every check hit, not that this route does not cache. Earlier runs of this route started at 5 minutes, or were made by another client (pi, low reasoning, larger prompts), so this is a first look at 2.5 minutes with plain requests, not a comparison that shows a change. Three window requests of 921,500 tokens went to the same login one to two minutes before the priming, and the owner's own sessions use the login. Misses at 2.5 minutes came back on this login without load at priming: GS1 and GA1 (logins-gpt-6-2-2026-11-17, GPT-6.2 Sol and Astra, the same evening) missed 1 of 3 at 2.5 minutes with no large request before the priming, the two models primed one after the other, and nothing else using the login (its request counter rose by exactly their own requests), so load at priming does not explain the misses. Their cause is not established. The missing session_id is not the cause: CLIProxyAPI copies prompt_cache_key into the upstream session id. CL3 (logins-long-2026-11-17), primed about four hours later with no window request before it, continues this run and is published with it: it missed again, and its data end at 2 h (the proxy refused its 4-, 8- and 12-hour checks, and a restart of the Mac cut it off before 24 h). Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58); its 2-hour checks ran at 14:27 UTC through build ngvoicu-local-a64b6855 (the owner restarted the proxy at 16:18:13 local), every earlier request through e8d8d777. The Codex login answered those checks: from the restart to 16:29:29 its request counter rose by exactly the 6 two-hour checks of LC1 and LC3 and the OpenAI API key by none, and the alias probe/... exists on that login only"
   },
   {
    "id": "logins-2026-11-17/LC4",
@@ -43,7 +43,20 @@
    "models_dev": null,
    "base_model": "openai/gpt-6-luna",
    "options": {},
-   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6-luna). Hit 1 of 3 at 2.5 minutes and 3 of 3 at 5 minutes, then misses at some later ages; cold at 1 h and 75 min, where it stopped. The published 0 means that there is no tested age through which every check hit, not that this route does not cache. Earlier runs of this route started at 5 minutes, or were made by another client (pi, low reasoning, larger prompts), so this is a first look at 2.5 minutes with plain requests, not a comparison that shows a change. Three window requests of 921,500 tokens went to the same login one to two minutes before the priming, and the owner's own sessions use the login, so an effect of load at priming is not excluded. The missing session_id is not the cause: CLIProxyAPI copies prompt_cache_key into the upstream session id. A run that continues this one was started on 2026-11-17 (branch campaign/logins-long, CL4) and will be published together with this run. Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58)"
+   "note": "plain probe through CLIProxyAPI pinned to the Codex login (temporary alias probe/gpt-6-luna). Hit 1 of 3 at 2.5 minutes and 3 of 3 at 5 minutes, then misses at some later ages; cold at 1 h and 75 min, where it stopped. The published 0 means that there is no tested age through which every check hit, not that this route does not cache. Earlier runs of this route started at 5 minutes, or were made by another client (pi, low reasoning, larger prompts), so this is a first look at 2.5 minutes with plain requests, not a comparison that shows a change. Three window requests of 921,500 tokens went to the same login one to two minutes before the priming, and the owner's own sessions use the login. Misses at 2.5 minutes came back on this login without load at priming: GS1 and GA1 (logins-gpt-6-2-2026-11-17, GPT-6.2 Sol and Astra, the same evening) missed 1 of 3 at 2.5 minutes with no large request before the priming, the two models primed one after the other, and nothing else using the login (its request counter rose by exactly their own requests), so load at priming does not explain the misses. Their cause is not established. The missing session_id is not the cause: CLIProxyAPI copies prompt_cache_key into the upstream session id. CL4 (logins-long-2026-11-17) continues this run and is published with it: its control missed (0 of 2,659 tokens read from cache), so it ended there with no check. Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58)"
+  },
+  {
+   "id": "logins-2026-11-17/LM1",
+   "file": "results/logins-2026-11-17/LM1-2026-11-17T12-26-35.json",
+   "route": "meta-subscription",
+   "client": "cliproxyapi",
+   "model": "muse-ember-1.0",
+   "models_dev": null,
+   "base_model": "meta/muse-ember-1.0",
+   "options": {
+    "prompt_cache_retention": "24h"
+   },
+   "note": "the probe does not send prompt_cache_retention; CLIProxyAPI's payload rule for muse-* adds \"24h\" to every request to the Meta login (in the config since 2026-11-10). Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58); its 2-hour checks ran at 14:27 UTC through build ngvoicu-local-a64b6855 (the owner restarted the proxy at 16:18:13 local), answered by the Meta login: its counter rose by exactly the 6 two-hour checks of LM1 and LM3 (muse-* ids have no other account). Warm in all its checks through 2 h, where the standard schedule ends; continued at 4, 8, 12 and 24 h by ML1 (logins-long-2026-11-17), and published with it as one evaluation, whatever it showed (decided on 2026-11-17, before any of ML1's later checks; held in excluded until then). ML1 was cut off by a restart of the Mac before 24 h and has no data at 8 h."
   },
   {
    "id": "logins-2026-11-17/LM2",
@@ -57,6 +70,19 @@
     "prompt_cache_retention": "24h"
    },
    "note": "the probe does not send prompt_cache_retention; CLIProxyAPI's payload rule for muse-* adds \"24h\" to every request to the Meta login (in the config since 2026-11-10). Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58)"
+  },
+  {
+   "id": "logins-2026-11-17/LM3",
+   "file": "results/logins-2026-11-17/LM3-2026-11-17T12-27-05.json",
+   "route": "meta-subscription",
+   "client": "cliproxyapi",
+   "model": "muse-wonder-1.0",
+   "models_dev": null,
+   "base_model": "meta/muse-wonder-1.0",
+   "options": {
+    "prompt_cache_retention": "24h"
+   },
+   "note": "the probe does not send prompt_cache_retention; CLIProxyAPI's payload rule for muse-* adds \"24h\" to every request to the Meta login (in the config since 2026-11-10). Served by build ngvoicu-local-e8d8d777 (process of 2026-11-16 18:48:58); its 2-hour checks ran at 14:27 UTC through build ngvoicu-local-a64b6855 (the owner restarted the proxy at 16:18:13 local), answered by the Meta login: its counter rose by exactly the 6 two-hour checks of LM1 and LM3 (muse-* ids have no other account). Warm in all its checks through 2 h, where the standard schedule ends; continued at 4, 8, 12 and 24 h by ML3 (logins-long-2026-11-17), and published with it as one evaluation, whatever it showed (decided on 2026-11-17, before any of ML3's later checks; held in excluded until then). ML3 was cut off by a restart of the Mac before 24 h and has no data at 8 h."
   },
   {
    "id": "logins-2026-11-17/LA1",
@@ -416,14 +442,6 @@
   }
  ],
  "excluded": [
-  {
-   "id": "logins-2026-11-17/LM1",
-   "reason": "Muse Ember 1.0 on the Meta login (24h retention added by CLIProxyAPI): a completed run, warm in all 42 checks through 2 h, which ends there because the standard schedule ends there. A run that continues it at 4, 8, 12 and 24 h was started on 2026-11-17 (branch campaign/logins-long, run ML1); the two are published together, as one evaluation, when the continuing run has ended, whatever it shows (2-hour checks through build a64b6855, answered by the Meta login: its counter rose by exactly the 6 two-hour checks of LM1 and LM3)"
-  },
-  {
-   "id": "logins-2026-11-17/LM3",
-   "reason": "Muse Wonder 1.0 on the Meta login (24h retention added by CLIProxyAPI): a completed run, warm in all 42 checks through 2 h, which ends there because the standard schedule ends there. A run that continues it at 4, 8, 12 and 24 h was started on 2026-11-17 (branch campaign/logins-long, run ML3); the two are published together, as one evaluation, when the continuing run has ended, whatever it shows (2-hour checks through build a64b6855, answered by the Meta login: its counter rose by exactly the 6 two-hour checks of LM1 and LM3)"
-  },
   {
    "id": "logins-2026-11-17/LD1, LD3, LD4, LD5",
    "reason": "Devin answered 429 \"Reached request rate limit\" during priming (LD5 at its first request); the runs ended at the refusal with no check"

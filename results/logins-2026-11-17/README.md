@@ -139,17 +139,24 @@ over the published evaluations of the entry and profile (`site/design/safe-cache
   probe with a cache key) also checked from 2.5 minutes, and missed at 5 and 7.5 minutes (2 and 1 of 3); X1 started
   at 5 minutes; H1 and H2 were made by coding tools with low reasoning and larger prompts. None of this is a
   comparison that shows a change. The window walk sent three requests of 921,500 tokens to the same login one to two minutes
-  before the priming, and the owner's own sessions use the login, so an effect of load at priming is not excluded
-  (every sample, the late ones too, was primed in those first minutes). The missing `session_id` in the request record
-  is not the cause: CLIProxyAPI copies the request's `prompt_cache_key` into the upstream session id. Runs that continue
-  LC1, LC3 and LC4 were started on 2026-11-17 (branch `campaign/logins-long`, CL1, CL3, CL4), primed about four hours
-  after these, with no window request before them; Sol and Astra missed again. They will be published together with
-  these runs.
+  before the priming (every sample, the late ones too, was primed in those first minutes), and the owner's own sessions
+  use the login. **Load at priming does not explain the misses at 2.5 minutes:** that evening GS1 and GA1
+  (`../logins-gpt-6-2-2026-11-17`, GPT-6.2 Sol and Astra, made as LC1 and LC3) missed 1 of 3 at 2.5 minutes too, with
+  no large request before the priming, the two models primed one after the other, and nothing else using the login
+  (its request counter rose by exactly their own requests). The cause of the misses is not established. The missing
+  `session_id` in the request record is not the cause: CLIProxyAPI copies the request's `prompt_cache_key` into the
+  upstream session id. CL1, CL3 and CL4 (`../logins-long-2026-11-17`) continue LC1, LC3 and LC4 and are published
+  with them: primed about four hours after these, with no window request before them, Sol and Astra missed again
+  (their data end at 2 hours: the proxy refused their later checks, and a restart of the Mac cut them off before
+  24 hours); Luna's control missed, so CL4 has no check.
 - **Meta Ember and Wonder** are completed runs, warm in all 42 checks each through 2 hours, which end there because the
   standard schedule ends there. Runs that continue them at 4, 8, 12 and 24 hours were started on 2026-11-17 (branch
-  `campaign/logins-long`, ML1 and ML3). Each pair is published together, as one evaluation, when the continuing run
-  has ended, whatever it shows; until then LM1 and LM3 are under `excluded` with that reason, and their files are
-  here. The published long lifetime of 4 hours is that of `meta-24h-2026-11-10` (through pi).
+  `campaign/logins-long`, ML1 and ML3). Each pair is published together, as one evaluation, whatever it shows: LM1 and
+  LM3 were under `excluded` with that reason until the continuations ended, and are runs since round two
+  (`campaign-1-long`). ML1 and ML3 were cut off by a restart of the Mac before 24 hours and have no data at 8 hours
+  (`../logins-long-2026-11-17`, section 4). Read as one run, Ember is warm through 2 hours and all cold at 4; Wonder
+  warm through 4 hours and all cold at 12. Before them the published long lifetime of 4 hours was that of
+  `meta-24h-2026-11-10` (through pi).
 - **Antigravity.** Google answered `MODEL_CAPACITY_EXHAUSTED` (HTTP 503, "No capacity available for model … on the
   server") to many requests between 12:27 and 12:59 UTC, which CLIProxyAPI turned into short pauses of the model; the
   probe retried them as transient errors (71 retries in all). That is the server's capacity, not the account's quota.
@@ -247,9 +254,10 @@ account's.
 - `limits-codex.jsonl`, `limits-devin.jsonl`, `limits-claude.jsonl`: every window request (the rows of `harness/limits.py`, plus
   `outputTokens`).
 - `L*-2026-11-17T*.json` / `.md`: the lifetime runs (probe 0.3.1: `spent` sums what each run's answered requests used).
-- `manifest-entries.json`: what these runs add to `observed/manifest.json`: 8 cache runs (LC1 – LC4, LM2, LA1, LF1,
-  LF2), 13 limits rows that replace the rows of the same route, client and model, one new limits row (Fable), and 6
-  `excluded` entries (LM1, LM3, the Devin runs, the GLM-5.3 window, the Antigravity runs LA2 – LA8).
+- `manifest-entries.json`: what these runs add to `observed/manifest.json`: 10 cache runs (LC1 – LC4, LM1 – LM3, LA1,
+  LF1, LF2), 13 limits rows that replace the rows of the same route, client and model, one new limits row (Fable), and
+  4 `excluded` entries (the Devin runs, the GLM-5.3 window, the Antigravity runs LA2 – LA8). LM1 and LM3 were in
+  `excluded` until round two (`campaign-1-long`), when their continuations ML1 and ML3 were published.
 - `ledger.md` (`ledger.py`): the tokens per request and per run, per login.
 - `window_walk.py`, `run-windows.sh`, `fable_window.py`, `supervise.py`, `run-lifetimes.sh`: what ran. `logs/` stays local (git-ignored).
 

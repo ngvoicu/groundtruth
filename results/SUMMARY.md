@@ -129,15 +129,36 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   all three 3 of 3 at 5 minutes, then some later ages miss (Sol 0 of 3 at 1 hour, 2 of 3 at 2 hours). Their published
   value is 0: no tested age through which every check hit, which does not mean the route does not cache; a first look
   at 2.5 minutes with plain requests for Astra and Luna (Sol's C1 had also missed at 5 and 7.5 minutes), not a
-  comparison that shows a change, and an effect of load on the login at priming is not excluded (see its README).
-  Runs continuing them were started the same day and will be published with them.
+  comparison that shows a change. Load at priming does not explain the misses at 2.5 minutes (GS1 and GA1 missed there
+  without it, `logins-gpt-6-2-2026-11-17/`); their cause is not established. The runs continuing them (CL1, CL3, CL4,
+  `logins-long-2026-11-17/`) are published with them.
   Meta login with the 24-hour retention CLIProxyAPI adds: Muse Spark 1.3 warm through 10 minutes, cold at 30 (LM2);
   Ember and Wonder (LM1, LM3) completed the standard schedule warm in all 42 checks to 2 hours, where that schedule
-  ends; runs continuing them at 4, 8, 12 and 24 hours were started on 2026-11-17 (`campaign/logins-long`, ML1, ML3),
-  and each pair is published together, as one evaluation, when the continuation has ended, whatever it shows. Antigravity Gemini 3.8 Flash: safe to 2.5 minutes, as
+  ends; each is published with the run continuing it at 4, 8, 12 and 24 hours (ML1, ML3, `logins-long-2026-11-17/`),
+  as one evaluation, whatever it showed. Antigravity Gemini 3.8 Flash: safe to 2.5 minutes, as
   A3 (LA1). Claude Fable 5.2 on a Claude login: warm to 1 hour, cold at 65 minutes, with and without `ttl: "1h"`
   (LF1, LF2); its refusal names a 1,000,000-token window. Narrower input windows (below). Devin and Antigravity's
   other models refused for request rate: no lifetime. See its README.
+- `gpt-6-2-2026-11-17/`: GPT-6.2 Sol and GPT-6.2 Astra (released that day) straight to the OpenAI API with the owner's
+  key, plain probe, 3 samples per age: both warm 3/3 through 30 minutes, 0/3 at 40 and 50 (30 – 40 minutes; OpenAI
+  documents a 30-minute minimum). One window request each at 1,100,000 tokens, refused naming no figure: no limits row.
+  See its README.
+- `logins-gpt-6-2-2026-11-17/`: the same two models on the Codex login through CLIProxyAPI, made as LC1 and LC3 but
+  with no large request before the priming, the models primed one after the other, and nothing else using the login.
+  Sol (GS1): 2 of 3 at 2.5 minutes, cold from 5. Astra (GA1): 2 of 3 at 2.5 minutes, 3 of 3 from 5 to 30, cold from
+  75. Both published as 0 (no tested age through which every check hit); load at priming does not explain the early
+  misses, and their cause is not established. Both refuse 930,000 tokens naming no limit: no limits row. See its
+  README.
+- `logins-long-2026-11-17/`: the long cache setting on the logins, Antigravity's other models, and the 24-hour
+  continuations. Asking for the long cache does nothing on the Codex login through CLIProxyAPI or on Devin (the proxy
+  removes the field, or Devin's protocol has none): no long run, an `excluded` entry with the proof. CL1 – CL4 are
+  plain runs continuing LC1 – LC4 (`removed_by_proxy`); CL1 and CL3 add data to 2 hours only (the proxy refused their
+  later checks), CL4's control missed. Antigravity: Gemini 3.1 Flash Lite, 3.5 Flash Lite, 3 Flash and GPT-OSS 120B
+  Medium show no observable cache (the re-send read less than half of the prompt from cache); Gemini 3.8 Flash
+  (Tiered) not measured (no capacity). Muse Ember and Wonder on the Meta login, each read with LM1 / LM3: Ember warm
+  through 2 hours, all cold at 4; Wonder warm through 4 hours, no data at 8 (the proxy's lookup of Meta's host timed
+  out), all cold at 12. A restart of the Mac on 2026-11-18 cut off CL1, CL3, ML1 and ML3 before 24 hours; their
+  progress files are their run files, unchanged. See its README.
 
 ## The limits rows of observed.json (2026-11-17)
 
