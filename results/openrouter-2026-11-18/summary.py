@@ -185,7 +185,7 @@ for model, w in windows.items():
             "note": (f"OpenRouter's own refusal of a request of about 1.2 million tokens names the endpoint's window "
                      f"(\"maximum context length is {m.group(1)} tokens\"); OpenRouter lists context_length "
                      f"{plan_row['context_length']:,} and top_provider.context_length {plan_row['top_provider_context_length']:,}. "
-                     "The refusal came from OpenRouter before any upstream; no large request was accepted (none was sent "
+                     "The refusal carries OpenRouter's own message and names no upstream (`provider_name` null); no large request was accepted (none was sent "
                      "near a limit), so no accepted size; the output limit was not tested"),
             "file": f"results/{FOLDER}/windows.jsonl",
             "evidence": [{"row_model": model, "message_has": f"maximum context length is {m.group(1)} tokens"}]})
