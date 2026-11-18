@@ -175,6 +175,27 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   failed runs are under `excluded` with the folder's reasons (one free model refused by OpenRouter's free-request
   limit, two free models refused by their upstream's rate limit, ScaleDown Extract takes no plain request, two Muse Spark contributor models excluded by the account's
   data policy). See its README and `results.md`.
+- `openrouter-2026-11-18/`, **batch 2** (from `campaign/openrouter` at `d78171e`; one or two runs were still going and
+  are not in it): the folder's `manifest-entries.json` applied **as it stands**, no deviation: its 75 runs are
+  runs (the 19 of batch 1 unchanged, 56 new), its 20 are under `excluded` with its reasons, its 4 window readings are
+  `limits` rows. It follows the rulings made after batch 1's review. A run in which a timed check was answered by
+  another upstream than the one primed is published as OpenRouter's default route, with the crossings in its `note`
+  (GPT-6.2 Sol, GPT-6.2 Sol Pro, `~openai/gpt-sol-latest`, Muse Ember, DeepSeek V4.1 Flash 1017,
+  `~deepseek/deepseek-flash-latest`, MiMo V2.6 Flash, Nemotron 3.5 Super VL, Beam 1.0, HY4 Preview, `~z-ai/glm-latest`,
+  `~z-ai/glm-flash-latest`, Gemini 4 Carbon); the Sol run pinned to OpenAI stays under `excluded`. Where the
+  ~2,500-token prompt read nothing at its control and a ~8,000-token run did, only the 8,000-token run is a run
+  (options `{"prefix_tokens": 8000}`; Gemini 4 Hydrogen and Carbon, MiDM K 3.0 Pro, both Ternary Bonsai 2, LFM 3 1.7B,
+  LFM 2.5 24B, Nemotron 3.5 Super VL free, `~deepseek/deepseek-flash-latest`) and the small one stays excluded;
+  ScaleDown Summarize and Perceptron Mk1.5 read nothing at either size and both runs are listed (0 s, no timed check).
+  Gemini 4 Carbon's 8,000-token run ended at its 7.5-minute check on an upstream 504 after a 429; its checks at 2.5
+  and 5 minutes stand (1 of 3, then 0 of 3; four of its five misses were answered by Google AI Studio after priming on
+  Google, as its note says). Among the releases: Nex N2.6, HY4 and MiDM K 3.0 Pro (8,000 tokens) warm through 2
+  hours; GPT-6 Sol, GPT-6 Sol Pro, GPT-6.1 Sol Pro, GPT-6 Luna Pro, `~openai/gpt-luna-latest` and
+  `~openai/gpt-terra-latest` warm through 30 minutes beside the documented 30 (not contradicted), and
+  `~openai/gpt-sol-latest` measured 2.5 minutes (2 of 3 at 5) beside the same 30, not contradicted; Claude Sonnet 5.5
+  warm through 5 minutes beside the documented 5; twelve entries measure 0 s. Left out: the paced Ernie 5.5 Flash
+  Preview free (upstream 429), Inkling 2 Small free and Sakana Fugu Max and Ultra v2 (region refusals), Ling 3.2 Flash
+  free (first answered check at 5 minutes), and the failures of batch 1. See its README and `results.md`.
 
 ## The limits rows of observed.json (2026-11-17)
 
