@@ -3942,9 +3942,9 @@
  {
   "label": "alias-openai--gpt-astra-latest",
   "model": "~openai/gpt-astra-latest",
-  "state": "running",
-  "status": null,
-  "usd": 1.048,
+  "state": "finished",
+  "status": "stopped-early",
+  "usd": 1.21,
   "site_documented_s": 1800,
   "error": null,
   "upstreams": [
@@ -3952,6 +3952,41 @@
    "OpenAI"
   ],
   "upstream_changed": [],
-  "upstream_unknown": 3
+  "upstream_unknown": 0,
+  "file": "alias-openai--gpt-astra-latest-2026-11-18T13-54-06.json",
+  "control": "warm",
+  "control_tokens": {
+   "promptTokens": 2418,
+   "cachedTokens": 2418,
+   "outputTokens": 5
+  },
+  "checks": {
+   "2.5m": "3/3",
+   "5m": "3/3",
+   "7.5m": "3/3",
+   "10m": "3/3",
+   "15m": "3/3",
+   "20m": "3/3",
+   "25m": "3/3",
+   "30m": "0/3",
+   "40m": "0/3"
+  },
+  "late": 0,
+  "all_warm_through_s": 1500,
+  "last_warm_s": 1500,
+  "first_all_cold_s": 1800,
+  "probe_version": "0.3.4",
+  "verdict": "30m documented: contradicted, fewer than half the checks hit at 30m",
+  "crossings": []
+ },
+ {
+  "label": "openai--gpt-6-astra-pro",
+  "model": "openai/gpt-6-astra-pro",
+  "state": "left out",
+  "status": null,
+  "usd": 0.0,
+  "site_documented_s": 1800,
+  "error": null,
+  "reason": "worst case $9.93 did not fit: committed $16.31 of $18.0"
  }
 ]

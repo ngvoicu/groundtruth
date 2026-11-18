@@ -294,7 +294,7 @@
      "options": {
       "prefix_tokens": 8000
      },
-     "note": "OpenRouter's default route: 2 check(s) were answered by another upstream than the one their sample was primed on (75m-r1: primed on InferenceNet, answered by Wafer: cold (0/7950 cached); 90m-r3: primed on InferenceNet, answered by Morph: cold (0/7962 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream; the same request with a ~2,500-token prompt (openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest) read no cached token at its control (answered by InferenceNet); this run with ~8,000 tokens read from cache at its control (answered by Wafer) and is the measurement"
+     "note": "OpenRouter's default route: 2 check(s) were answered by another upstream than the one their sample was primed on (75m-r1: primed on InferenceNet, answered by Wafer: cold (0/7950 cached); 90m-r3: primed on InferenceNet, answered by Morph: cold (0/7962 cached)). Such a miss shows failed reuse through the default route, not expiry at the upstream; the same request with a ~2,500-token prompt (openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest) read no cached token at its control; this run with ~8,000 tokens read from cache at its control and is the measurement"
     },
     "status": "completed",
     "control": "7936 of 7972 tokens cached",
