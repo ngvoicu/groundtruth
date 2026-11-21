@@ -60,7 +60,8 @@ def scrub(text):
     return (text or "").replace(home, "~")[-1500:]
 
 
-def walk(session, model, client_id, version, record, hi=HI, small=SMALL, accepted=None, refused=None, say=print):
+def walk(session, model, client_id, version, record, hi=HI, small=SMALL, accepted=None, refused=None, say=print,
+         only_refusal=False):
     """The walk. `session.start(prompt)` gives (handle, Usage) or raises clients.Refused; `record(row)` keeps a row.
     Returns the rows written."""
     rows = []
@@ -90,6 +91,9 @@ def walk(session, model, client_id, version, record, hi=HI, small=SMALL, accepte
 
     try:
         top = send("context", hi, "refused")
+        if only_refusal:
+            say("--only-refusal: the walk ends after the refusal")
+            return rows
         named = L.named_limit(top["message"] or "")
         # tokens = per x N + overhead (the client's own prompt and tools): from a small accepted request and the
         # refusal's own count, or from two small accepted requests.
@@ -143,12 +147,15 @@ def main(argv=None):
     ap.add_argument("--accepted", type=int, help="the proxy's input_accepted for this model, in tokens")
     ap.add_argument("--refused", type=int, help="the proxy's input_refused for this model, in tokens")
     ap.add_argument("--client-home", default=os.environ.get("GROUNDTRUTH_CLIENT_HOME"))
+    ap.add_argument("--only-refusal", action="store_true",
+                    help="send only the first request (a smoke run: what the client prints for an input above the window)")
     ap.add_argument("--dry-run", action="store_true", help="print the plan; run nothing, send nothing")
     a = ap.parse_args(argv)
-    if a.harness == "codex":
+    if a.harness == "codex" and not a.only_refusal:
         raise SystemExit("codex: no input limit through Codex CLI (it caps a message at 1,048,576 characters before "
                          "sending it); the route's input limit stays measured through the proxy")
-    print(plan_text(a.harness, a.model, a.hi, a.small, a.accepted, a.refused))
+    print(plan_text(a.harness, a.model, a.hi, a.small, a.accepted, a.refused) if not a.only_refusal else
+          f"{a.harness} {a.model}: one request, N = {a.hi:,} \" hello\" (expected refused, free); nothing else")
     if a.dry_run:
         print(f"every request appended to {a.out}. Dry run: nothing run, nothing sent.")
         return
@@ -165,7 +172,7 @@ def main(argv=None):
                 out.write(json.dumps(row) + "\n")
                 out.flush()
             walk(session, a.model, client.client_id, version, record, hi=a.hi, small=a.small,
-                 accepted=a.accepted, refused=a.refused)
+                 accepted=a.accepted, refused=a.refused, only_refusal=a.only_refusal)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

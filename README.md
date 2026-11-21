@@ -133,7 +133,9 @@ URL, proxy or cache switch of the caller's shell reaches it. The run file record
 `harness/client_limits.py` walks an input size through the same clients: one request far above the window (refused,
 so free), and an accepted one under the window the refusal names. Only a refusal from the provider makes a row:
 Codex CLI caps a message at 1,048,576 characters before sending it, so that login's input limit stays measured
-through the proxy.
+through the proxy. `harness/night.py` holds the run plan of [`docs/own-clients.md`](docs/own-clients.md), section 4, as
+commands; `--dry-run` prints each one with its tool's own dry run and sends nothing
+([`docs/own-clients-RUN.md`](docs/own-clients-RUN.md) has the owner's steps).
 
 ## observed.json
 

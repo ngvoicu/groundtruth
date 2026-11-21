@@ -81,6 +81,12 @@ class Walk(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(s.sent, [CL.HI])
 
+    def test_only_the_refusal(self):
+        s = FakeSession(1_000_000)
+        rows = walk(s, only_refusal=True)
+        self.assertEqual([r["kind"] for r in rows], ["context"])
+        self.assertEqual(s.sent, [CL.HI])
+
     def test_codex_is_refused_up_front(self):
         with self.assertRaisesRegex(SystemExit, "1,048,576"):
             CL.main(["--harness", "codex", "--model", "m", "--out", "/nonexistent/x.jsonl", "--dry-run"])
