@@ -359,7 +359,6 @@ class Pi(Client):
 
     def command(self, prompt_file, resume=None, session=None, files=None):
         sd = os.path.dirname((files or {})["session"][0])
-        os.makedirs(sd, exist_ok=True)
         return ["pi", "-p", "--session-dir", sd, "--session-id", resume or session, "--model", "cliproxyapi/" + self.model,
                 "--thinking", self.effort, prompt_file]
 
@@ -390,11 +389,12 @@ class Session:
     """start() and resume() for the loops, from a client's command() and parse(). `io` holds the prompt and export
     files (deleted after each invocation); `work` is the client's working folder and stays empty."""
 
-    def __init__(self, client, env, io, work, run=None, timeout=900):
+    def __init__(self, client, env, io, work, run=None, timeout=900, create=True):
         self.client, self.env, self.io, self.work = client, env, io, work
         self.run, self.timeout = run or _run, timeout
-        os.makedirs(io, exist_ok=True)
-        os.makedirs(work, exist_ok=True)
+        if create:
+            os.makedirs(io, exist_ok=True)
+            os.makedirs(work, exist_ok=True)
 
     def plan(self, resume=None):
         """The command of one invocation as a start event records it (nothing is run)."""
@@ -409,6 +409,8 @@ class Session:
         tag = uuid.uuid4().hex[:10]
         session = None if resume else self.client.new_session()
         files = self.client.files(self.io, tag, session or resume)
+        for path, keep in files.values():
+            os.makedirs(os.path.dirname(path), exist_ok=True)
         pf = os.path.join(self.io, f"prompt-{tag}.txt")
         with open(pf, "w") as f:
             f.write(prompt)

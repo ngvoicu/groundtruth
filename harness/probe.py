@@ -9,16 +9,28 @@ large system prompt between sessions, so a check is warm only when the cache cov
 of the sample's unique block: cached >= baseline + unique / 2, where baseline is the prompt size of a session without
 the block (measured once at start). One check per sample, like the TypeScript probe in src/.
 
+Four rules for every client (docs/own-clients.md, section 1):
+1. One model request per check. A check whose turn was not one model request (a tool call, then the answer) is
+   logged as `check-invalid` and left out: the second request would read what the first one wrote.
+2. A check is never sent twice. A check that fails is logged as `check-failed` and its sample is lost. A priming may
+   be tried again (3 tries, 30 seconds apart).
+3. The control comes first: it is primed, checked at 30 seconds, and only then are the others primed. A control that
+   misses ends the run (`stop`, `no-observable-cache`) after three requests.
+4. A quota refusal ends the run (`stop`, `quota`), never retried; the samples already primed are not checked.
+Also: ages count from the start of the priming request; a check more than age x 1.1 + 90 s after it is `late`; a run
+whose replies change the lifetime they write (Claude Code in overage) ends (`stop`, `tier-changed`).
+
 Usage:
-  harness/probe.py --harness claude|codex|devin|muse|pi --model ID [--schedule std|long | --ages 30m,1h] --replicas 3 --label H1 --out DIR
+  harness/probe.py --harness claude|codex|devin|muse|pi --model ID [--schedule std|long | --ages 30m,1h] --replicas 3 \
+      --label H1 --out DIR [--filler random|list] [--dry-run]
 """
-import argparse, heapq, json, os, random, sys, threading, time, uuid
+import argparse, heapq, json, os, random, sys, time
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import clients as C  # noqa: E402
 
-OK_PROMPT = "Reply with OK only. Do not use any tools."
+OK_PROMPT = C.OK_PROMPT
 
 
 # Where every evaluation starts: the control (sent again at once) is always made, then these ages, whatever else
@@ -27,6 +39,8 @@ LADDER_START = ["2.5m", "5m", "7.5m"]
 STD_REST = ["10m", "15m", "20m", "25m", "30m", "40m", "50m", "60m", "75m", "90m", "120m"]
 LONG_REST = ["4h", "8h", "12h"]
 SCHEDULES = {"std": LADDER_START + STD_REST, "long": LADDER_START + STD_REST + LONG_REST}
+CONTROL_AGE = 30.0
+PRIME_TRIES, RETRY_WAIT = 3, 30
 
 
 def parse_age(s):
@@ -35,6 +49,16 @@ def parse_age(s):
     if s.endswith("m"): return float(s[:-1]) * 60
     if s.endswith("s"): return float(s[:-1])
     return float(s)
+
+
+def ages_of(schedule, extra):
+    """Custom ages are added to the start of the ladder, never put in its place; each age once, shortest first."""
+    wanted = LADDER_START + [x.strip() for x in extra.split(",")] if extra else SCHEDULES[schedule]
+    by_age = {}
+    for x in wanted:
+        by_age.setdefault(parse_age(x), x)
+    ages = sorted(by_age)
+    return ages, [by_age[x] for x in ages]
 
 
 def unique_block(salt, words):
@@ -46,18 +70,161 @@ def unique_block(salt, words):
     return " ".join(out)
 
 
-def prime_prompt(salt, words):
+def list_block(salt, words):
+    """Plain numbered lines, every one naming the sample (for a model that refuses the random filler)."""
+    return "\n".join(f"{i}. Entry {i} of list {salt}: item {salt}-{i}." for i in range(1, max(words // 6, 1) + 1))
+
+
+FILLERS = {"random": unique_block, "list": list_block}
+
+
+def prime_prompt(salt, words, filler="random"):
     return (f"Reference document {salt}, keep it for later. Do not use any tools. Reply with OK only.\n\n<doc>\n"
-            + unique_block(salt, words) + "\n</doc>")
+            + FILLERS[filler](salt, words) + "\n</doc>")
+
+
+class Clock:
+    def now(self):
+        return time.time()
+
+    def sleep(self, seconds):
+        if seconds > 0:
+            time.sleep(seconds)
+
+
+class Stop(Exception):
+    def __init__(self, reason, text=None):
+        super().__init__(reason)
+        self.reason, self.text = reason, text
+
+
+def written_ttl(usage):
+    """The lifetime a reply's cache write had, where the client says (Claude Code): 1h, 5m, mixed, or None."""
+    h1, m5 = usage.get("write_1h") or 0, usage.get("write_5m") or 0
+    if h1 and m5:
+        return "mixed"
+    return "1h" if h1 else "5m" if m5 else None
+
+
+def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler="random", cumulative=None):
+    """The loop. `h` has start(prompt) -> (handle, usage dict) and resume(handle, prompt) -> usage dict and raises
+    clients.Refused / another exception; `log` takes one event; `clock` has now() and sleep(). Returns the stop reason
+    or None."""
+    clock = clock or Clock()
+    cumulative = getattr(h, "cumulative", False) if cumulative is None else cumulative
+    seen_ttl = [None]
+
+    def watch(usage):
+        t = written_ttl(usage)
+        if t == "mixed" or (t and seen_ttl[0] and t != seen_ttl[0]):
+            raise Stop("tier-changed", f"a reply wrote {t} after {seen_ttl[0]}")
+        seen_ttl[0] = seen_ttl[0] or t
+
+    def prime(prompt, name, rep):
+        """(handle, usage, start time) or None. Tried again on an error, never on a refusal."""
+        for i in range(PRIME_TRIES):
+            t0 = clock.now()
+            try:
+                handle, usage = h.start(prompt)
+            except C.Refused as e:
+                if e.kind == "quota":
+                    raise Stop("quota", e.text[:300])
+                log({"event": "prime-refused", "age": name, "kind": e.kind, "error": e.text[:300]})
+                return None
+            except Exception as e:  # noqa: BLE001 - any client failure: try the priming again
+                log({"event": "retry", "age": name, "error": str(e)[:300], "try": i + 1})
+                clock.sleep(RETRY_WAIT)
+                continue
+            watch(usage)
+            return handle, usage, t0
+        log({"event": "prime-failed", "age": name})
+        return None
+
+    def check(name, age, handle, primed, t0, baseline):
+        """True / False for a counted check, None for one that is not (failed, invalid). Sent once."""
+        started = clock.now()
+        real = started - t0
+        base = {"age": name, "ageSec": age, "realAgeSec": round(real), "handle": handle}
+        try:
+            r = h.resume(handle, OK_PROMPT)
+        except C.Refused as e:
+            if e.kind == "quota":
+                raise Stop("quota", e.text[:300])
+            log({"event": "check-failed", **base, "kind": e.kind, "error": e.text[:300]})
+            return None
+        except Exception as e:  # noqa: BLE001 - a failed check is never sent again
+            log({"event": "check-failed", **base, "error": str(e)[:300]})
+            return None
+        if cumulative:
+            r = dict(r, raw={k: r.get(k) for k in ("total", "cached", "write")},
+                     **{k: (r.get(k) or 0) - (primed.get(k) or 0) for k in ("total", "cached", "write")})
+        if r.get("calls") != 1:
+            log({"event": "check-invalid", **base, "reason": f"the turn made {r.get('calls')} model requests, not 1",
+                 "usage": r, "prime": primed})
+            watch(r)
+            return None
+        watch(r)
+        unique = max(primed["total"] - baseline, 1)
+        warm = r["cached"] >= baseline + unique / 2
+        log({"event": "check", **base, "late": real > age * 1.1 + 90, "warm": warm, "usage": r, "prime": primed,
+             "unique": unique})
+        return warm
+
+    try:
+        b = prime(OK_PROMPT, "baseline", 0)
+        if not b:
+            raise Stop("baseline-failed")
+        baseline = b[1]["total"]
+        log({"event": "baseline", "usage": b[1]})
+
+        # The control first: primed, checked at 30 seconds, and only then the others.
+        c = prime(prime_prompt(f"{salt}-0", words, filler), "control", 0)
+        if not c:
+            raise Stop("control-failed")
+        handle, primed, t0 = c
+        log({"event": "prime", "age": "control", "rep": 0, "handle": handle, "usage": primed})
+        clock.sleep(t0 + CONTROL_AGE - clock.now())
+        warm = check("control", CONTROL_AGE, handle, primed, t0, baseline)
+        if warm is None:
+            raise Stop("control-failed")
+        if not warm:
+            raise Stop("no-observable-cache")
+
+        # Long ages first, so the short checks do not wait behind a long queue of primings; a check that falls due
+        # is made before the next priming.
+        samples = sorted([(x, ag, r) for r in range(replicas) for x, ag in zip(labels, ages)], key=lambda s: -s[1])
+        queue, due, n = list(samples), [], 0
+        while queue or due:
+            if due and due[0][0] <= clock.now():
+                _, _, name, age, handle, primed, t0 = heapq.heappop(due)
+                check(name, age, handle, primed, t0, baseline)
+            elif queue:
+                name, age, rep = queue.pop(0)
+                n += 1
+                p = prime(prime_prompt(f"{salt}-{n}", words, filler), name, rep)
+                if p:
+                    handle, primed, t0 = p
+                    log({"event": "prime", "age": name, "rep": rep, "handle": handle, "usage": primed})
+                    heapq.heappush(due, (t0 + age, n, name, age, handle, primed, t0))
+            else:
+                clock.sleep(due[0][0] - clock.now())
+    except Stop as s:
+        log({"event": "stop", "reason": s.reason, **({"error": s.text} if s.text else {})})
+        return s.reason
+    log({"event": "done"})
+    return None
 
 
 class Harness:
-    """start/resume as the loop below calls them, over a client of harness/clients.py."""
+    """start/resume as run_probe calls them, over a client of harness/clients.py."""
+
     def __init__(s, session):
         s.session, s.cumulative = session, session.client.cumulative
+
     def start(s, prompt):
         handle, u = s.session.start(prompt)
         return handle, u.record()
+
     def resume(s, handle, prompt):
         return s.session.resume(handle, prompt).record()
 
@@ -65,7 +232,7 @@ class Harness:
 HARNESSES = C.CLIENTS
 
 
-def main():
+def parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--harness", required=True, choices=HARNESSES)
     ap.add_argument("--model", required=True)
@@ -75,87 +242,44 @@ def main():
     ap.add_argument("--label", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--words", type=int, default=3000, help="unique block size in words (~2 tokens each)")
+    ap.add_argument("--filler", choices=sorted(FILLERS), default="random", help="random syllables, or plain numbered lines")
     ap.add_argument("--effort", default="low")
-    ap.add_argument("--checkers", type=int, default=1)
-    a = ap.parse_args()
+    ap.add_argument("--dry-run", action="store_true", help="print the run's start event and plan; run nothing, send nothing")
+    return ap
 
+
+def main(argv=None):
+    a = parser().parse_args(argv)
+    ages, labels = ages_of(a.schedule, a.ages)
+    client = HARNESSES[a.harness](a.model, a.effort)
+    work = os.path.abspath(os.path.join(a.out, f"work-{a.label}"))
+    session = C.Session(client, env=None, io=work, work=work) if not a.dry_run else None
+    salt = os.urandom(4).hex()
+    start = {"event": "start", "harness": a.harness, "client": client.client_id, "model": a.model,
+             "ages": ",".join(labels), "replicas": a.replicas, "words": a.words, "filler": a.filler, "effort": a.effort,
+             "salt": salt}
+    if a.dry_run:
+        plan = C.Session(client, env=None, io="<io>", work="<work>", create=False)
+        start.update(command={"prime": plan.plan(), "check": plan.plan(resume="<session>")})
+        requests = 3 + 2 * a.replicas * len(ages)
+        print(json.dumps(start))
+        print(f"{a.label}: {a.harness} {a.model}: baseline, control (checked at 30 s), then {a.replicas} x "
+              f"{len(ages)} samples ({', '.join(labels)}): at most {requests} requests. Dry run: nothing run, nothing sent.")
+        return
+    start.update(client_version=client.version(None),
+                 command={"prime": session.plan(), "check": session.plan(resume="<session>")})
     os.makedirs(a.out, exist_ok=True)
-    work = os.path.abspath(os.path.join(a.out, f"work-{a.label}")); os.makedirs(work, exist_ok=True)
-    h = Harness(C.Session(HARNESSES[a.harness](a.model, a.effort), env=None, io=work, work=work))
-    salt = uuid.uuid4().hex[:8]
     path = os.path.join(a.out, f"{a.label}.jsonl")
-    lock = threading.Lock()
 
     def log(ev):
         ev["at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        with lock:
-            with open(path, "a") as f: f.write(json.dumps(ev) + "\n")
-            print(json.dumps(ev), flush=True)
+        with open(path, "a") as f:
+            f.write(json.dumps(ev) + "\n")
+        print(json.dumps(ev), flush=True)
 
-    def attempt(fn, *args):
-        for i in range(3):
-            try: return fn(*args)
-            except Exception as e:
-                log({"event": "retry", "error": str(e)[:300], "try": i + 1}); time.sleep(30)
-        return None
-
-    # Custom ages are added to the start of the ladder, never put in its place; each age once, shortest first.
-    wanted = LADDER_START + [x.strip() for x in a.ages.split(",")] if a.ages else SCHEDULES[a.schedule]
-    by_age = {}
-    for x in wanted: by_age.setdefault(parse_age(x), x)
-    ages = sorted(by_age); labels = [by_age[x] for x in ages]
-    a.ages = ",".join(labels)
-    log({"event": "start", "harness": a.harness, "model": a.model, "ages": a.ages, "replicas": a.replicas,
-         "words": a.words, "effort": a.effort, "salt": salt})
-    b = attempt(h.start, OK_PROMPT)
-    if not b: log({"event": "abort", "reason": "baseline failed"}); return
-    baseline = b[1]["total"]
-    log({"event": "baseline", "usage": b[1]})
-
-    samples = [("control", 30.0, 0)] + [(x, ag, r) for r in range(a.replicas) for x, ag in zip(labels, ages)]
-    # long ages first, so the short checks do not wait behind a long priming queue
-    samples = [samples[0]] + sorted(samples[1:], key=lambda s: -s[1])
-    heap, hlock, cv = [], threading.Lock(), threading.Condition()
-    pending = [len(samples)]
-
-    def checker():
-        while True:
-            with cv:
-                while True:
-                    if not heap and pending[0] == 0: return
-                    if heap and heap[0][0] <= time.time(): item = heapq.heappop(heap); break
-                    cv.wait(timeout=5)
-            due, n, name, age, handle, prime, t0 = item
-            r = attempt(h.resume, handle, OK_PROMPT)
-            real = time.time() - t0
-            if r and getattr(h, "cumulative", False):
-                r = dict(r, raw={k: r[k] for k in ("total", "cached", "write")},
-                         **{k: r[k] - prime.get(k, 0) for k in ("total", "cached", "write")})
-            if r:
-                unique = max(prime["total"] - baseline, 1)
-                warm = r["cached"] >= baseline + unique / 2
-                log({"event": "check", "age": name, "ageSec": age, "realAgeSec": round(real), "late": real > age * 1.1 + 90,
-                     "warm": warm, "usage": r, "prime": prime, "unique": unique, "handle": handle})
-            else:
-                log({"event": "check-failed", "age": name, "handle": handle})
-            with cv:
-                pending[0] -= 1; cv.notify_all()
-
-    threads = [threading.Thread(target=checker, daemon=True) for _ in range(a.checkers)]
-    for t in threads: t.start()
-    for i, (name, age, rep) in enumerate(samples):
-        r = attempt(h.start, prime_prompt(f"{salt}-{i}", a.words))
-        if not r:
-            log({"event": "prime-failed", "age": name})
-            with cv: pending[0] -= 1; cv.notify_all()
-            continue
-        handle, prime = r
-        t0 = time.time()
-        log({"event": "prime", "age": name, "rep": rep, "handle": handle, "usage": prime})
-        with cv:
-            heapq.heappush(heap, (t0 + age, i, name, age, handle, prime, t0)); cv.notify_all()
-    for t in threads: t.join()
-    log({"event": "done"})
+    log(start)
+    run_probe(Harness(session), ages=ages, labels=labels, replicas=a.replicas, words=a.words, salt=salt, log=log,
+              filler=a.filler)
 
 
 if __name__ == "__main__":
