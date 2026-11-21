@@ -34,8 +34,30 @@ CLIENTS = {
     "codex-cli": "OpenAI's Codex CLI (harness/probe.py)",
     "devin-cli": "the Devin CLI (harness/probe.py)",
     "muse-code": "Meta's Muse Code CLI (harness/probe.py)",
+    "claude-code": "Anthropic's Claude Code (harness/probe.py)",
+    "antigravity-cli": "Google's Antigravity CLI (harness/probe.py)",
 }
-HARNESS_CLIENT = {"pi": "pi+cliproxyapi", "codex": "codex-cli", "devin": "devin-cli", "muse": "muse-code"}
+HARNESS_CLIENT = {"pi": "pi+cliproxyapi", "codex": "codex-cli", "devin": "devin-cli", "muse": "muse-code",
+                  "claude": "claude-code"}
+# What each client and route is (docs/own-clients.md, section 3). providers.dev applies the rule: on an api_key route
+# only direct runs count; on a login, for one value, the lowest kind present (direct, then own_client, then proxy).
+CLIENT_KINDS = {
+    "direct": "direct",
+    "claude-code": "own_client", "codex-cli": "own_client", "devin-cli": "own_client", "muse-code": "own_client",
+    "antigravity-cli": "own_client",
+    "cliproxyapi": "proxy", "pi+cliproxyapi": "proxy",
+}
+ROUTE_KINDS = {
+    "anthropic-api": "api_key", "openai-api": "api_key", "openrouter": "api_key",
+    "claude-subscription": "login", "codex-subscription": "login", "devin": "login", "meta-subscription": "login",
+    "antigravity": "login",
+}
+# The one route an own client may measure: its vendor's login.
+OWN_CLIENT_ROUTE = {"claude-code": "claude-subscription", "codex-cli": "codex-subscription", "devin-cli": "devin",
+                    "muse-code": "meta-subscription", "antigravity-cli": "antigravity"}
+# From this design on, an own-client run must record its state folder and empty working folder.
+OWN_CLIENTS_SINCE = "2026-11-22"
+ISOLATION = {"home": "dedicated", "work": "temporary"}
 UNIT = {"s": 1, "m": 60, "h": 3600}
 
 
@@ -57,9 +79,18 @@ def age_label(seconds):
 
 def read_harness(path):
     """harness/probe.py event log: one JSON object per line."""
-    rows = [json.loads(line) for line in open(os.path.join(ROOT, path)) if line.strip()]
+    with open(os.path.join(ROOT, path)) as f:
+        rows = [json.loads(line) for line in f if line.strip()]
     start = next(r for r in rows if r["event"] == "start")
     control, checks, late = [], {}, 0
+    # Every reply's usage: whether any reported a cached token, and which lifetime its cache writes had.
+    usages = [r["usage"] for r in rows if isinstance(r.get("usage"), dict)]
+    ttls = set()
+    for u in usages:
+        for key, ttl in (("write_1h", "1h"), ("write_5m", "5m")):
+            if u.get(key):
+                ttls.add(ttl)
+    # check-invalid (a turn of more than one request) and check-failed rows are not checks.
     for r in rows:
         if r["event"] != "check":
             continue
@@ -77,6 +108,11 @@ def read_harness(path):
         "checks": checks,
         "late": late,
         "effort": start.get("effort"),
+        "client_version": start.get("client_version"),
+        "client_env": start.get("client_env") or {},
+        "isolation": start.get("isolation"),
+        "any_cached": any((u.get("cached") or 0) > 0 or (u.get("raw") or {}).get("cached") for u in usages),
+        "written_ttls": sorted(ttls),
     }
 
 
@@ -128,6 +164,49 @@ def summarize(checks):
 LADDER_SINCE = "2026-11-14"
 
 
+def check_kinds():
+    """Every client and every route has a kind, and nothing else has one."""
+    if set(CLIENT_KINDS) != set(CLIENTS) or set(ROUTE_KINDS) != set(ROUTES):
+        raise SystemExit("every client and every route needs a kind, and only they (CLIENT_KINDS, ROUTE_KINDS): "
+                         f"clients {sorted(set(CLIENTS) ^ set(CLIENT_KINDS))}, routes {sorted(set(ROUTES) ^ set(ROUTE_KINDS))}")
+    if set(CLIENT_KINDS.values()) - {"direct", "own_client", "proxy"} or set(ROUTE_KINDS.values()) - {"api_key", "login"}:
+        raise SystemExit("a kind is not one of direct, own_client, proxy (clients) or api_key, login (routes)")
+    for client, route in OWN_CLIENT_ROUTE.items():
+        if CLIENT_KINDS.get(client) != "own_client" or ROUTE_KINDS.get(route) != "login":
+            raise SystemExit(f"{client}: an own client of {route}, which is not a login")
+    missing = [c for c, k in CLIENT_KINDS.items() if k == "own_client" and c not in OWN_CLIENT_ROUTE]
+    if missing:
+        raise SystemExit(f"own clients with no vendor's route: {missing}")
+
+
+def check_own_route(name, client, route):
+    """An own client measures only its vendor's login."""
+    if CLIENT_KINDS.get(client) == "own_client" and OWN_CLIENT_ROUTE.get(client) != route:
+        raise SystemExit(f"{name}: {client} is the own client of {OWN_CLIENT_ROUTE.get(client)}, not of {route}")
+
+
+def check_own_run(run, client, data, options):
+    """The refusals of docs/own-clients.md, section 3, for a run file of harness/probe.py. Returns the written ttl."""
+    ttls = data.get("written_ttls") or []
+    if len(ttls) > 1:
+        raise SystemExit(f"{run['id']}: its replies wrote the cache with more than one lifetime ({', '.join(ttls)})")
+    written = ttls[0] if ttls else None
+    asked = data.get("client_env", {}).get("CLAUDE_CODE_PROMPT_CACHE_TTL")
+    if asked is not None and options.get("ttl") != asked:
+        raise SystemExit(f"{run['id']}: the run set CLAUDE_CODE_PROMPT_CACHE_TTL={asked}; its options must say ttl {asked}")
+    if options.get("ttl") and written and options["ttl"] != written:
+        raise SystemExit(f"{run['id']}: options ask ttl {options['ttl']}, but the replies wrote {written}")
+    if CLIENT_KINDS.get(client) != "own_client" or "any_cached" not in data:
+        return written
+    if not data["any_cached"]:
+        raise SystemExit(f"{run['id']}: no reply of this own-client run reported a cached token: it measured nothing, "
+                         f"and goes in excluded, not in runs")
+    if data["date"] >= OWN_CLIENTS_SINCE and data.get("isolation") != ISOLATION:
+        raise SystemExit(f"{run['id']}: an own-client run from {OWN_CLIENTS_SINCE} on must record its dedicated state "
+                         f"folder and temporary working folder (isolation {json.dumps(ISOLATION)})")
+    return written
+
+
 def build_cache(manifest):
     entries = []
     for run in manifest["runs"]:
@@ -136,7 +215,9 @@ def build_cache(manifest):
         client = run.get("client") or data["client"]
         if client not in CLIENTS or run["route"] not in ROUTES:
             raise SystemExit(f"{run['id']}: unknown client or route")
+        check_own_route(run["id"], client, run["route"])
         options = dict(run.get("options") or {})
+        written = check_own_run(run, client, data, options)
         # A run file that records its extra body fields: each must be in the manifest's options, as sent, or in
         # removed_by_proxy: a field the client sent that is shown not to reach the provider on this route and build
         # (options are what the provider received; the proof goes in the run's note).
@@ -172,6 +253,10 @@ def build_cache(manifest):
             "late_excluded": data["late"],
             **summarize(data["checks"]),
         }
+        if data.get("client_version"):
+            entry["client_version"] = data["client_version"]
+        if written:
+            entry["written_ttl"] = written
         # From 14 November 2026 every evaluation starts the same way: a control (the prompt sent again at once), then
         # 2.5 minutes as its first age. A run that continues another one carries on from where that one stopped. A run
         # whose control missed has no ages by the method (it ends at the control), as cpa-8.0.53/D6 and O1 before that
@@ -310,6 +395,11 @@ def check_limit(entry, name):
     """What providers.dev refuses in a limits row (site/design/usable-input-window.md, sections 6 and 9)."""
     if entry["route"] not in ROUTES or entry["client"] not in CLIENTS:
         raise SystemExit(f"{name}: unknown route or client")
+    check_own_route(name, entry["client"], entry["route"])
+    # An own client's row counts only where the provider refused: an input_accepted alone (a walk that ended at a cap
+    # of the client's) would stand in front of the proxy's refusal and publish less than the login accepts.
+    if CLIENT_KINDS.get(entry["client"]) == "own_client" and entry.get("context") is None and entry.get("input_refused") is None:
+        raise SystemExit(f"{name}: an own client's limits row needs context or input_refused, from the provider's refusal")
     for field in LIMIT_TOKEN_FIELDS:
         value = entry.get(field)
         if value is not None and not (isinstance(value, int) and not isinstance(value, bool) and value >= 0):
@@ -383,6 +473,7 @@ def build_known(manifest):
     for item in manifest.get("known", []):
         if item.get("route") not in ROUTES or item.get("client") not in CLIENTS:
             raise SystemExit(f"known: unknown route or client in {item}")
+        check_own_route("known", item["client"], item["route"])
         if not isinstance(item.get("ttl_s"), int) or not item.get("basis") or not item.get("source") or not item.get("model"):
             raise SystemExit(f"known: ttl_s, model, basis and source are required in {item}")
         out.append(item)
@@ -390,6 +481,7 @@ def build_known(manifest):
 
 
 def build():
+    check_kinds()
     manifest = json.load(open(os.path.join(ROOT, MANIFEST)))
     return {
         "schema": 1,
@@ -398,6 +490,8 @@ def build():
                  "scripts/build_observed.py; see README.md, section 'observed.json'.",
         "routes": ROUTES,
         "clients": CLIENTS,
+        "client_kinds": CLIENT_KINDS,
+        "route_kinds": ROUTE_KINDS,
         "cache": build_cache(manifest),
         "limits": build_limits(manifest),
         "known": build_known(manifest),

@@ -523,14 +523,6 @@
    "base_model": "anthropic/claude-opus-5-5"
   },
   {
-   "id": "harness-2026-11-07/H9",
-   "file": "results/harness-2026-11-07/H9.jsonl",
-   "route": "devin",
-   "model": "gpt-6-1-terra",
-   "base_model": "openai/gpt-6.1-terra",
-   "note": "Devin CLI reports 0 cached tokens for this model even at 30 s"
-  },
-  {
    "id": "harness-2026-11-07/H10",
    "file": "results/harness-2026-11-07/H10.jsonl",
    "route": "devin",
@@ -2447,6 +2439,10 @@
   {
    "id": "openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest",
    "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). its control read no cached token with a ~2,500-token prompt; the ~8,000-token run (openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest-8k) read from cache at its control and is the manifest run (the small control was answered by InferenceNet, the large one by Wafer); why the small prompt read nothing is not established (raw file: results/openrouter-2026-11-18/alias-deepseek--deepseek-flash-latest-2026-11-18T11-48-23.json)"
+  },
+  {
+   "id": "harness-2026-11-07/H9",
+   "reason": "own client that reported no cached token in any reply (baseline, primings and checks all 0): it measured nothing (docs/own-clients.md, section 6, decision 1); the proxy's run of the same account and model (H10) stands (raw file: results/harness-2026-11-07/H9.jsonl)"
   }
  ],
  "limits": [
@@ -3199,6 +3195,25 @@
    "ttl_s": 3600,
    "basis": "A Claude API key with the claude-code-cli fingerprint profile is treated like a login: CLIProxyAPI asks for the 1-hour cache.",
    "source": "https://github.com/router-for-me/CLIProxyAPI/blob/dev/internal/runtime/executor/claude_executor_execute.go"
+  },
+  {
+   "route": "claude-subscription",
+   "client": "claude-code",
+   "model": "*",
+   "ttl_s": 3600,
+   "basis": "Claude Code asks for the 1-hour cache for the main conversation on a subscription inside the plan's included usage, -p runs included.",
+   "source": "https://code.claude.com/docs/en/prompt-caching"
+  },
+  {
+   "route": "claude-subscription",
+   "client": "claude-code",
+   "model": "*",
+   "when": {
+    "usage": "overage"
+   },
+   "ttl_s": 300,
+   "basis": "Once the subscriber is in overage, Claude Code asks for the 5-minute cache.",
+   "source": "https://code.claude.com/docs/en/prompt-caching"
   }
  ]
 }
