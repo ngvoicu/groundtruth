@@ -1,0 +1,17 @@
+{
+ "note": "the shape of docs/own-clients.md section 1; replaced by what the client printed once the smoke run has run: the resumed turn, its block read from the cache",
+ "code": 0,
+ "stdout": "{\"type\": \"result\", \"subtype\": \"success\", \"is_error\": false, \"num_turns\": 1, \"result\": \"OK\", \"session_id\": \"00000000-0000-4000-8000-000000000001\", \"total_cost_usd\": 0.01, \"usage\": {\"input_tokens\": 4, \"cache_read_input_tokens\": 29010, \"cache_creation_input_tokens\": 30, \"output_tokens\": 2, \"cache_creation\": {\"ephemeral_1h_input_tokens\": 30, \"ephemeral_5m_input_tokens\": 0}}, \"modelUsage\": {\"claude-haiku-5-5\": {\"inputTokens\": 4, \"outputTokens\": 2}}}",
+ "stderr": "",
+ "files": {},
+ "expect": {
+  "total": 29044,
+  "cached": 29010,
+  "write": 30,
+  "calls": 1,
+  "model": "claude-haiku-5-5",
+  "write_5m": 0,
+  "write_1h": 30,
+  "handle": "00000000-0000-4000-8000-000000000001"
+ }
+}

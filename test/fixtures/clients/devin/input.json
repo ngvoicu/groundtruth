@@ -1,0 +1,8 @@
+{
+ "note": "the shape of docs/own-clients.md section 1; replaced by what the client printed once the smoke run has run: no export, the provider's refusal on stderr",
+ "code": 1,
+ "stdout": "",
+ "stderr": "Error: prompt is too long: 1203456 tokens > 1000000 maximum",
+ "files": {},
+ "refused": "input"
+}

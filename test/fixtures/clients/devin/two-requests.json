@@ -1,0 +1,17 @@
+{
+ "note": "the metrics of results/devin-harness-2026-11-08/D1c.jsonl in the ATIF export format: a tool call, then the answer, in the resumed turn",
+ "code": 0,
+ "stdout": "",
+ "stderr": "",
+ "files": {
+  "export": "{\"schema_version\": \"ATIF-v1.2\", \"session_id\": \"surf-sleep\", \"agent\": {\"name\": \"devin\"}, \"steps\": [{\"step_id\": 1, \"source\": \"user\", \"message\": \"<prompt>\"}, {\"step_id\": 2, \"source\": \"agent\", \"model_name\": \"claude-haiku-5-5-low\", \"message\": \"OK\", \"metrics\": {\"prompt_tokens\": 34479, \"completion_tokens\": 3, \"cached_tokens\": 18717, \"extra\": {\"cache_creation_input_tokens\": 11304}}}, {\"step_id\": 3, \"source\": \"user\", \"message\": \"<check>\"}, {\"step_id\": 4, \"source\": \"agent\", \"model_name\": \"claude-haiku-5-5-low\", \"message\": \"\", \"metrics\": {\"prompt_tokens\": 34530, \"completion_tokens\": 3, \"cached_tokens\": 34470, \"extra\": {\"cache_creation_input_tokens\": 50}}, \"tool_calls\": [{\"tool_call_id\": \"t1\", \"function_name\": \"read\", \"arguments\": {}}]}, {\"step_id\": 5, \"source\": \"agent\", \"model_name\": \"claude-haiku-5-5-low\", \"message\": \"OK\", \"metrics\": {\"prompt_tokens\": 34700, \"completion_tokens\": 3, \"cached_tokens\": 34530, \"extra\": {\"cache_creation_input_tokens\": 170}}}]}"
+ },
+ "expect": {
+  "total": 34700,
+  "cached": 34530,
+  "write": 170,
+  "calls": 2,
+  "model": "claude-haiku-5-5-low",
+  "handle": "surf-sleep"
+ }
+}

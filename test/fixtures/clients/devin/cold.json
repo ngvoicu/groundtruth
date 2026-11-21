@@ -1,0 +1,17 @@
+{
+ "note": "the metrics of results/devin-harness-2026-11-08/D1c.jsonl in the ATIF export format: the resumed session, only the shared prompt read",
+ "code": 0,
+ "stdout": "",
+ "stderr": "",
+ "files": {
+  "export": "{\"schema_version\": \"ATIF-v1.2\", \"session_id\": \"surf-sleep\", \"agent\": {\"name\": \"devin\"}, \"steps\": [{\"step_id\": 1, \"source\": \"user\", \"message\": \"<prompt>\"}, {\"step_id\": 2, \"source\": \"agent\", \"model_name\": \"claude-haiku-5-5-low\", \"message\": \"OK\", \"metrics\": {\"prompt_tokens\": 34479, \"completion_tokens\": 3, \"cached_tokens\": 18717, \"extra\": {\"cache_creation_input_tokens\": 11304}}}, {\"step_id\": 3, \"source\": \"user\", \"message\": \"<check>\"}, {\"step_id\": 4, \"source\": \"agent\", \"model_name\": \"claude-haiku-5-5-low\", \"message\": \"OK\", \"metrics\": {\"prompt_tokens\": 34530, \"completion_tokens\": 3, \"cached_tokens\": 18717, \"extra\": {\"cache_creation_input_tokens\": 15800}}}]}"
+ },
+ "expect": {
+  "total": 34530,
+  "cached": 18717,
+  "write": 15800,
+  "calls": 1,
+  "model": "claude-haiku-5-5-low",
+  "handle": "surf-sleep"
+ }
+}

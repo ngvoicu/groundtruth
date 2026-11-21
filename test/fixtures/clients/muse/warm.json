@@ -1,0 +1,13 @@
+{
+ "note": "the run.usage line of results/harness-2026-11-07/H5.jsonl: the session continued, its block read",
+ "code": 0,
+ "stdout": "{\"payload_type\": \"run.started\", \"payload\": {}}\n{\"payload_type\": \"run.usage\", \"payload\": {\"calls\": 1, \"models\": [{\"model\": \"muse-wonder-1.0\", \"input_tokens\": 36538, \"cached_tokens\": 36200}]}}\n{\"payload_type\": \"run.completed\", \"payload\": {}}\n",
+ "stderr": "",
+ "files": {},
+ "expect": {
+  "total": 36538,
+  "cached": 36200,
+  "calls": 1,
+  "model": "muse-wonder-1.0"
+ }
+}

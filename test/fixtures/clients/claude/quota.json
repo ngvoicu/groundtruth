@@ -1,0 +1,8 @@
+{
+ "note": "the shape of docs/own-clients.md section 1; replaced by what the client printed once the smoke run has run: a plan's limit",
+ "code": 1,
+ "stdout": "{\"type\": \"result\", \"subtype\": \"success\", \"is_error\": true, \"num_turns\": 1, \"result\": \"Claude AI usage limit reached. Your limit resets at 3am.\", \"session_id\": \"00000000-0000-4000-8000-000000000001\", \"total_cost_usd\": 0.01}",
+ "stderr": "",
+ "files": {},
+ "refused": "quota"
+}

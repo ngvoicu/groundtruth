@@ -1,0 +1,8 @@
+{
+ "note": "the shape of docs/own-clients.md section 1; replaced by what the client printed once the smoke run has run: a rate or plan refusal",
+ "code": 1,
+ "stdout": "{\"payload_type\": \"run.error\", \"payload\": {\"code\": \"rate_limited\", \"message\": \"429 Too Many Requests: quota exceeded\"}}\n",
+ "stderr": "",
+ "files": {},
+ "refused": "quota"
+}

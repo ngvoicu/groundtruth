@@ -1,0 +1,13 @@
+{
+ "note": "the run.usage line of results/harness-2026-11-07/H5.jsonl: two model calls in the run",
+ "code": 0,
+ "stdout": "{\"payload_type\": \"run.started\", \"payload\": {}}\n{\"payload_type\": \"run.usage\", \"payload\": {\"calls\": 2, \"models\": [{\"model\": \"muse-wonder-1.0\", \"input_tokens\": 73000, \"cached_tokens\": 55000}]}}\n{\"payload_type\": \"run.completed\", \"payload\": {}}\n",
+ "stderr": "",
+ "files": {},
+ "expect": {
+  "total": 73000,
+  "cached": 55000,
+  "calls": 2,
+  "model": "muse-wonder-1.0"
+ }
+}

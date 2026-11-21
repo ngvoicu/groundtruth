@@ -1,0 +1,8 @@
+{
+ "note": "protocol/src/error.rs at rust-v0.170.0: a plan's limit",
+ "code": 1,
+ "stdout": "{\"type\": \"thread.started\", \"thread_id\": \"00000000-0000-4000-8000-0000000000c1\"}\n{\"type\": \"turn.started\"}\n{\"type\": \"error\", \"message\": \"You've hit your usage limit. Try again later.\"}\n{\"type\": \"turn.failed\", \"error\": {\"message\": \"You've hit your usage limit. Try again later.\"}}\n",
+ "stderr": "",
+ "files": {},
+ "refused": "quota"
+}

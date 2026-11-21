@@ -1,0 +1,8 @@
+{
+ "note": "MAX_USER_INPUT_TEXT_CHARS at rust-v0.170.0: Codex refuses a message above 1,048,576 characters before sending it",
+ "code": 1,
+ "stdout": "{\"type\": \"error\", \"message\": \"Input exceeds the maximum length of 1048576 characters.\"}\n",
+ "stderr": "",
+ "files": {},
+ "refused": "client-cap"
+}

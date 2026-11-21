@@ -1,0 +1,8 @@
+{
+ "note": "the shape of docs/own-clients.md section 1; replaced by what the client printed once the smoke run has run: the contextOverflow failure of Muse Code's changelog",
+ "code": 1,
+ "stdout": "{\"payload_type\": \"run.error\", \"payload\": {\"code\": \"contextOverflow\", \"message\": \"the request exceeds the model's context window\"}}\n",
+ "stderr": "",
+ "files": {},
+ "refused": "input"
+}

@@ -1,0 +1,8 @@
+{
+ "note": "Muse Code leaves the line out when it cannot count a run: no reading, never 0",
+ "code": 0,
+ "stdout": "{\"payload_type\": \"run.started\", \"payload\": {}}\n{\"payload_type\": \"run.completed\", \"payload\": {}}\n",
+ "stderr": "",
+ "files": {},
+ "error": true
+}

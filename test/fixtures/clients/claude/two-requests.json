@@ -1,0 +1,17 @@
+{
+ "note": "the shape of docs/own-clients.md section 1; replaced by what the client printed once the smoke run has run: two turns (a tool call, then the answer): not one model request",
+ "code": 0,
+ "stdout": "{\"type\": \"result\", \"subtype\": \"success\", \"is_error\": false, \"num_turns\": 2, \"result\": \"OK\", \"session_id\": \"00000000-0000-4000-8000-000000000001\", \"total_cost_usd\": 0.01, \"usage\": {\"input_tokens\": 8, \"cache_read_input_tokens\": 58000, \"cache_creation_input_tokens\": 200, \"output_tokens\": 2, \"cache_creation\": {\"ephemeral_1h_input_tokens\": 200, \"ephemeral_5m_input_tokens\": 0}}, \"modelUsage\": {\"claude-haiku-5-5\": {\"inputTokens\": 8, \"outputTokens\": 2}}}",
+ "stderr": "",
+ "files": {},
+ "expect": {
+  "total": 58208,
+  "cached": 58000,
+  "write": 200,
+  "calls": 2,
+  "model": "claude-haiku-5-5",
+  "write_5m": 0,
+  "write_1h": 200,
+  "handle": "00000000-0000-4000-8000-000000000001"
+ }
+}

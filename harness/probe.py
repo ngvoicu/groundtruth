@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Cache-lifetime probe through real coding harnesses (Codex CLI, Devin CLI, Muse Code, pi).
+"""Cache-lifetime probe through real coding harnesses (Claude Code, Codex CLI, Devin CLI, Muse Code, pi).
+
+The clients themselves (how each is driven and how its output is read) are in harness/clients.py.
 
 Each sample starts a new harness session whose first message carries a unique block of ~N tokens, then, after a fixed
 age, resumes that session with a short message and reads the cached-token count the harness reports. Harnesses share a
@@ -8,10 +10,13 @@ of the sample's unique block: cached >= baseline + unique / 2, where baseline is
 the block (measured once at start). One check per sample, like the TypeScript probe in src/.
 
 Usage:
-  harness/probe.py --harness codex|devin|muse|pi --model ID [--schedule std|long | --ages 30m,1h] --replicas 3 --label H1 --out DIR
+  harness/probe.py --harness claude|codex|devin|muse|pi --model ID [--schedule std|long | --ages 30m,1h] --replicas 3 --label H1 --out DIR
 """
-import argparse, glob, heapq, json, os, random, subprocess, sys, threading, time, uuid
+import argparse, heapq, json, os, random, sys, threading, time, uuid
 from datetime import datetime, timezone
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import clients as C  # noqa: E402
 
 OK_PROMPT = "Reply with OK only. Do not use any tools."
 
@@ -46,96 +51,18 @@ def prime_prompt(salt, words):
             + unique_block(salt, words) + "\n</doc>")
 
 
-def run(cmd, cwd, timeout=600, env=None):
-    p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, env=env)
-    return p.returncode, p.stdout, p.stderr
-
-
-class Codex:
-    cumulative = True  # `codex exec resume --json` reports the thread's running total, not the last turn
-    def __init__(s, a, work): s.a, s.work = a, work
-    def _usage(s, out):
-        tid, u = None, None
-        for l in out.splitlines():
-            try: d = json.loads(l)
-            except Exception: continue
-            if d.get("type") == "thread.started": tid = d.get("thread_id")
-            if d.get("type") == "turn.completed": u = d.get("usage")
-        if not u: raise RuntimeError("no usage: " + out[-300:])
-        return tid, {"total": u.get("input_tokens", 0), "cached": u.get("cached_input_tokens", 0),
-                     "write": u.get("cache_write_input_tokens", 0)}
-    def _base(s): return ["--json", "--skip-git-repo-check", "-m", s.a.model, "-c", f'model_reasoning_effort="{s.a.effort}"']
+class Harness:
+    """start/resume as the loop below calls them, over a client of harness/clients.py."""
+    def __init__(s, session):
+        s.session, s.cumulative = session, session.client.cumulative
     def start(s, prompt):
-        rc, out, err = run(["codex", "exec", *s._base(), "-s", "read-only", prompt], s.work)
-        return s._usage(out)
-    def resume(s, h, prompt):
-        rc, out, err = run(["codex", "exec", "resume", h, *s._base(), prompt], s.work)
-        return s._usage(out)[1]
+        handle, u = s.session.start(prompt)
+        return handle, u.record()
+    def resume(s, handle, prompt):
+        return s.session.resume(handle, prompt).record()
 
 
-class Muse:
-    def __init__(s, a, work): s.a, s.work = a, work
-    def _go(s, sid, prompt):
-        rc, out, err = run(["muse", "exec", "--json", "--model", s.a.model, "--reasoning-effort", s.a.effort,
-                            "--session-id", sid, prompt], s.work)
-        u = None
-        for l in out.splitlines():
-            try: d = json.loads(l)
-            except Exception: continue
-            if d.get("payload_type") == "run.usage": u = d["payload"]
-        if not u: raise RuntimeError("no usage: " + (err or out)[-300:])
-        ms = u.get("models") or []
-        return {"total": sum(m.get("input_tokens", 0) for m in ms), "cached": sum(m.get("cached_tokens", 0) for m in ms),
-                "write": 0, "calls": u.get("calls")}
-    def start(s, prompt):
-        sid = str(uuid.uuid4()); return sid, s._go(sid, prompt)
-    def resume(s, h, prompt): return s._go(h, prompt)
-
-
-class Devin:
-    def __init__(s, a, work): s.a, s.work = a, work
-    def _usage(s, f):
-        d = json.load(open(f))
-        st = [x for x in d.get("steps", []) if x.get("metrics")]
-        if not st: raise RuntimeError("no metrics in export")
-        m = st[-1]["metrics"]
-        return d["session_id"], {"total": m.get("prompt_tokens", 0), "cached": m.get("cached_tokens", 0),
-                                 "write": (m.get("extra") or {}).get("cache_creation_input_tokens", 0),
-                                 "model": st[-1].get("model_name")}
-    def _go(s, extra, prompt):
-        f = os.path.join(s.work, f"export-{uuid.uuid4().hex[:10]}.json")
-        pf = f + ".prompt"; open(pf, "w").write(prompt)
-        rc, out, err = run(["devin", *extra, "--prompt-file", pf, "-p", "--respect-workspace-trust", "false",
-                            "--export", f], s.work)
-        os.remove(pf)
-        if not os.path.exists(f): raise RuntimeError(f"no export rc={rc}: " + (err or out)[-300:])
-        r = s._usage(f); os.remove(f); return r
-    def start(s, prompt): return s._go(["--model", s.a.model], prompt)
-    def resume(s, h, prompt): return s._go(["-r", h], prompt)[1]
-
-
-class Pi:
-    def __init__(s, a, work): s.a, s.work = a, work; s.sd = os.path.join(work, "pi-sessions"); os.makedirs(s.sd, exist_ok=True)
-    def _go(s, sid, prompt):
-        rc, out, err = run(["pi", "-p", "--session-dir", s.sd, "--session-id", sid, "--model", "cliproxyapi/" + s.a.model,
-                            "--thinking", s.a.effort, prompt], s.work)
-        fs = glob.glob(os.path.join(s.sd, f"*_{sid}.jsonl"))
-        if not fs: raise RuntimeError(f"no session rc={rc}: " + (err or out)[-300:])
-        last = None
-        for l in open(fs[0]):
-            d = json.loads(l); m = d.get("message") or {}
-            if m.get("role") == "assistant": last = m
-        if not last or last.get("stopReason") == "error":
-            raise RuntimeError("pi error: " + str((last or {}).get("errorMessage"))[:300])
-        u = last.get("usage") or {}
-        return {"total": u.get("input", 0) + u.get("cacheRead", 0) + u.get("cacheWrite", 0), "cached": u.get("cacheRead", 0),
-                "write": u.get("cacheWrite", 0), "api": last.get("api")}
-    def start(s, prompt):
-        sid = "hp-" + uuid.uuid4().hex[:12]; return sid, s._go(sid, prompt)
-    def resume(s, h, prompt): return s._go(h, prompt)
-
-
-HARNESSES = {"codex": Codex, "muse": Muse, "devin": Devin, "pi": Pi}
+HARNESSES = C.CLIENTS
 
 
 def main():
@@ -154,7 +81,7 @@ def main():
 
     os.makedirs(a.out, exist_ok=True)
     work = os.path.abspath(os.path.join(a.out, f"work-{a.label}")); os.makedirs(work, exist_ok=True)
-    h = HARNESSES[a.harness](a, work)
+    h = Harness(C.Session(HARNESSES[a.harness](a.model, a.effort), env=None, io=work, work=work))
     salt = uuid.uuid4().hex[:8]
     path = os.path.join(a.out, f"{a.label}.jsonl")
     lock = threading.Lock()

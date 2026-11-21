@@ -1,0 +1,444 @@
+#!/usr/bin/env python3
+"""The clients that harness/probe.py and harness/client_limits.py drive: one class per client, with the same parts,
+so the loops know no client by name (docs/own-clients.md, sections 1 and 5).
+
+    harness       the --harness value
+    client_id     the client's id in observed.json
+    cumulative    the client reports a session's running total, so a check is the difference to its priming
+    environment() the allow-list and the state folder's variables: nothing else of the caller's shell
+    version()     `<client> --version`
+    command()     the argument list of one invocation (a new session, or one resumed)
+    parse()       a pure function of what the client printed: a Usage, or Refused / ClientError
+
+Usage: total (input tokens of the request, cached or not), cached (read from the cache), write (written to it, where
+the client reports it), calls (model requests the turn made; a check counts only when it is 1), model, and
+write_5m / write_1h where the client says which lifetime it wrote (Claude Code).
+
+Nothing here sends a request by itself: Session runs a command, and only harness/probe.py and harness/client_limits.py
+make Sessions.
+"""
+import glob
+import json
+import os
+import re
+import subprocess
+import uuid
+from dataclasses import dataclass
+
+# What a client's process gets of the caller's environment; everything else (API keys, base URLs, proxy settings,
+# cache switches) never reaches it. A client adds the variables of its state folder and what the run sets.
+ALLOW = ("PATH", "HOME", "USER", "LANG", "TERM", "TMPDIR")
+
+OK_PROMPT = "Reply with OK only. Do not use any tools."
+
+
+@dataclass
+class Usage:
+    total: int
+    cached: int
+    write: int | None = 0
+    calls: int | None = None
+    model: str | None = None
+    write_5m: int | None = None
+    write_1h: int | None = None
+    handle: str | None = None  # the session id the client reported (Codex thread, Devin session); not logged here
+
+    def record(self):
+        """The dict harness/probe.py logs (None fields left out, the handle logged apart)."""
+        return {k: v for k, v in self.__dict__.items() if v is not None and k != "handle"}
+
+
+class Refused(Exception):
+    """A refusal: kind `quota` (a plan's or a rate limit), `input` (the input is too long, from the provider), or
+    `client-cap` (the client refused before sending anything: Codex's message size)."""
+
+    def __init__(self, kind, text):
+        super().__init__(f"{kind}: {text}")
+        self.kind, self.text = kind, text
+
+
+class ClientError(Exception):
+    """Anything else: no reading, a crash, an output this module does not know."""
+
+
+# The wording of a refusal, as far as the documentation and the source show it; the smoke runs correct this.
+INPUT_TOO_LONG = re.compile(r"prompt is too long|input is too long|too many (?:input )?tokens|context[ _]?(?:length|window)"
+                            r"(?:[ _]exceeded| is exceeded)?|maximum context|contextoverflow|context overflow"
+                            r"|exceeds? (?:the )?(?:model'?s? )?(?:maximum|context|limit)", re.I)
+QUOTA = re.compile(r"usage limit|rate[ _]limit|quota|too many requests|\b429\b|out of (?:credits|usage)|limit reached"
+                   r"|hit your|insufficient[ _](?:credits|balance|quota)", re.I)
+
+
+def classify(text):
+    """The exception for a client's failure text: an input refusal, a quota refusal, or another error."""
+    text = (text or "").strip()
+    if INPUT_TOO_LONG.search(text):
+        return Refused("input", text[-2000:])
+    if QUOTA.search(text):
+        return Refused("quota", text[-2000:])
+    return ClientError(text[-600:] or "no output")
+
+
+def json_lines(text):
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            yield json.loads(line)
+        except ValueError:
+            continue
+
+
+class Client:
+    harness = client_id = binary = None
+    own = True                # a client its route's vendor ships (driven apart from everyday use)
+    cumulative = False
+    prompt_mode = "file"      # stdin: the prompt file on stdin; file: its path on the command line; arg: its text
+    settable = ()             # variables a run may set for the client (recorded in the run's start event)
+    passthrough = ()          # variables passed from the caller's environment as they are (a key, never logged)
+    defaults = ()             # the client's everyday folders under the home folder: never a state folder
+
+    def __init__(self, model, effort="low", settings=None):
+        self.model, self.effort = model, effort
+        self.settings = dict(settings or {})
+        bad = sorted(set(self.settings) - set(self.settable))
+        if bad:
+            raise SystemExit(f"{self.client_id}: a run may not set {', '.join(bad)} (allowed: {', '.join(self.settable) or 'none'})")
+
+    # --- the state folder and the environment -------------------------------------------------------------------
+    def home_vars(self, home):
+        return {}
+
+    def run_vars(self):
+        return {}
+
+    def environment(self, home, base=None):
+        base = os.environ if base is None else base
+        env = {k: base[k] for k in ALLOW if k in base}
+        env.update(self.home_vars(home))
+        env.update(self.run_vars())
+        env.update(self.settings)
+        for k in self.passthrough:
+            if base.get(k):
+                env[k] = base[k]
+        return env
+
+    def login_command(self):
+        """A command that exits 0 when the state folder is logged in (None: checked otherwise)."""
+        return None
+
+    def version_command(self):
+        return [self.binary, "--version"]
+
+    def version(self, env, run=None):
+        run = run or _run
+        code, out, err = run(self.version_command(), env=env, cwd=None, stdin=None, timeout=60)
+        line = (out or err).strip().splitlines()
+        if code or not line:
+            raise ClientError(f"{self.binary} --version failed: {(err or out)[-300:]}")
+        return line[-1].strip()
+
+    # --- one invocation -----------------------------------------------------------------------------------------
+    def new_session(self):
+        """The session id a new session is given on its command line, or None where the client names it."""
+        return None
+
+    def files(self, io, tag, session):
+        """Files the invocation writes that parse() reads: name -> (path or glob, keep afterwards)."""
+        return {}
+
+    def command(self, prompt_file, resume=None, session=None, files=None):
+        raise NotImplementedError
+
+    def parse(self, stdout, stderr, code, files):
+        raise NotImplementedError
+
+    def shown(self, argv, prompt_file, files=None):
+        """The command as recorded in a run's start event: the prompt, the files and the session ids by name."""
+        names = {prompt_file: "<prompt>"}
+        for name, (path, _) in (files or {}).items():
+            names[path] = f"<{name}>"
+        return [names.get(a, a) for a in argv]
+
+
+class Claude(Client):
+    """Claude Code, on a Claude login (claude-subscription)."""
+    harness, client_id, binary = "claude", "claude-code", "claude"
+    prompt_mode = "stdin"
+    settable = ("CLAUDE_CODE_PROMPT_CACHE_TTL",)
+    defaults = ("~/.claude", "~/.claude.json")
+
+    def home_vars(self, home):
+        return {"CLAUDE_CONFIG_DIR": home}
+
+    def run_vars(self):
+        return {"DISABLE_AUTOUPDATER": "1"}
+
+    def login_command(self):
+        return ["claude", "auth", "status"]
+
+    def new_session(self):
+        return str(uuid.uuid4())
+
+    def command(self, prompt_file, resume=None, session=None, files=None):
+        # Never --bare (it reads no login), never --no-session-persistence (the session could not be resumed). No MCP
+        # server at all (--strict-mcp-config without --mcp-config); nobody answers a permission prompt.
+        return ["claude", "-p", "--output-format", "json", "--model", self.model, "--effort", self.effort,
+                *(["--resume", resume] if resume else ["--session-id", session]),
+                "--strict-mcp-config", "--disable-slash-commands", "--permission-prompts", "none"]
+
+    def parse(self, stdout, stderr, code, files):
+        result = None
+        for d in json_lines(stdout):
+            if d.get("type") == "result" or "usage" in d:
+                result = d
+        if result is None:
+            try:
+                result = json.loads(stdout)
+            except ValueError:
+                raise classify((stdout or "") + "\n" + (stderr or ""))
+        if result.get("is_error") or code:
+            raise classify(f"{result.get('subtype') or ''}: {result.get('result') or ''}\n{stderr or ''}")
+        u = result.get("usage") or {}
+        if not u:
+            raise ClientError("no usage in the result")
+        read, created = u.get("cache_read_input_tokens") or 0, u.get("cache_creation_input_tokens") or 0
+        made = u.get("cache_creation") or {}
+        models = list((result.get("modelUsage") or {}).keys())
+        turns = result.get("num_turns")
+        calls = 1 if turns == 1 and len(models) == 1 else max(turns or 0, len(models), 2)
+        return Usage(total=(u.get("input_tokens") or 0) + read + created, cached=read, write=created, calls=calls,
+                     model=models[0] if len(models) == 1 else None,
+                     write_5m=made.get("ephemeral_5m_input_tokens"), write_1h=made.get("ephemeral_1h_input_tokens"),
+                     handle=result.get("session_id"))
+
+
+# The item types of a Codex turn that are not a tool call: a turn with any other item made more than one request.
+CODEX_TEXT_ITEMS = {"agent_message", "reasoning"}
+# Codex refuses a message above MAX_USER_INPUT_TEXT_CHARS (1,048,576 characters) before it sends anything.
+CODEX_CAP = re.compile(r"1,?048,?576|(?:maximum|max) (?:input |message )?(?:length|size).{0,40}characters", re.I)
+
+
+class Codex(Client):
+    """OpenAI's Codex CLI, on a ChatGPT plan (codex-subscription)."""
+    harness, client_id, binary = "codex", "codex-cli", "codex"
+    cumulative = True  # `codex exec resume --json` reports the thread's running total, not the last turn
+    prompt_mode = "stdin"
+    defaults = ("~/.codex",)
+
+    def home_vars(self, home):
+        return {"CODEX_HOME": home}
+
+    def _config(self):
+        # The login is a file in the state folder; never the Keychain, where the everyday login may be.
+        return ["-c", 'cli_auth_credentials_store="file"', "-c", f'model_reasoning_effort="{self.effort}"']
+
+    def login_command(self):
+        return ["codex", "login", "status", "-c", 'cli_auth_credentials_store="file"']
+
+    def command(self, prompt_file, resume=None, session=None, files=None):
+        base = ["--json", "--skip-git-repo-check", "-m", self.model, *self._config()]
+        if resume:
+            return ["codex", "exec", "resume", resume, *base, "-"]
+        return ["codex", "exec", *base, "-s", "read-only", "-"]
+
+    def parse(self, stdout, stderr, code, files):
+        tid, usage, tools, failure = None, None, set(), None
+        for d in json_lines(stdout):
+            t = d.get("type")
+            if t == "thread.started":
+                tid = d.get("thread_id")
+            elif t == "turn.completed":
+                usage = d.get("usage")
+            elif t in ("error", "turn.failed"):
+                e = d.get("error")
+                failure = (failure or "") + " " + str((e or {}).get("message") if isinstance(e, dict) else d.get("message") or e)
+            elif t and t.startswith("item.") and isinstance(d.get("item"), dict):
+                item = d["item"]
+                if item.get("type") not in CODEX_TEXT_ITEMS:
+                    tools.add(item.get("id") or len(tools))
+        text = (failure or "") + "\n" + (stderr or "")
+        if usage is None:
+            if CODEX_CAP.search(text):
+                raise Refused("client-cap", text.strip()[-2000:])
+            raise classify(text if text.strip() else stdout)
+        return Usage(total=usage.get("input_tokens", 0), cached=usage.get("cached_input_tokens", 0),
+                     write=usage.get("cache_write_input_tokens", 0), calls=1 + len(tools), handle=tid)
+
+
+class Devin(Client):
+    """The Devin CLI, on a Devin subscription (devin). The export (ATIF) is the record: -p has no JSON output."""
+    harness, client_id, binary = "devin", "devin-cli", "devin"
+    defaults = ("~/.devin", "~/.config", "~/.local/share", "~/.local/state", "~/.cache")
+
+    def home_vars(self, home):
+        return {"XDG_CONFIG_HOME": os.path.join(home, "config"), "XDG_DATA_HOME": os.path.join(home, "data"),
+                "XDG_STATE_HOME": os.path.join(home, "state"), "XDG_CACHE_HOME": os.path.join(home, "cache"),
+                "DEVIN_SESSIONS_DIR": os.path.join(home, "sessions")}
+
+    def login_command(self):
+        return ["devin", "auth", "--process-model", "in-process", "status"]
+
+    def files(self, io, tag, session):
+        return {"export": (os.path.join(io, f"export-{tag}.json"), False)}
+
+    def command(self, prompt_file, resume=None, session=None, files=None):
+        # in-process: a sample is a process that ends, never a shared background daemon that could touch its cache.
+        # The model id carries the reasoning level (claude-opus-5-5-low); a resumed session keeps its model.
+        return ["devin", "--process-model", "in-process", *(["-r", resume] if resume else ["--model", self.model]),
+                "--prompt-file", prompt_file, "-p", "--respect-workspace-trust", "false",
+                "--export", (files or {})["export"][0]]
+
+    def parse(self, stdout, stderr, code, files):
+        raw = files.get("export")
+        if not raw:
+            raise classify(f"no export (exit {code}): {stderr or ''}\n{stdout or ''}")
+        d = json.loads(raw)
+        steps = d.get("steps") or []
+        last_user = max((i for i, s in enumerate(steps) if s.get("source") == "user"), default=-1)
+        turn = [s for s in steps[last_user + 1:] if s.get("metrics")]
+        if not turn:
+            raise classify(f"no step with metrics in the export (exit {code}): {stderr or ''}\n{stdout or ''}")
+        m = turn[-1]["metrics"]
+        return Usage(total=m.get("prompt_tokens", 0), cached=m.get("cached_tokens", 0),
+                     write=(m.get("extra") or {}).get("cache_creation_input_tokens", 0), calls=len(turn),
+                     model=turn[-1].get("model_name"), handle=d.get("session_id"))
+
+
+class Muse(Client):
+    """Meta's Muse Code, on the Muse Code subscription key (meta-subscription). The key comes in META_API_KEY."""
+    harness, client_id, binary = "muse", "muse-code", "muse"
+    passthrough = ("META_API_KEY",)
+    defaults = ("~/.muse", "~/.config", "~/.local/share", "~/.local/state", "~/.cache")
+
+    def home_vars(self, home):
+        return {"XDG_CONFIG_HOME": os.path.join(home, "config"), "XDG_DATA_HOME": os.path.join(home, "data"),
+                "XDG_STATE_HOME": os.path.join(home, "state"), "XDG_CACHE_HOME": os.path.join(home, "cache")}
+
+    def run_vars(self):
+        return {"MUSE_NO_AUTO_UPDATE": "1"}
+
+    def new_session(self):
+        return str(uuid.uuid4())
+
+    def command(self, prompt_file, resume=None, session=None, files=None):
+        # A session id that exists is continued: the check names its priming's id.
+        return ["muse", "exec", "--json", "--model", self.model, "--reasoning-effort", self.effort,
+                "--session-id", resume or session, "--prompt-file", prompt_file]
+
+    def parse(self, stdout, stderr, code, files):
+        u, failure = None, []
+        for d in json_lines(stdout):
+            if d.get("payload_type") == "run.usage":
+                u = d.get("payload") or {}
+            elif "error" in str(d.get("payload_type") or d.get("type") or ""):
+                failure.append(json.dumps(d.get("payload") or d))
+        if u is None:
+            # No run.usage line is no reading, never zero (Muse leaves it out when it cannot count a run).
+            raise classify("\n".join(failure) + "\n" + (stderr or "") if failure or code else "no run.usage line")
+        ms = u.get("models") or []
+        return Usage(total=sum(m.get("input_tokens", 0) for m in ms), cached=sum(m.get("cached_tokens", 0) for m in ms),
+                     write=None, calls=u.get("calls"), model=ms[0].get("model") if len(ms) == 1 else None)
+
+
+class Pi(Client):
+    """pi through CLIProxyAPI (a proxy client, client pi+cliproxyapi): driven as before, with the caller's environment."""
+    harness, client_id, binary = "pi", "pi+cliproxyapi", "pi"
+    own = False
+    prompt_mode = "arg"
+
+    def environment(self, home, base=None):
+        return dict(os.environ if base is None else base)
+
+    def new_session(self):
+        return "hp-" + uuid.uuid4().hex[:12]
+
+    def files(self, io, tag, session):
+        return {"session": (os.path.join(io, "pi-sessions", f"*_{session}.jsonl"), True)}
+
+    def command(self, prompt_file, resume=None, session=None, files=None):
+        sd = os.path.dirname((files or {})["session"][0])
+        os.makedirs(sd, exist_ok=True)
+        return ["pi", "-p", "--session-dir", sd, "--session-id", resume or session, "--model", "cliproxyapi/" + self.model,
+                "--thinking", self.effort, prompt_file]
+
+    def parse(self, stdout, stderr, code, files):
+        raw = files.get("session")
+        if not raw:
+            raise classify(f"no session (exit {code}): {stderr or stdout}")
+        msgs = [(json.loads(x).get("message") or {}) for x in raw.splitlines() if x.strip()]
+        last_user = max((i for i, m in enumerate(msgs) if m.get("role") == "user"), default=-1)
+        turn = [m for m in msgs[last_user + 1:] if m.get("role") == "assistant"]
+        if not turn or turn[-1].get("stopReason") == "error":
+            raise classify("pi error: " + str((turn[-1] if turn else {}).get("errorMessage")))
+        u = turn[-1].get("usage") or {}
+        return Usage(total=u.get("input", 0) + u.get("cacheRead", 0) + u.get("cacheWrite", 0), cached=u.get("cacheRead", 0),
+                     write=u.get("cacheWrite", 0), calls=len(turn), model=turn[-1].get("model"))
+
+
+CLIENTS = {c.harness: c for c in (Claude, Codex, Devin, Muse, Pi)}
+
+
+def _run(argv, env, cwd, stdin, timeout):
+    p = subprocess.run(argv, cwd=cwd, env=env, stdin=stdin if stdin is not None else subprocess.DEVNULL,
+                       capture_output=True, text=True, timeout=timeout)
+    return p.returncode, p.stdout, p.stderr
+
+
+class Session:
+    """start() and resume() for the loops, from a client's command() and parse(). `io` holds the prompt and export
+    files (deleted after each invocation); `work` is the client's working folder and stays empty."""
+
+    def __init__(self, client, env, io, work, run=None, timeout=900):
+        self.client, self.env, self.io, self.work = client, env, io, work
+        self.run, self.timeout = run or _run, timeout
+        os.makedirs(io, exist_ok=True)
+        os.makedirs(work, exist_ok=True)
+
+    def plan(self, resume=None):
+        """The command of one invocation as a start event records it (nothing is run)."""
+        tag, session = "x", (None if resume else self.client.new_session())
+        files = self.client.files(self.io, tag, session or resume)
+        pf = os.path.join(self.io, f"prompt-{tag}.txt")
+        argv = self.client.command(pf, resume=resume and "<session>", session=session and "<session>", files=files)
+        shown = self.client.shown(argv, pf, files)
+        return shown + (["<", "<prompt>"] if self.client.prompt_mode == "stdin" else [])
+
+    def _go(self, prompt, resume=None):
+        tag = uuid.uuid4().hex[:10]
+        session = None if resume else self.client.new_session()
+        files = self.client.files(self.io, tag, session or resume)
+        pf = os.path.join(self.io, f"prompt-{tag}.txt")
+        with open(pf, "w") as f:
+            f.write(prompt)
+        argv = self.client.command(pf, resume=resume, session=session, files=files)
+        if self.client.prompt_mode == "arg":
+            argv = [prompt if a == pf else a for a in argv]
+        try:
+            with open(pf) as stdin:
+                code, out, err = self.run(argv, env=self.env, cwd=self.work,
+                                          stdin=stdin if self.client.prompt_mode == "stdin" else None, timeout=self.timeout)
+            contents = {}
+            for name, (path, keep) in files.items():
+                found = sorted(glob.glob(path)) if any(c in path for c in "*?[") else [path]
+                for p in found:
+                    if os.path.exists(p):
+                        with open(p) as f:
+                            contents[name] = f.read()
+                        if not keep:
+                            os.remove(p)
+        finally:
+            if os.path.exists(pf):
+                os.remove(pf)
+        u = self.client.parse(out, err, code, contents)
+        if u.handle is None:
+            u.handle = resume or session
+        return u
+
+    def start(self, prompt):
+        u = self._go(prompt)
+        return u.handle, u
+
+    def resume(self, handle, prompt):
+        return self._go(prompt, resume=handle)

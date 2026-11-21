@@ -1,0 +1,14 @@
+{
+ "note": "the event shapes of exec/src/event_processor_with_jsonl_output.rs at rust-v0.170.0, the figures of results/harness-2026-11-07/H1.jsonl: a command run inside the turn",
+ "code": 0,
+ "stdout": "{\"type\": \"thread.started\", \"thread_id\": \"00000000-0000-4000-8000-0000000000c1\"}\n{\"type\": \"turn.started\"}\n{\"type\": \"item.started\", \"item\": {\"id\": \"item_0\", \"type\": \"command_execution\", \"command\": \"ls\", \"status\": \"in_progress\"}}\n{\"type\": \"item.completed\", \"item\": {\"id\": \"item_0\", \"type\": \"command_execution\", \"command\": \"ls\", \"status\": \"completed\"}}\n{\"type\": \"item.completed\", \"item\": {\"id\": \"item_r\", \"type\": \"reasoning\", \"text\": \"**Replying**\"}}\n{\"type\": \"item.completed\", \"item\": {\"id\": \"item_m\", \"type\": \"agent_message\", \"text\": \"OK\"}}\n{\"type\": \"turn.completed\", \"usage\": {\"input_tokens\": 76000, \"cached_input_tokens\": 68000, \"cache_write_input_tokens\": 7200, \"output_tokens\": 5, \"reasoning_output_tokens\": 0}}\n",
+ "stderr": "",
+ "files": {},
+ "expect": {
+  "total": 76000,
+  "cached": 68000,
+  "write": 7200,
+  "calls": 2,
+  "handle": "00000000-0000-4000-8000-0000000000c1"
+ }
+}

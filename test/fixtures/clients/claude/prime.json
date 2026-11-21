@@ -1,0 +1,17 @@
+{
+ "note": "the shape of docs/own-clients.md section 1; replaced by what the client printed once the smoke run has run: a new session; the shared system prompt read from the cache, the sample's block written (1 h)",
+ "code": 0,
+ "stdout": "{\"type\": \"result\", \"subtype\": \"success\", \"is_error\": false, \"num_turns\": 1, \"result\": \"OK\", \"session_id\": \"00000000-0000-4000-8000-000000000001\", \"total_cost_usd\": 0.01, \"usage\": {\"input_tokens\": 6, \"cache_read_input_tokens\": 18000, \"cache_creation_input_tokens\": 11000, \"output_tokens\": 2, \"cache_creation\": {\"ephemeral_1h_input_tokens\": 11000, \"ephemeral_5m_input_tokens\": 0}}, \"modelUsage\": {\"claude-haiku-5-5\": {\"inputTokens\": 6, \"outputTokens\": 2}}}",
+ "stderr": "",
+ "files": {},
+ "expect": {
+  "total": 29006,
+  "cached": 18000,
+  "write": 11000,
+  "calls": 1,
+  "model": "claude-haiku-5-5",
+  "write_5m": 0,
+  "write_1h": 11000,
+  "handle": "00000000-0000-4000-8000-000000000001"
+ }
+}

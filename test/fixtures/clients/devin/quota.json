@@ -1,0 +1,8 @@
+{
+ "note": "the shape of docs/own-clients.md section 1; replaced by what the client printed once the smoke run has run: no export, the refusal on stderr",
+ "code": 1,
+ "stdout": "",
+ "stderr": "Error: you have reached your usage limit for this billing period",
+ "files": {},
+ "refused": "quota"
+}

@@ -1,0 +1,17 @@
+{
+ "note": "the shape of docs/own-clients.md section 1; replaced by what the client printed once the smoke run has run: in overage the writes are of the 5-minute lifetime",
+ "code": 0,
+ "stdout": "{\"type\": \"result\", \"subtype\": \"success\", \"is_error\": false, \"num_turns\": 1, \"result\": \"OK\", \"session_id\": \"00000000-0000-4000-8000-000000000001\", \"total_cost_usd\": 0.01, \"usage\": {\"input_tokens\": 6, \"cache_read_input_tokens\": 18000, \"cache_creation_input_tokens\": 11000, \"output_tokens\": 2, \"cache_creation\": {\"ephemeral_1h_input_tokens\": 0, \"ephemeral_5m_input_tokens\": 11000}}, \"modelUsage\": {\"claude-haiku-5-5\": {\"inputTokens\": 6, \"outputTokens\": 2}}}",
+ "stderr": "",
+ "files": {},
+ "expect": {
+  "total": 29006,
+  "cached": 18000,
+  "write": 11000,
+  "calls": 1,
+  "model": "claude-haiku-5-5",
+  "write_5m": 11000,
+  "write_1h": 0,
+  "handle": "00000000-0000-4000-8000-000000000001"
+ }
+}
