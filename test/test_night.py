@@ -247,6 +247,8 @@ class Everyday(unittest.TestCase):
             f.write("one\n")
         self.keychain = ['keychain: "/k"', 'class: "genp"', '    "svce"<blob>="Claude Code-credentials"',
                          '    "acct"<blob>="someone"', '    "mdat"<timedate>=0x3230323630313031  "20260101000000Z\\000"']
+        for name in ("claude-code", "codex-cli", "devin-cli", "muse-code", "pi-provimux"):
+            os.makedirs(os.path.join(self.tmp.name, "client-home", name))
         p = mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": os.path.join(self.tmp.name, "client-home")})
         p.start()
         self.addCleanup(p.stop)
@@ -299,6 +301,11 @@ class Everyday(unittest.TestCase):
         with mock.patch.object(night, "untouched", return_value=False), \
                 self.assertRaisesRegex(SystemExit, "the night stops here"):
             night.go(night.select(["CC1"]), "2099-03-01", popen=mock.Mock(), out=lambda *_: None)
+
+    def test_the_state_folders_are_checked_before_the_logins(self):
+        os.symlink(os.path.join(self.user, ".codex"), os.path.join(self.tmp.name, "client-home", "codex-cli", "x"))
+        with self.assertRaisesRegex(SystemExit, "links that leave it"):
+            night.untouched("2099-03-02", "save", user_home=self.user, lister=self.lister(), out=lambda *_: None)
 
     def test_the_snapshot_is_taken_once(self):
         night.untouched("2099-03-01", "save", user_home=self.user, lister=self.lister(), out=lambda *_: None)

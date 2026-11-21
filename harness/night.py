@@ -328,6 +328,19 @@ def untouched(date, mode, user_home=None, lister=None, out=print):
     path = everyday_path(date)
     if path.startswith("<"):
         raise SystemExit("untouched: GROUNDTRUTH_CLIENT_HOME is not set")
+    if mode == "save":
+        # The state folders are checked before any login: where each client will write (no link out, no checkout,
+        # no everyday folder).
+        import clients as C
+        base = os.path.dirname(night_dir(date))
+        for name in ("claude-code", "codex-cli", "devin-cli", "muse-code", "pi-provimux"):
+            folder = os.path.join(base, name)
+            if not os.path.isdir(folder):
+                raise SystemExit(f"untouched: {folder} does not exist: create the state folders first")
+            C.check_folder(f"untouched: {name}", folder, ROOT, os.path.realpath(user_home or os.path.expanduser("~")))
+            out_links = C.links_out(folder)
+            if out_links:
+                raise SystemExit(f"untouched: {name} holds links that leave it: {', '.join(out_links[:5])}")
     now = {"files": snapshot_files(user_home), "keychain": keychain_items(lister)}
     if mode == "save":
         if os.path.exists(path):
