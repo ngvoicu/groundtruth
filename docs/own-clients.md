@@ -14,9 +14,16 @@ entries are measured again directly, what changes in `observed.json`, which runs
   same model variant on both sides of a pair, a Devin id with its effort suffix given to Provimux as it is; M-2, the
   Devin CLI with `--process-model in-process` and `DEVIN_CACHE_KEEPALIVE_MAX_PINGS=0`, both recorded; M-3, an age's
   samples primed in three waves at least five minutes apart; M-4, a pi run records the Provimux build, pi's version,
-  pi-provimux's commit, the transport and the payload rules. The pairs of its section 7 are in the plan (without
-  CX-3's second run, without CX-S (b), and without Antigravity), each pi run started beside its own-client run, pi
-  from a state folder of its own.
+  pi-provimux's commit, the transport and the payload rules: the `payload` section of Provimux's configuration,
+  read by the run itself, nothing else of that file. The pairs of its section 7 are in the plan (without CX-3's
+  second run, without CX-S (b), and without Antigravity), each pi run started beside its own-client run, pi from a
+  state folder of its own that `night.py pi-setup` makes with pi's own `pi install`.
+- **No Meta rule switch**: MC-1's pi run goes through Provimux's payload rules as configured (Muse Code caches no
+  conversation, so the pair's question is answered); there is no second MC-1 pi run.
+- **One go for the night**: after the smoke review, `night.py --go night` starts a detached supervisor that launches
+  every part, starts the 5-minute Claude runs when CC1 – CC4 have ended, and compares the everyday state at the end;
+  `status` and `stop all` watch and stop it. The owner's part is the one-time setup (the folders, the snapshot, three
+  logins, three keys, the compare).
 - **Claude Code's own retries** are switched off with `CLAUDE_CODE_MAX_RETRIES=0` (a variable of the 2.1.330
   binary); every Claude run records it and that a check may hide a retry if the client does not honour it.
 - **Every new session's first line** names the measurement (`groundtruth cache measurement <salt> (an automated test,

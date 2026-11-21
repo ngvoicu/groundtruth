@@ -1,166 +1,177 @@
-# Measuring through the own clients: the owner's steps
+# Measuring through the own clients: the steps
 
-What the owner does to run the first night of [`own-clients.md`](own-clients.md), section 4, narrowed: no input
-limit through an own client, no Antigravity run; with the pairs of Provimux's `client-parity.md`, section 7 (each
-pair is an own-client run and a pi-through-Provimux run started beside it). Everything runs from the repository's
-root on the `own-clients` branch. `harness/night.py` holds every command; `--dry-run` shows them and sends nothing.
-Nothing is sent without `--go`.
+The first night of [`own-clients.md`](own-clients.md), section 4, narrowed: no input limit through an own client, no
+Antigravity run. It includes the pairs of Provimux's `client-parity.md`, section 7: each pair is an own-client run and
+a pi-through-Provimux run started beside it. `harness/night.py` holds every command. `--dry-run` shows them and sends
+nothing, and nothing is sent without `--go`.
 
-## Accounts
+There are three parts. **Only the first needs the owner**: his logins and his keys, about 15 minutes, once. Anyone can
+do the night and the morning from the repository's root on the `own-clients` branch, with no login and no key.
 
-| Runs | Account | Credential |
-|---|---|---|
-| OR1 – OR5, OW1 – OW9 | OpenRouter | a key made for this campaign, limit 5 USD; `night.py` starts nothing that could pass 4 USD |
-| S1, CC1 – CC8 | the Claude subscription (Pro/Max) | the login in the `claude-code` state folder |
-| S2, CX1 – CX6 | the ChatGPT plan used with Codex | the login in the `codex-cli` state folder |
-| S3, S3b, DV1 – DV17, DV9d | the Devin subscription | the login in the `devin-cli` state folder |
-| S4, MC1 – MC3 | the Muse Code subscription | its key, in the Keychain |
-| SP, P-CC3, P-CC4, P-CX1, P-CX3, P-CX4, P-DV1, P-DV5, P-DV9, P-DV11, P-DV14, P-MC1, P-MC1b | the same logins, through the owner's Provimux | pi in the `pi-provimux` state folder, with Provimux's key |
-| CXS-a | the ChatGPT plan, through Provimux | Provimux's key, in the Keychain |
-| — | Antigravity | none |
+## You, once (about 15 minutes)
 
-A login's quota is the account's: the night and the owner's own work draw on the same allowance. Start when the
-plans' meters are low; for Claude Code this matters twice, because in overage it writes the 5-minute cache and the
-run stops (`tier-changed`) and is not published.
+These are the only steps that need the owner. Do them in this order, in one terminal, from the repository's root.
 
-**Devin's account history.** The night's Devin sessions will appear in the owner's Devin account history (accepted
-by the owner on 2026-11-22): those of the Devin CLI, and possibly those of pi through Provimux, about 1,700 sessions
-(about 90 per run). The Devin CLI (3000.14) has no option to set a session's title or name, so every session's first
-line is the label: `groundtruth cache measurement <salt> (an automated test, not a task).` It tells them apart from
-the owner's work. Nothing here deletes them.
+**From step 1 until the morning, nobody uses Claude Code, Codex, the Devin CLI, Muse Code or pi on this computer**,
+and no agent does either. Before every launch the night compares the everyday folders and the Keychain with step 1's
+snapshot, and any difference stops it.
 
-**From step 1 to the end of the night, nobody uses Claude Code, Codex, the Devin CLI, Muse Code or pi on this
-computer** (no agent either): the everyday folders and the Keychain are compared with step 1's snapshot before every
-`--go` and at the end, and any difference stops the night.
+**What it costs the accounts.** The night uses the Claude subscription, the ChatGPT plan used with Codex, the Devin
+subscription and the Muse Code subscription, directly and through Provimux. It also uses an OpenRouter key made for
+the campaign, with a 5 USD limit; the night starts nothing that could take it past 4 USD. A login's quota is the
+account's own: start when the plans' meters are low. For Claude this matters twice, because in overage Claude Code
+writes the 5-minute cache and the run stops.
 
-## Once: the state folders, the snapshot, the logins
+**Devin's account history.** About 1,700 Devin sessions from the night will appear in the owner's Devin account
+history. Each one's first line is `groundtruth cache measurement <salt> (an automated test, not a task).` (the Devin
+CLI cannot name a session). Nothing deletes them.
 
-**1. The folders and the snapshot, before any login.** A folder outside the repository, outside every Git checkout
-and outside every client's own folders (not under `~/.claude`, `~/.codex`, `~/.devin`, `~/.pi`, `~/.config`,
-`~/.local`, `~/Library`), used for nothing else. The probe refuses anything else, and a state folder with a link
-that leaves it.
+**1. The folders and the snapshot, before any login** (1 minute). The folders must lie outside the repository, any
+Git checkout and every client's own folders.
 
 ```bash
 export GROUNDTRUTH_CLIENT_HOME="$HOME/groundtruth-clients"
+export N=<YYYY-MM-DD>                                   # the night's date
 G="$GROUNDTRUTH_CLIENT_HOME"
 mkdir -p "$G/claude-code" "$G/codex-cli" "$G/devin-cli" "$G/muse-code" "$G/pi-provimux"
-export N=<YYYY-MM-DD>                                   # the night's date: names the results folders
-python3 harness/night.py --date $N untouched --save     # before the logins: the everyday folders and the Keychain
+python3 harness/night.py --date $N untouched --save
 ```
 
-The snapshot (in `$G/night-$N/`, never in the repository) records the path, size and modification time of every
-file under the everyday folders, and the Keychain's items by name and service, never a secret. Seconds.
+It records the names, sizes and dates of the files in the everyday folders, and the names of the Keychain's items,
+never a secret.
 
-**2. The logins**, each with a short environment, as the probe runs the client: no API key, base URL or proxy of the
-shell reaches it. About 2 minutes each.
+**2. The three logins** (about 2 minutes each; a browser window opens for each). Each one writes only into its own
+folder, and the everyday logins are not touched.
 
-Claude Code (a browser window opens; sign in with the Claude subscription's account, not the Console). Another
-`CLAUDE_CONFIG_DIR` is another Keychain entry: the everyday login is not touched. Never `claude setup-token`: no
-long-lived token is stored.
+Claude Code: sign in with the Claude subscription's account, not the Console.
 
 ```bash
 env -i PATH="$PATH" HOME="$HOME" USER="$USER" LANG="$LANG" TERM="$TERM" TMPDIR="$TMPDIR" \
     CLAUDE_CONFIG_DIR="$G/claude-code" DISABLE_AUTOUPDATER=1 claude auth login --claudeai
-env -i PATH="$PATH" HOME="$HOME" USER="$USER" CLAUDE_CONFIG_DIR="$G/claude-code" claude auth status --json
 ```
 
-The status must show `"authMethod": "claude.ai"` (or `oauth`); the probe refuses an API key or the Console.
-
-Codex CLI (sign in with the ChatGPT plan's account; never `--with-api-key`). The login becomes a file in the state
-folder; never copy the everyday `auth.json`.
+Codex: sign in with the ChatGPT plan's account.
 
 ```bash
 env -i PATH="$PATH" HOME="$HOME" USER="$USER" LANG="$LANG" TERM="$TERM" TMPDIR="$TMPDIR" \
     CODEX_HOME="$G/codex-cli" codex login -c cli_auth_credentials_store="file"
-env -i PATH="$PATH" HOME="$HOME" USER="$USER" CODEX_HOME="$G/codex-cli" \
-    codex login status -c cli_auth_credentials_store="file"
 ```
 
-The status must say `Logged in using ChatGPT`; the probe refuses an API key.
-
-Devin CLI (sign in with the Devin account). Never `devin auth logout`, in any environment.
+Devin: sign in with the Devin account.
 
 ```bash
 D="$G/devin-cli"
 env -i PATH="$PATH" HOME="$HOME" USER="$USER" LANG="$LANG" TERM="$TERM" TMPDIR="$TMPDIR" \
     XDG_CONFIG_HOME="$D/config" XDG_DATA_HOME="$D/data" XDG_STATE_HOME="$D/state" XDG_CACHE_HOME="$D/cache" \
     DEVIN_SESSIONS_DIR="$D/sessions" devin auth --process-model in-process login
-env -i PATH="$PATH" HOME="$HOME" USER="$USER" XDG_CONFIG_HOME="$D/config" XDG_DATA_HOME="$D/data" \
-    XDG_STATE_HOME="$D/state" XDG_CACHE_HOME="$D/cache" DEVIN_SESSIONS_DIR="$D/sessions" \
-    devin auth --process-model in-process status
 ```
 
-pi, in its own folder: set it up with pi's own commands as the everyday pi is set up (the pi-provimux extension and
-Provimux's key), with `PI_CODING_AGENT_DIR="$G/pi-provimux"` in front of each; never copy `~/.pi`. Then write
-`$G/pi-provimux/payload-rules.json`: the payload rules of Provimux's configuration that touch these requests, as a
-JSON list (`[]` for none); for the first part of the night, the Meta 24 h rule switched off (step 8). And name the
-pi-provimux checkout pi loads, for the run's record:
+The night checks each login's status before every run and refuses an API key or the Console. Never run
+`claude setup-token` or `devin auth logout`, and never copy an everyday login file.
 
-```bash
-export PI_PROVIMUX_DIR=<the pi-provimux checkout>
-```
-
-Keys, each typed at `security`'s prompt (in no shell history); the night reads them only into the one process
-that needs them:
+**3. The three keys** (1 minute). Type each at `security`'s prompt, so that none lands in the shell's history.
 
 ```bash
 security add-generic-password -a "$USER" -s "groundtruth META_API_KEY" -w        # the Muse Code subscription key
 security add-generic-password -a "$USER" -s "groundtruth OPENROUTER_API_KEY" -w  # the campaign's OpenRouter key (limit 5 USD)
-security add-generic-password -a "$USER" -s "groundtruth PROVIMUX_KEY" -w        # Provimux's key, for CXS-a
+security add-generic-password -a "$USER" -s "groundtruth PROVIMUX_KEY" -w        # Provimux's key
 ```
 
-**3. After the logins.**
+**4. The compare** (1 minute).
 
 ```bash
 python3 harness/night.py --date $N untouched --compare
 ```
 
-It should list only Keychain items that the logins added (Claude Code's entry for its state folder, the three
-groundtruth items). If it lists anything else, stop: a login wrote outside its state folder. If not, accept them
-as the night's own and compare again; it must print `unchanged`:
+It should list only Keychain items: Claude Code's entry for its own folder and the three `groundtruth` items. If it
+lists anything else, stop: a login wrote outside its folder. If it doesn't, accept those items as the night's own and
+compare again; the second compare must print `unchanged`:
 
 ```bash
 python3 harness/night.py --date $N untouched --accept-keychain-added
 python3 harness/night.py --date $N untouched --compare
 ```
 
-## The night, in order
+The owner's part ends here. Provimux stays as it is: nothing is switched or restarted.
 
-Every command starts from the repository's root, with `GROUNDTRUTH_CLIENT_HOME`, `N` and `PI_PROVIMUX_DIR` exported.
-Keep the computer on power and on the network. A check made more than `age × 1.1 + 90 s` after its priming is left
-out, so a sleeping computer loses checks, not truth. Logs and pids are in `results/<folder>/logs/` (never
-committed). Each `--go` first compares the everyday folders and the Keychain with the snapshot and stops on any
-difference; a step already done or running is skipped, so a `--go` can be repeated.
+## The night
 
-| # | Command | Account | Wall time |
-|---|---|---|---|
-| 4 | `python3 harness/night.py --date $N --dry-run all` | none: sends nothing | 1 min |
-| 5 | `python3 harness/night.py --date $N --go smoke` | Claude, ChatGPT, Devin, Muse, and pi through Provimux | about 2 min per run, one after the other: about 12 min, in the foreground |
-| 6 | Read the smoke results (below); then `python3 harness/night.py --date $N smoke-reviewed` | none | 10 – 20 min |
-| 7 | `python3 harness/night.py --date $N --go openrouter` then `--go windows` | OpenRouter key | 2 h 15 in the background (about 1.60 USD); the windows about 10 min in the foreground (refused, not billed) |
-| 8 | With Provimux's Meta 24 h rule switched off and `payload-rules.json` saying so: `python3 harness/night.py --date $N --go claude codex codex-plain devin muse` (add `devin-terra-pi` only if S3b showed cached tokens) | Claude, ChatGPT, Devin, Muse, Provimux | about 13 min of launches (15 s apart, Devin 20 s); then in the background: Claude 2 h 20, Codex 12 h 20, CXS-a 35 min, Devin 2 h 20 (std) and 12 h 20 (DV8, DV10, DV11), Muse 2 h 20 (minutes where a control misses) |
-| 9 | When CC1 – CC4 have ended (about 2 h 20 after step 8): `python3 harness/night.py --date $N --go claude-5m` | Claude | 35 min |
-| 10 | When MC1 and P-MC1 have ended: switch the Meta 24 h rule back on, write it into `payload-rules.json`, then `python3 harness/night.py --date $N --go muse-rule` | Muse, through Provimux | 2 h 20 |
-| 11 | When everything has ended: `python3 harness/night.py --date $N untouched --compare` | none | seconds |
+Anyone can do this, from the repository's root, with these set in the shell:
 
-A run has ended when the last line of its `.jsonl` is `{"event": "done", …}` or `{"event": "stop", …}` (for
-OR1 – OR5 and CXS-a: its `.json` result file exists). The cache runs end about 12 h 30 after step 8.
+```bash
+export GROUNDTRUTH_CLIENT_HOME="$HOME/groundtruth-clients" N=<YYYY-MM-DD>
+export PI_PROVIMUX_DIR=<the pi-provimux checkout>       # the extension pi loads; its commit goes in each pi run's record
+```
 
-**Step 6, the smoke results.** `results/own-clients-$N/smoke/` holds S1, S2, S3, S3b, S4 and SP (`.jsonl`); the
-redacted raw output of every invocation is in `$G/night-$N/raw/<id>/` (never in the repository):
+Keep the computer on power and on the network. A check made too late after its priming is left out, so a sleeping
+computer loses checks, not truth.
 
-- each run ends with `{"event": "done"}` after one warm `check` of the control with `"calls": 1`; the launcher
-  stops by itself when one does not, and says which;
-- S3b (Devin, gpt-6-1-terra): whether its replies report any cached token; if not, DV5 measures nothing and is
-  excluded, and `devin-terra-pi` is not run;
-- SP: its start event shows `pi` with the Provimux build, pi's version, pi-provimux's commit and the payload rules;
-- if a client printed something other than the fixtures under `test/fixtures/clients/` expect, the fixtures and
-  `harness/clients.py` are corrected from the raw output before step 8.
+| # | Command | Time |
+|---|---|---|
+| 1 | `python3 harness/night.py --date $N pi-setup` | 1 min |
+| 2 | `python3 harness/night.py --date $N --dry-run all` | 1 min, sends nothing |
+| 3 | `python3 harness/night.py --date $N --go smoke` | about 12 min, in the foreground |
+| 4 | The smoke review (below), then `python3 harness/night.py --date $N smoke-reviewed` | 10 – 20 min |
+| 5 | `python3 harness/night.py --date $N --go night` | returns at once; the night runs about 12 h 30 |
 
-**Stopping.** A run stops itself on a quota refusal, on a missed or late control, or (Claude) on a change of
-lifetime. To stop one by hand: `python3 harness/night.py --date $N stop <id>` (it finds the run's pid file in its
-own folder and signals the process group only if it is that run).
+- **Step 1, pi-setup**, sets up pi's own folder (`$G/pi-provimux`). It uses pi's own `pi install` with the
+  pi-provimux checkout, and writes the proxy's address into that folder with no key; the key reaches pi only at the
+  go, from the Keychain. It never reads `~/.pi`.
+- **Step 5, `--go night`**, checks that the smoke runs were reviewed, that pi's folder is set up and that the everyday
+  state is unchanged. Then it starts a supervisor in the background, which keeps running if the terminal is closed.
+  The supervisor:
+  - launches OpenRouter (OR1 – OR5), Claude (CC1 – CC4), Codex (CX1 – CX6), CX-S, Devin (DV1 – DV17, DV9d) and Muse
+    (MC1 – MC3), each with its pi twin, then the OpenRouter window requests;
+  - adds DV-6's pi run itself if S3b showed cached tokens;
+  - starts CC5 – CC8 by itself once CC1 – CC4 have ended;
+  - compares the everyday state again when the last run has ended.
 
-**After the night** (not the owner's): each folder gets its README, its runs go in `observed/manifest.json` (runs
-that ended early or measured nothing in `excluded`, with the reason), and `observed.json` is rebuilt. The pairs are
-read by the rule of `client-parity.md`, section 6, decided before the runs.
+  Before each launch it compares the everyday state, and before each OpenRouter request it checks the money stop. It
+  skips what is done, so `--go night` can be repeated safely.
+- **Watching**: `python3 harness/night.py --date $N status` lists each run as running, done, failed (with why) or not
+  started, with the supervisor's last lines. The full log is `results/own-clients-$N/logs/supervisor.log`.
+- **Stopping**: `python3 harness/night.py --date $N stop all` stops the supervisor first, then every run still
+  running. `stop <id>` stops a single run. A run also stops by itself on a quota refusal, a missed or late control,
+  or (Claude) a change of cache lifetime.
+
+### The smoke review (step 4): a checklist
+
+The smoke results are in `results/own-clients-$N/smoke/`: `S1.jsonl` (Claude), `S2.jsonl` (Codex), `S3.jsonl` and
+`S3b.jsonl` (Devin), `S4.jsonl` (Muse) and `SP.jsonl` (pi through Provimux). One JSON event per line. Each
+invocation's raw output, redacted, is in `$G/night-$N/raw/<id>/`, never in the repository. Tick every item. If any
+item fails, do not run `smoke-reviewed`: hand the run's file and its raw folder to whoever maintains
+`harness/clients.py`.
+
+- [ ] `--go smoke` ended without "smoke runs that did not end with `done`".
+- [ ] `python3 harness/night.py --date $N status` shows S1, S2, S3, S3b, S4 and SP as `done`.
+- [ ] In each of the six files, the last line has `"event": "done"`.
+- [ ] Each file has exactly one line with `"event": "check"`, whose `"usage"` shows `"calls": 1` and whose `"warm"` is
+      `true`.
+- [ ] No file has a line whose `"event"` is `check-invalid`, `check-failed`, `prime-failed`, `prime-refused` or
+      `retry`.
+- [ ] Each file's first line (`"event": "start"`) has a `"client_version"`.
+- [ ] `S1.jsonl`'s first line shows `"CLAUDE_CODE_MAX_RETRIES": "0"` under `"client_settings"`.
+- [ ] `S3.jsonl`'s first line shows `"process_model": "in-process"` and `"keepalive_max_pings": 0` under `"devin"`.
+- [ ] `SP.jsonl`'s first line has a `"pi"` block with `provimux_build`, `pi_version`, `pi_provimux_commit` and
+      `payload_rules`. `payload_rules.section` starts with `payload:` (or is `null` with the note "no payload
+      section") and holds no key, password or e-mail.
+- [ ] `S3b.jsonl`: note whether any `check` line has `"cached"` above 0. Nothing to do either way: the supervisor reads
+      it and runs DV-6's pi run only if so.
+- [ ] `git status --short` lists nothing outside `results/own-clients-$N/` and `results/openrouter-direct-$N/`, and
+      `python3 harness/scan_secrets.py --git .` ends with `CLEAN`.
+- [ ] `python3 harness/night.py --date $N untouched --compare` prints `unchanged`.
+
+## The morning
+
+1. `python3 harness/night.py --date $N status`: the supervisor is not running, and no run is `running`. Wait if one
+   is: the longest Codex and Devin runs end about 12 h 30 after the go.
+2. The final compare: `python3 harness/night.py --date $N untouched --compare` must print `unchanged`. The supervisor
+   made the same compare at the end: see the last lines of `supervisor.log`. If it changed, the comparison says what,
+   and the night's results are kept but marked.
+3. The build (whoever maintains the results):
+   - give each new folder under `results/` its README;
+   - put the runs in `observed/manifest.json`, with the runs that ended early or measured nothing under `excluded`
+     with the reason;
+   - run `python3 scripts/build_observed.py`, then `python3 scripts/build_observed.py --check`.
+
+   The pairs are read by the rule of `client-parity.md`, section 6, decided before the runs.

@@ -134,15 +134,17 @@ URL, proxy or cache switch of the caller's shell reaches it. The run file record
 `isolation`, never a path. `--dry-run` prints the commands and sends nothing.
 
 A pi run through Provimux, the other side of a parity pair, runs the same way from a state folder of its own and
-records the Provimux build, pi's version, pi-provimux's commit, the transport and the payload rules in force. An age's
+records the Provimux build, pi's version, pi-provimux's commit, the transport and the payload rules in force (the
+`payload` section of Provimux's configuration, nothing else of the file). An age's
 samples are primed in three waves at least five minutes apart; the Devin CLI runs in-process with its cache keepalive
 off; Claude Code's own retries are switched off. Every new session's first line names the measurement.
 
 `harness/client_limits.py` walks an input size through the same clients. It is **not yet trusted**: no own-client
 input limit is published, and a login's input limits stay the proxy's. `harness/night.py` holds the run plan of
 [`docs/own-clients.md`](docs/own-clients.md), section 4, as commands; `--dry-run` prints each one with its tool's own
-dry run and sends nothing, and nothing is sent without `--go` ([`docs/own-clients-RUN.md`](docs/own-clients-RUN.md)
-has the owner's steps).
+dry run and sends nothing, and nothing is sent without `--go`. After the smoke runs, `--go night` runs the rest under
+a detached supervisor (`status`, `stop all`). [`docs/own-clients-RUN.md`](docs/own-clients-RUN.md) has the steps: the
+owner's one-time setup, the night, the morning.
 
 ## observed.json
 
