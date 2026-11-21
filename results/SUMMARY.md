@@ -22,7 +22,7 @@ Known values were not measured: Claude subscription through CLIProxyAPI (CPA set
 |---|---|---|---|---|
 | C1 | Codex subscription | `gpt-6.1-sol` | **2 h – 12 h** | warm at 2 h, 2 of 3 at 4 h, cold at 12 h; 8 h lost to a network outage |
 | C2 | Codex subscription | `gpt-6.1-terra` | < 2.5 – 7.5 min | ran before the probe sent a cache key; superseded by C1 |
-| D1 | Devin | `devin/claude-opus-5-5` | **≥ 2 h** | one cold check at 50 min, otherwise warm to 2 h |
+| D1 | Devin | `devin/claude-opus-5-5` | 5 – 7.5 min | excluded: 8.0.53 left Devin's cache writes out of the prompt total, so the misses from 7.5 min (558 of 562 tokens, the priming request's figures) read as warm; first published as ≥ 2 h |
 | D2 | Devin | `devin/gpt-6-1-sol` | 30 – 40 min | |
 | D5 | Devin | `devin/gemini-4-argon` | 2.5 – 15 min | |
 | D7 | Devin | `devin/glm-5-3` | < 2.5 – 30 min | mixed |
