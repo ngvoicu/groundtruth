@@ -91,6 +91,10 @@ class Walk(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "1,048,576"):
             CL.main(["--harness", "codex", "--model", "m", "--out", "/nonexistent/x.jsonl", "--dry-run"])
 
+    def test_not_yet_trusted_a_live_run_is_refused(self):
+        with self.assertRaisesRegex(SystemExit, "not yet trusted"), redirect_stdout(io.StringIO()):
+            CL.main(["--harness", "claude", "--model", "m", "--out", "/nonexistent/x.jsonl"])
+
     def test_the_dry_run_sends_nothing(self):
         buf = io.StringIO()
         with redirect_stdout(buf):

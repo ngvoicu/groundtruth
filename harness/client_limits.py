@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""The input limit of a login through its vendor's own client (docs/own-clients.md, sections 1, 3 and 4.4).
+"""NOT YET TRUSTED: not part of the first night, and scripts/build_observed.py publishes no own-client limits row.
+The review of own-clients (finding 11) found that it can take a local diagnostic or a quota answer for the
+provider's input refusal, count a two-request answer as one accepted size, and stop short of the boundary when the
+refusal names no window. A live run needs --untrusted until that is fixed.
+
+The input limit of a login through its vendor's own client (docs/own-clients.md, sections 1, 3 and 4.4).
 harness/limits.py stays the walk of plain requests; this one drives a client of harness/clients.py, one new session
 per request, the prompt "Reply with just OK." + " hello" x N.
 
@@ -150,6 +155,7 @@ def main(argv=None):
     ap.add_argument("--only-refusal", action="store_true",
                     help="send only the first request (a smoke run: what the client prints for an input above the window)")
     ap.add_argument("--dry-run", action="store_true", help="print the plan; run nothing, send nothing")
+    ap.add_argument("--untrusted", action="store_true", help="run it although it is not yet trusted (see the top)")
     a = ap.parse_args(argv)
     if a.harness == "codex" and not a.only_refusal:
         raise SystemExit("codex: no input limit through Codex CLI (it caps a message at 1,048,576 characters before "
@@ -159,6 +165,8 @@ def main(argv=None):
     if a.dry_run:
         print(f"every request appended to {a.out}. Dry run: nothing run, nothing sent.")
         return
+    if not a.untrusted:
+        raise SystemExit("harness/client_limits.py is not yet trusted (review finding 11): no live run without --untrusted")
     client = C.CLIENTS[a.harness](a.model, a.effort)
     home = C.state_folder(client, a.client_home, ROOT)
     env = client.environment(home)
