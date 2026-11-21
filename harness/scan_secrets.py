@@ -15,6 +15,14 @@ finding names the file and the field the value came from, so it can be judged.
 Model names are not secrets: model lists and the names in a login's `model_aliases` are skipped, because a run that
 measured `devin/some-model` necessarily contains that name.
 
+A value known only to a child process (META_API_KEY, the campaign's OpenRouter key: read from the Keychain straight
+into the one process that needs it) cannot be read back at commit time. harness/probe.py and harness/night.py leave
+its fingerprint instead (SHA-256, length and first six characters) in SCAN_FINGERPRINTS (default
+~/.groundtruth/fingerprints.json, never in the repository), and the scan looks for it. The state folder's path
+(GROUNDTRUTH_CLIENT_HOME, and any path ending in a state folder's name) is searched for as a home path is.
+
+    python3 harness/scan_secrets.py --git <repository>    # every file a commit could take: staged, changed, untracked
+
 A `logs` folder is mostly local (a run's console output, never committed), but a campaign may force-add its usage
 logs. So in a `logs` folder the files git tracks are scanned (staged ones included) and the others skipped; in a
 folder that is not in a git work tree (the tree the pre-commit hook and CI export from the index, where every file is
@@ -32,6 +40,7 @@ CLIENT_KEYS = os.environ.get("SCAN_CLIENT_KEYS", HOME + "/.pi/agent/cliproxyapi.
 KEYS_FILE = os.environ.get("SCAN_KEYS_FILE", HOME + "/.cli-proxy-api/keys.txt")
 CONFIG = os.environ.get("SCAN_CONFIG", "/opt/homebrew/etc/cliproxyapi.conf")
 LOGINS = os.environ.get("SCAN_LOGINS", HOME + "/.cli-proxy-api/*.json")
+FINGERPRINTS = os.environ.get("SCAN_FINGERPRINTS", HOME + "/.groundtruth/fingerprints.json")
 # Anchored on the left, so "sk-" or "eyJ" in the middle of a long base64 blob (encrypted reasoning in session
 # files) doesn't count.
 TOKEN_SHAPES = re.compile(r"(?<![A-Za-z0-9_+/=-])(sk-[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9._-]{20,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,})")
@@ -42,7 +51,9 @@ PUBLIC_EMAILS = {"office@providers.dev"}
 # A contributor's own key, read from the environment variable the probe reads it from (never printed).
 KEY_ENVS = ("CACHE_PROBE_KEY", "META_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN")
 # An own client's state folder (<client-home>/<client id>, harness/clients.py) or the probe's temporary folders.
-STATE_FOLDERS = {"claude-code", "codex-cli", "devin-cli", "muse-code", "antigravity-cli"}
+STATE_FOLDERS = {"claude-code", "codex-cli", "devin-cli", "muse-code", "antigravity-cli", "pi-provimux"}
+STATE_PATH = re.compile(r"(?:/[^\s\"'/]+)+/(?:" + "|".join(sorted(STATE_FOLDERS)) + r")(?=[/\s\"']|$)")
+SESSION_DB = re.compile(r"\.(?:db|sqlite|sqlite3|db-wal|db-shm|sqlite-wal|sqlite-shm)$", re.I)
 # A client's own files: its login and its session records.
 CLIENT_FILES = {".claude.json": "Claude Code's settings file", ".credentials.json": "a client's login file",
                 "auth.json": "a client's login file (Codex CLI, Muse Code)", "history.jsonl": "a client's history"}
@@ -67,6 +78,10 @@ def client_findings(path, text):
     if any(p.startswith("groundtruth-") for p in parts[:-1]):
         found.append("inside a probe's temporary folder")
     name = parts[-1]
+    if SESSION_DB.search(name) or text.startswith("SQLite format 3"):
+        found.append("a session database")
+    if any(EMAIL.search(p) for p in parts):
+        found.append("an e-mail address in its name")
     if name in CLIENT_FILES:
         found.append(CLIENT_FILES[name])
     for shape, what in CLIENT_FILE_SHAPES:
@@ -124,6 +139,64 @@ def collect():
     return secrets
 
 
+def fingerprint(value):
+    import hashlib
+    return {"sha256": hashlib.sha256(value.encode()).hexdigest(), "len": len(value), "prefix": value[:6]}
+
+
+def remember(value, what, path=None):
+    """Leave the fingerprint of a value only a child process knows, for the scan at commit time (never the value)."""
+    path = path or FINGERPRINTS
+    if not value or len(value) < 12:
+        return
+    try:
+        with open(path) as f:
+            known = json.load(f)
+    except (OSError, ValueError):
+        known = []
+    fp = {**fingerprint(value), "what": what}
+    if all(k["sha256"] != fp["sha256"] for k in known):
+        known.append(fp)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(known, f)
+        os.chmod(path, 0o600)
+
+
+def fingerprints():
+    try:
+        with open(FINGERPRINTS) as f:
+            return [k for k in json.load(f) if len(k.get("prefix", "")) == 6 and k.get("len", 0) >= 12]
+    except (OSError, ValueError):
+        return []
+
+
+def fingerprint_hits(text, known):
+    import hashlib
+    hits = []
+    for k in known:
+        i = text.find(k["prefix"])
+        while i != -1:
+            if hashlib.sha256(text[i:i + k["len"]].encode()).hexdigest() == k["sha256"]:
+                hits.append(k.get("what", "a child-only value"))
+                break
+            i = text.find(k["prefix"], i + 1)
+    return hits
+
+
+def git_files(repo):
+    """Every file a commit could take: tracked (staged or changed) and untracked, not ignored."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    out = subprocess.run(["git", "-C", repo, "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                         capture_output=True, text=True, env=env)
+    if out.returncode:
+        sys.exit(f"{repo}: git ls-files failed: {out.stderr.strip()}")
+    for p in sorted(set(out.stdout.split("\0")) - {""}):
+        path = os.path.join(repo, p)
+        if os.path.isfile(path):
+            yield path
+
+
 def tracked(folder):
     """The files under `folder` that git tracks (relative paths), or None when `folder` is in no git work tree."""
     # Without the GIT_* variables a hook runs with (GIT_DIR, GIT_INDEX_FILE…): they would answer for the repository
@@ -148,7 +221,8 @@ def files_in(target):
         return
     for root, dirs, names in os.walk(target):
         logs = [d for d in dirs if d == "logs"]
-        dirs[:] = [d for d in dirs if d not in ("logs", ".git", "node_modules") and not d.startswith("work-")]  # never committed
+        # A work-* folder is ignored by git, but in a tree exported from the index everything is about to be published.
+        dirs[:] = [d for d in dirs if d not in ("logs", ".git", "node_modules")]
         for name in names:
             yield os.path.join(root, name)
         for d in logs:
@@ -166,11 +240,20 @@ def main():
     if len(sys.argv) < 2:
         sys.exit(__doc__)
     secrets = collect()
+    known = fingerprints()
+    client_home = os.environ.get("GROUNDTRUTH_CLIENT_HOME")
+    paths = {p for p in (client_home, client_home and os.path.realpath(client_home)) if p and len(p) > 4}
     hits = files = 0
-    for target in sys.argv[1:]:
-        if not os.path.exists(target):
-            sys.exit(f"{target}: no such file or folder")
-        for path in files_in(target):
+    args = sys.argv[1:]
+    if args[0] == "--git":
+        targets = [(args[1], list(git_files(args[1])))]
+    else:
+        for target in args:
+            if not os.path.exists(target):
+                sys.exit(f"{target}: no such file or folder")
+        targets = [(t, None) for t in args]
+    for target, listed in targets:
+        for path in (listed if listed is not None else files_in(target)):
             files += 1
             text = open(path, errors="ignore").read()
             found = []
@@ -183,6 +266,10 @@ def main():
                 found.append("an e-mail address")
             if HOME_PATH.search(text):
                 found.append("a home folder path")
+            if any(p in text for p in paths) or STATE_PATH.search(text):
+                found.append("a state folder's path")
+            for what in fingerprint_hits(text, known):
+                found.append(f"the value of {what} (a child-only value, by its fingerprint)")
             if "pi-sessions" in path.split(os.sep):
                 found.append("a pi session file (holds the whole system prompt: skill names, folder paths)")
             found += client_findings(os.path.relpath(path, target) if os.path.isdir(target) else os.path.basename(path), text)

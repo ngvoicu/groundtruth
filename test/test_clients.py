@@ -376,14 +376,15 @@ class Redaction(unittest.TestCase):
     # Built here, so that this file holds no home path and no e-mail address itself (the scan reads it too).
     HOME = "/" + "Users/someone"
     MAIL = "a.person" + "@" + "example.com"
+    STATE = "/Volumes/measure/campaign/" + "muse-code"
 
     def session(self, tmp, run, keep=None):
         return C.Session(C.Muse("m"), env={"META_API_KEY": self.CANARY, "HOME": self.HOME},
-                         io=tmp + "/io", work=tmp + "/work", run=run, home="/Volumes/measure/campaign/muse-code", keep=keep)
+                         io=tmp + "/io", work=tmp + "/work", run=run, home=self.STATE, keep=keep)
 
     def test_errors_lose_the_child_only_key_and_the_paths(self):
         def run(argv, env, cwd, stdin, timeout):
-            return 1, "", ("context overflow; credential=" + self.CANARY + " state=/Volumes/measure/campaign/muse-code "
+            return 1, "", ("context overflow; credential=" + self.CANARY + " state=" + self.STATE + " "
                            "home=" + self.HOME + "/x mail=" + self.MAIL)
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(C.Refused) as e:

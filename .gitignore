@@ -6,3 +6,19 @@ results/**/logs/
 __pycache__/
 # pi session files hold the whole system prompt (skill names, folder paths): local only
 results/**/work-*/
+# Own clients (docs/own-clients.md): a state folder, a login file, a session database or a work folder is never
+# committed, wherever it lands. harness/scan_secrets.py refuses them too.
+**/claude-code/
+**/codex-cli/
+**/devin-cli/
+**/muse-code/
+**/antigravity-cli/
+**/pi-provimux/
+**/auth.json
+**/.credentials.json
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+**/work-*/

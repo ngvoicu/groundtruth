@@ -309,6 +309,9 @@ def main(argv=None):
     if client.own:
         home = C.state_folder(client, a.client_home, ROOT)
         env = client.environment(home)
+        import scan_secrets
+        for k in client.passthrough:  # a value only the child knows: its fingerprint, for the scan at commit time
+            scan_secrets.remember(env.get(k), k)
     else:
         env = None
     # A new empty working folder outside every repository (a client reads CLAUDE.md / AGENTS.md from the folders above

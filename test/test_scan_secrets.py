@@ -18,9 +18,11 @@ TOKEN = "sk-" + "A1b2" * 6
 def scan(target, cwd, **extra):
     # No key file of this machine is read: every source points at a path that does not exist.
     missing = os.path.join(cwd, "missing")
-    env = {k: v for k, v in os.environ.items() if k != "CACHE_PROBE_KEY" and not k.startswith("GIT_")}
+    env = {k: v for k, v in os.environ.items() if k not in ("CACHE_PROBE_KEY", "GROUNDTRUTH_CLIENT_HOME", "META_API_KEY")
+           and not k.startswith("GIT_")}
+    env.update(SCAN_CLIENT_KEYS=missing, SCAN_KEYS_FILE=missing, SCAN_CONFIG=missing, SCAN_LOGINS=missing + "/*.json",
+               SCAN_FINGERPRINTS=missing + "/fingerprints.json")
     env.update(extra)
-    env.update(SCAN_CLIENT_KEYS=missing, SCAN_KEYS_FILE=missing, SCAN_CONFIG=missing, SCAN_LOGINS=missing + "/*.json")
     return subprocess.run([sys.executable, SCAN, target], capture_output=True, text=True, env=env, cwd=cwd)
 
 
@@ -84,15 +86,18 @@ class LogsFolder(unittest.TestCase):
             self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
             self.assertIn("x.usage.jsonl: something shaped like a token", r.stdout)
 
-    def test_other_skipped_folders_stay_skipped(self):
+    def test_node_modules_stays_skipped_a_work_folder_does_not(self):
+        # A work-* folder is ignored by git, but a tree exported from the index publishes whatever is in it (review).
         with tempfile.TemporaryDirectory() as tmp:
             tree = os.path.join(tmp, "tree")
             write(os.path.join(tree, "ok.txt"), "nothing\n")
             write(os.path.join(tree, "node_modules", "m.js"), TOKEN)
-            write(os.path.join(tree, "work-1", "m.txt"), TOKEN)
             r = scan(tree, tmp)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
             self.assertIn("1 files scanned", r.stdout)
+            write(os.path.join(tree, "work-1", "m.txt"), TOKEN)
+            r = scan(tree, tmp)
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
 
 
 class OwnClients(unittest.TestCase):
@@ -146,6 +151,74 @@ class OwnClients(unittest.TestCase):
                 self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
                 self.assertIn("environment variable " + var, r.stdout)
                 self.assertNotIn(value, r.stdout + r.stderr)
+
+
+sys.path.insert(0, os.path.join(HERE, "..", "harness"))
+import scan_secrets as S  # noqa: E402
+
+
+class Review(unittest.TestCase):
+    """Review finding 3: what cleared the scan (all values synthetic)."""
+
+    CANARY = "reviewonly_opaque_" + "A23" * 8
+
+    def test_a_child_only_value_is_found_by_its_fingerprint(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fp = os.path.join(tmp, "fp.json")
+            S.remember(self.CANARY, "META_API_KEY", path=fp)
+            with open(fp) as f:
+                self.assertNotIn(self.CANARY, f.read())  # the value itself is never written
+            tree = os.path.join(tmp, "tree")
+            write(os.path.join(tree, "results", "night", "client-limits.jsonl"), '{"message": "credential=%s"}\n' % self.CANARY)
+            r = scan(tree, tmp, SCAN_FINGERPRINTS=fp)
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+            self.assertIn("the value of META_API_KEY", r.stdout)
+            self.assertNotIn(self.CANARY, r.stdout + r.stderr)
+
+    def test_a_state_folders_path_is_found(self):
+        state = "/Volumes/measure/" + "campaign"
+        with tempfile.TemporaryDirectory() as tmp:
+            tree = os.path.join(tmp, "tree")
+            write(os.path.join(tree, "a.jsonl"), '{"error": "state=%s/muse-code"}\n' % state)
+            r = scan(tree, tmp)
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+            self.assertIn("state folder's path", r.stdout)
+            write(os.path.join(tree, "a.jsonl"), '{"error": "state=%s"}\n' % state)
+            r = scan(tree, tmp, GROUNDTRUTH_CLIENT_HOME=state)
+            self.assertIn("state folder's path", r.stdout)
+
+    def test_session_databases_names_with_an_e_mail_and_auth_json_in_a_work_folder(self):
+        cases = {"results/night/sessions.db": "SQLite format 3\x00 data",
+                 "results/night/" + "someone" + "@" + "example.com" + ".txt": "nothing",
+                 "notes/work-review/" + "codex-cli/auth.json": '{"x": 1}'}
+        for rel, text in cases.items():
+            with self.subTest(rel=rel), tempfile.TemporaryDirectory() as tmp:
+                tree = os.path.join(tmp, "tree")
+                write(os.path.join(tree, rel), text)
+                r = scan(tree, tmp)
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+
+    def test_git_mode_scans_staged_changed_and_untracked_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = os.path.join(tmp, "repo")
+            git(tmp, "init", "-q", root)
+            write(os.path.join(root, "ok.txt"), "fine\n")
+            write(os.path.join(root, "notes", "untracked.txt"), "Bearer " + TOKEN[3:] + "\n")
+            git(root, "add", "ok.txt")
+            r = subprocess.run([sys.executable, SCAN, "--git", root], capture_output=True, text=True, cwd=tmp,
+                               env={**os.environ, "SCAN_CLIENT_KEYS": tmp + "/m", "SCAN_KEYS_FILE": tmp + "/m",
+                                    "SCAN_CONFIG": tmp + "/m", "SCAN_LOGINS": tmp + "/m/*.json",
+                                    "SCAN_FINGERPRINTS": tmp + "/m/f.json"})
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+            self.assertIn("untracked.txt", r.stdout)
+            self.assertIn("2 files scanned", r.stdout)
+
+    def test_the_ignore_rules_cover_them(self):
+        repo = os.path.join(HERE, "..")
+        for rel in ("results/night/" + "codex-cli/auth.json", "notes/work-review/" + "codex-cli/auth.json", "results/night/sessions.db",
+                    "results/x/" + "pi-provimux/settings.json", "anything/auth.json"):
+            r = subprocess.run(["git", "-C", repo, "check-ignore", "-q", "--no-index", "--", rel], capture_output=True)
+            self.assertEqual(r.returncode, 0, rel)
 
 
 if __name__ == "__main__":
