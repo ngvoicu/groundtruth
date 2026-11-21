@@ -23,10 +23,11 @@ A login's quota is the account's: the night and the owner's own work draw on the
 plans' meters are low; for Claude Code this matters twice, because in overage it writes the 5-minute cache and the
 run stops (`tier-changed`) and is not published.
 
-**Devin's account history.** Devin may list the night's sessions in the owner's Devin account, those of the Devin
-CLI and possibly those of pi through Provimux: about 1,700 sessions (about 90 per run). Every one of them starts with
-the line `groundtruth cache measurement <salt> (an automated test, not a task).`, so they can be told apart from the
-owner's work; the Devin CLI has no option to name a session. Nothing here deletes them.
+**Devin's account history.** The night's Devin sessions will appear in the owner's Devin account history (accepted
+by the owner on 2026-11-22): those of the Devin CLI, and possibly those of pi through Provimux, about 1,700 sessions
+(about 90 per run). The Devin CLI (3000.14) has no option to set a session's title or name, so every session's first
+line is the label: `groundtruth cache measurement <salt> (an automated test, not a task).` It tells them apart from
+the owner's work. Nothing here deletes them.
 
 **From step 1 to the end of the night, nobody uses Claude Code, Codex, the Devin CLI, Muse Code or pi on this
 computer** (no agent either): the everyday folders and the Keychain are compared with step 1's snapshot before every
