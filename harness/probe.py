@@ -78,9 +78,18 @@ def list_block(salt, words):
 FILLERS = {"random": unique_block, "list": list_block}
 
 
+# The first line of every new session names the measurement, so that a vendor that lists sessions in the account
+# (Devin) shows them as groundtruth's, not as the owner's work.
+FIRST_LINE = "groundtruth cache measurement {salt} (an automated test, not a task)."
+
+
+def baseline_prompt(salt):
+    return FIRST_LINE.format(salt=salt) + "\n" + OK_PROMPT
+
+
 def prime_prompt(salt, words, filler="random"):
-    return (f"Reference document {salt}, keep it for later. Do not use any tools. Reply with OK only.\n\n<doc>\n"
-            + FILLERS[filler](salt, words) + "\n</doc>")
+    return (FIRST_LINE.format(salt=salt) + f"\nReference document {salt}, keep it for later. Do not use any tools. "
+            "Reply with OK only.\n\n<doc>\n" + FILLERS[filler](salt, words) + "\n</doc>")
 
 
 class Clock:
@@ -175,7 +184,7 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
         return warm
 
     try:
-        b = prime(OK_PROMPT, "baseline", 0)
+        b = prime(baseline_prompt(salt), "baseline", 0)
         if not b:
             raise Stop("baseline-failed")
         baseline = b[1]["total"]

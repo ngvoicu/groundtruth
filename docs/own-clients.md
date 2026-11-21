@@ -4,6 +4,27 @@ A design, written on 2026-11-22. Nothing in it has been run: no request was sent
 It says how groundtruth measures each login through the client its vendor ships, how OpenRouter's proxy-only
 entries are measured again directly, what changes in `observed.json`, which runs are owed and what has to be built.
 
+**Since the review of the build (2026-11-22).** What changed against the text below, as built on this branch:
+
+- **The first night is narrowed** (the chief's decision): no input limit through an own client. The limits walks of
+  4.4 and the refused request of each smoke run (4.2) are out of the plan; `harness/client_limits.py` stays, not yet
+  trusted, and `scripts/build_observed.py` publishes no own-client limits row. A login's input limits stay the
+  proxy's. The OpenRouter windows of 4.1 stay.
+- **The parity design's measuring rules** (Provimux, `.github/provimux/design/client-parity.md`, section 4.5): M-1, the
+  same model variant on both sides of a pair, a Devin id with its effort suffix given to Provimux as it is; M-2, the
+  Devin CLI with `--process-model in-process` and `DEVIN_CACHE_KEEPALIVE_MAX_PINGS=0`, both recorded; M-3, an age's
+  samples primed in three waves at least five minutes apart; M-4, a pi run records the Provimux build, pi's version,
+  pi-provimux's commit, the transport and the payload rules. The pairs of its section 7 are in the plan (without
+  CX-3's second run, without CX-S (b), and without Antigravity), each pi run started beside its own-client run, pi
+  from a state folder of its own.
+- **Claude Code's own retries** are switched off with `CLAUDE_CODE_MAX_RETRIES=0` (a variable of the 2.1.330
+  binary); every Claude run records it and that a check may hide a retry if the client does not honour it.
+- **Every new session's first line** names the measurement (`groundtruth cache measurement <salt> (an automated test,
+  not a task).`), so that sessions a vendor lists in the account (Devin) can be told apart from the owner's work.
+- **The everyday state** is compared to its depth: path, size and modification time of everything under the
+  clients' and pi's everyday folders, and the Keychain's item names, from a snapshot taken before the logins.
+- **The TypeScript probe** (0.3.5) sends a check and the control's re-send once.
+
 ## Why
 
 providers.dev publishes, for each value, the most direct measurement that exists for its route:
@@ -460,6 +481,8 @@ tokens, and the next one waits for a decision.
 
 ### 4.2 The smoke runs (before any login's batch)
 
+*First night: the baseline and the control only, no request above the window (the limits walks are out).*
+
 One model per client: the baseline, one sample checked at 30 seconds, one request far above the window. Three
 answered requests and one refused. They settle every *(open)* of section 1 and give the test fixtures of section
 5. They are published in the folder and listed in `excluded`.
@@ -502,6 +525,8 @@ are measured again: two samples per age, no 2.5-minute age and an unrecorded pro
 should rest on.
 
 ### 4.4 Input limits through the own clients (after 4.3, and after decision 3)
+
+*Not in the first night (the chief's decision of 2026-11-22): `harness/client_limits.py` is not yet trusted.*
 
 Per model: one request far above the window (free), and, where the provider's answer names the window, one
 accepted request about 1,000 tokens under it. Where it names nothing: one small accepted request, one accepted

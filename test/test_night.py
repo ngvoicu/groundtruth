@@ -288,6 +288,9 @@ class Everyday(unittest.TestCase):
         self.assertFalse(self.check())
         night.untouched("2099-03-01", "accept", user_home=self.user, lister=self.lister(), out=lambda *_: None)
         self.assertTrue(self.check())
+        # its token is refreshed during the night: still the night's own
+        self.keychain.append('    "mdat"<timedate>=0x3230323631313233  "20261123010000Z\\000"')
+        self.assertTrue(self.check())
 
     def test_the_launcher_stops_on_a_difference(self):
         night.untouched("2099-03-01", "save", user_home=self.user, lister=self.lister(), out=lambda *_: None)

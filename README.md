@@ -133,12 +133,16 @@ works in a **new empty folder** under the system's temporary folder, and gets a 
 URL, proxy or cache switch of the caller's shell reaches it. The run file records the client's version and
 `isolation`, never a path. `--dry-run` prints the commands and sends nothing.
 
-`harness/client_limits.py` walks an input size through the same clients: one request far above the window (refused,
-so free), and an accepted one under the window the refusal names. Only a refusal from the provider makes a row:
-Codex CLI caps a message at 1,048,576 characters before sending it, so that login's input limit stays measured
-through the proxy. `harness/night.py` holds the run plan of [`docs/own-clients.md`](docs/own-clients.md), section 4, as
-commands; `--dry-run` prints each one with its tool's own dry run and sends nothing
-([`docs/own-clients-RUN.md`](docs/own-clients-RUN.md) has the owner's steps).
+A pi run through Provimux, the other side of a parity pair, runs the same way from a state folder of its own and
+records the Provimux build, pi's version, pi-provimux's commit, the transport and the payload rules in force. An age's
+samples are primed in three waves at least five minutes apart; the Devin CLI runs in-process with its cache keepalive
+off; Claude Code's own retries are switched off. Every new session's first line names the measurement.
+
+`harness/client_limits.py` walks an input size through the same clients. It is **not yet trusted**: no own-client
+input limit is published, and a login's input limits stay the proxy's. `harness/night.py` holds the run plan of
+[`docs/own-clients.md`](docs/own-clients.md), section 4, as commands; `--dry-run` prints each one with its tool's own
+dry run and sends nothing, and nothing is sent without `--go` ([`docs/own-clients-RUN.md`](docs/own-clients-RUN.md)
+has the owner's steps).
 
 ## observed.json
 
@@ -203,8 +207,8 @@ subscription routes that have no public API (a ChatGPT plan through Codex, Devin
   - `output_accepted`: the largest output cap a request was answered with.
   - `date`: the day the requests were sent (`YYYY-MM-DD`). `note`: what the numbers do not say.
 
-  An own client's row needs `context` or `input_refused`: a walk that ended at a cap of the client's own gives no
-  row.
+  No own-client row is published for now; when they are, a row needs `context` or `input_refused` from the
+  provider's own refusal, and only rows its own client wrote back it.
 
   `scripts/build_observed.py` refuses a row that providers.dev would refuse: two rows for one route, client and
   model, a refusal without an accepted size, an accepted size not below the refused one or above the named window,

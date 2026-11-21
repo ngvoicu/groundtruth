@@ -301,13 +301,22 @@ def compare_everyday(before, now):
             lines.append(f"added: {p}")
         elif bf[p] != nf[p]:
             lines.append(f"changed: {p}")
+    # An item the owner accepted as the night's own (a state folder's login) may change: its token is refreshed.
     accepted = set(before.get("keychain_accepted", []))
     bk, nk = set(before["keychain"]), set(now["keychain"])
     for item in sorted(bk - nk):
         lines.append(f"Keychain item removed or changed: {describe_item(item)}")
-    for item in sorted(nk - bk - accepted):
-        lines.append(f"Keychain item added or changed: {describe_item(item)}")
+    for item in sorted(nk - bk):
+        if identity(item) not in accepted:
+            lines.append(f"Keychain item added or changed: {describe_item(item)}")
     return lines
+
+
+def identity(item):
+    """An item without its modification date."""
+    d = json.loads(item)
+    d.pop("mdat", None)
+    return json.dumps(d, sort_keys=True)
 
 
 def describe_item(item):
@@ -333,7 +342,7 @@ def untouched(date, mode, user_home=None, lister=None, out=print):
         before = json.load(f)
     changed = compare_everyday(before, now)
     if mode == "accept":
-        added = sorted(set(now["keychain"]) - set(before["keychain"]))
+        added = sorted(identity(i) for i in set(now["keychain"]) - set(before["keychain"]))
         if [c for c in changed if not c.startswith("Keychain item added")]:
             out("\n".join(changed))
             raise SystemExit("untouched: something else changed too; nothing accepted")

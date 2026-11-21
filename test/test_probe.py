@@ -43,7 +43,7 @@ class FakeClient:
         handle = f"s{n}"
         self.primed[handle] = self.clock.now()
         self.clock.t += self.prime_took.get(n, self.took)
-        total = SHARED + (0 if prompt == probe.OK_PROMPT else BLOCK)
+        total = SHARED + (0 if "<doc>" not in prompt else BLOCK)
         u = {"total": total, "cached": SHARED if n else 0, "write": total - SHARED, "calls": 1}
         if n in self.write_ttl:
             u["write_" + self.write_ttl[n]] = BLOCK
@@ -295,6 +295,11 @@ class Fillers(unittest.TestCase):
             self.assertNotEqual(a, b)
             self.assertNotIn("x-2", a)
         self.assertIn("1. Entry 1 of list x-1", probe.prime_prompt("x-1", 600, "list"))
+
+    def test_every_new_session_names_groundtruth_first(self):
+        # A vendor that lists sessions in the account (Devin) shows them as groundtruth's.
+        for prompt in (probe.prime_prompt("x-1", 60), probe.baseline_prompt("x")):
+            self.assertTrue(prompt.startswith("groundtruth cache measurement"))
 
     def test_custom_ages_join_the_start_of_the_ladder(self):
         ages, labels = probe.ages_of("std", "10m,15m")
