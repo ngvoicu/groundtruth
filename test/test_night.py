@@ -43,13 +43,19 @@ class Plan(unittest.TestCase):
                  "P-CX4": ("gpt-6.1-terra", "CX-1"), "P-CX3": ("gpt-6.1-sol", "CX-2"), "P-CX1": ("gpt-6.2-sol", "CX-3"),
                  "P-DV1": ("devin/claude-opus-5-5-low", "DV-1"), "P-DV9": ("devin/glm-5-3-low", "DV-2"),
                  "P-DV11": ("devin/nemotron-3-5-super-none", "DV-3"), "P-DV14": ("devin/grok-4-7-low", "DV-4"),
-                 "P-DV5": ("devin/gpt-6-1-terra-low", "DV-6"), "P-MC1": ("muse-wonder-1.0", "MC-1 (without the 24 h rule)"),
-                 "P-MC1b": ("muse-wonder-1.0", "MC-1 (with the 24 h rule)")}
+                 "P-DV5": ("devin/gpt-6-1-terra-low", "DV-6"), "P-MC1": ("muse-wonder-1.0", "MC-1")}
         for pid, (model, pair) in pairs.items():
             step = night.ALL_STEPS[pid]
             self.assertEqual((step["harness"], step["model"], step["pair"]), ("pi", model, pair))
         # one pi run per pair, CX-3 once (its second run, under Provimux's own name, is skipped)
-        self.assertEqual(len([s for s in night.ALL_STEPS.values() if s.get("harness") == "pi" and s["kind"] == "probe"]), 12)
+        self.assertEqual(len([s for s in night.ALL_STEPS.values() if s.get("harness") == "pi" and s["kind"] == "probe"]), 11)
+        # no Meta rule switch: no second MC-1 pi run, no part that waits for one
+        self.assertNotIn("P-MC1b", night.ALL_STEPS)
+        self.assertNotIn("muse-rule", night.PARTS)
+        # each pi run records the payload section of Provimux's configuration given to night.py
+        argv = night.command(night.ALL_STEPS["P-MC1"], "d")
+        self.assertEqual(argv[argv.index("--provimux-config") + 1], night.PROVIMUX_CONFIG)
+        self.assertNotIn("--provimux-config", night.command(night.ALL_STEPS["MC1"], "d"))
         # a pi run takes its own-client run's schedule and filler, and starts right after it
         for own, pi in (("CC3", "P-CC3"), ("CX4", "P-CX4"), ("DV11", "P-DV11"), ("MC1", "P-MC1")):
             a, b = night.ALL_STEPS[own]["args"], night.ALL_STEPS[pi]["args"]
@@ -218,7 +224,10 @@ class Launcher(unittest.TestCase):
         night.guard(["openrouter"], night.select(["openrouter"]), "2099-02-04")  # no login: no smoke needed
         os.makedirs(night.night_dir("2099-02-04"))
         open(night.reviewed_path("2099-02-04"), "w").close()
-        night.guard(["claude"], night.select(["claude"]), "2099-02-04")
+        with self.assertRaisesRegex(SystemExit, "pi-setup"):
+            night.guard(["claude"], night.select(["claude"]), "2099-02-04")  # P-CC3, P-CC4 need pi's folder
+        with mock.patch.object(night, "pi_ready", return_value=True):
+            night.guard(["claude"], night.select(["claude"]), "2099-02-04")
 
     def test_stop_finds_each_runs_pid_folder_and_checks_the_process(self):
         for sid, folder in (("S1", "smoke"), ("OR1", "or"), ("CC1", "own")):
@@ -232,6 +241,246 @@ class Launcher(unittest.TestCase):
             self.assertEqual(killed, [4242])
             with self.assertRaisesRegex(SystemExit, "not this run"):
                 night.stop(sid, "2099-02-05", ps=lambda p: "some other program", killpg=lambda p, s: killed.append(p))
+
+
+class PiSetup(unittest.TestCase):
+    """`pi-setup`: pi's folder made with pi's own `pi install`, under GROUNDTRUTH_CLIENT_HOME, never from ~/.pi."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        t = self.tmp.name
+        self.home, self.user, self.src = os.path.join(t, "client-home"), os.path.join(t, "person"), os.path.join(t, "pkg")
+        os.makedirs(os.path.join(self.user, ".pi", "agent"))
+        with open(os.path.join(self.user, ".pi", "agent", "cliproxyapi.json"), "w") as f:
+            f.write('{"apiKey": "everyday-key-never-read"}')
+        os.makedirs(self.home)
+        os.makedirs(self.src)
+        with open(os.path.join(self.src, "package.json"), "w") as f:
+            json.dump({"name": "pi-provimux", "pi": {"extensions": ["./extensions/index.ts"]}}, f)
+        p = mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": self.home, "PI_PROVIMUX_DIR": self.src})
+        p.start()
+        self.addCleanup(p.stop)
+        self.calls = []
+
+    def fake_pi(self, argv, env, cwd, **kw):
+        # What `pi install <path>` does with PI_CODING_AGENT_DIR: the path in that folder's settings.json.
+        self.calls.append((argv, env))
+        with open(os.path.join(env["PI_CODING_AGENT_DIR"], "settings.json"), "w") as f:
+            json.dump({"packages": [argv[2]]}, f)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    def test_it_installs_with_pi_into_its_own_folder_and_stores_no_key(self):
+        night.pi_setup(run=self.fake_pi, user_home=self.user, out=lambda *_: None)
+        (argv, env), = self.calls
+        folder = os.path.join(self.home, "pi-provimux")
+        self.assertEqual(argv, ["pi", "install", os.path.realpath(self.src)])
+        self.assertEqual(env["PI_CODING_AGENT_DIR"], folder)
+        self.assertEqual(env["PI_OFFLINE"], "1")
+        for k in env:
+            self.assertNotIn("KEY", k)
+        with open(os.path.join(folder, "cliproxyapi.json")) as f:
+            cfg = json.load(f)
+        self.assertEqual(cfg, {"baseUrl": "http://127.0.0.1:8317", "fast": False, "pause": False})
+        self.assertTrue(night.pi_ready())
+        night.pi_setup(run=self.fake_pi, user_home=self.user, out=lambda *_: None)
+        self.assertEqual(len(self.calls), 1, "a second setup installs nothing again")
+        for root, _, files in os.walk(self.home):
+            for name in files:
+                with open(os.path.join(root, name)) as f:
+                    self.assertNotIn("everyday-key-never-read", f.read())
+
+    def test_a_folder_that_leaves_the_client_home_is_refused(self):
+        os.symlink(os.path.join(self.user, ".pi", "agent"), os.path.join(self.home, "pi-provimux"))
+        with self.assertRaisesRegex(SystemExit, "not under GROUNDTRUTH_CLIENT_HOME"):
+            night.pi_setup(run=self.fake_pi, user_home=self.user, out=lambda *_: None)
+        self.assertEqual(self.calls, [])
+
+    def test_the_package_is_never_taken_from_pi_s_folder(self):
+        os.environ["PI_PROVIMUX_DIR"] = os.path.join(self.user, ".pi", "agent")
+        with self.assertRaisesRegex(SystemExit, "never ~/.pi"):
+            night.pi_setup(run=self.fake_pi, user_home=self.user, out=lambda *_: None)
+
+    def test_a_key_in_the_folder_is_refused(self):
+        os.makedirs(os.path.join(self.home, "pi-provimux"))
+        with open(os.path.join(self.home, "pi-provimux", "cliproxyapi.json"), "w") as f:
+            f.write('{"apiKey": "x"}')
+        with self.assertRaisesRegex(SystemExit, "holds a key"):
+            night.pi_setup(run=self.fake_pi, user_home=self.user, out=lambda *_: None)
+
+    def test_the_night_refuses_pi_runs_before_the_setup(self):
+        os.makedirs(night.night_dir("2099-04-01"))
+        open(night.reviewed_path("2099-04-01"), "w").close()
+        with self.assertRaisesRegex(SystemExit, "pi-setup"):
+            night.guard(["night"], night.select(["night"]), "2099-04-01")
+
+
+class Supervisor(unittest.TestCase):
+    """`--go night`: one detached supervisor; claude-5m when CC1 - CC4 have ended; status; stop all."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = os.path.join(self.tmp.name, "repo")
+        self.home = os.path.join(self.tmp.name, "client-home")
+        os.makedirs(self.root)
+        os.makedirs(self.home)
+        for x in (mock.patch.object(night, "ROOT", self.root),
+                  mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": self.home})):
+            x.start()
+            self.addCleanup(x.stop)
+        self.date = "2099-05-01"
+        os.makedirs(night.night_dir(self.date))
+        open(night.reviewed_path(self.date), "w").close()
+
+    def finish(self, sid, event="done"):
+        step = night.ALL_STEPS[sid]
+        folder = os.path.join(self.root, night.folder_of(step, self.date))
+        os.makedirs(folder, exist_ok=True)
+        with open(os.path.join(folder, sid + ".jsonl"), "a") as f:
+            f.write(json.dumps({"event": "start"}) + "\n" + json.dumps({"event": event, "reason": "quota"}) + "\n")
+
+    def test_the_parts_in_order_then_claude_5m_when_cc1_to_cc4_have_ended(self):
+        launched, polls, finished = [], [], set()
+        logs = os.path.join(self.root, night.folders(self.date)["own"], "logs")
+
+        def go_(steps, date, out):
+            launched.append(night.PART_OF[steps[0]["id"]])
+            os.makedirs(logs, exist_ok=True)
+            for s in steps:
+                if s["id"] in ("CC1", "CC2", "CC3", "CC4"):
+                    with open(os.path.join(logs, s["id"] + ".pid"), "w") as f:
+                        f.write(s["id"][2:] + "\n")
+
+        def ps(pid):
+            sid = "CC" + str(pid)
+            return "" if sid in finished else f"python3 probe.py --label {sid} --out x"
+
+        def sleep(s):
+            polls.append(s)
+            sid = ("CC1", "CC2", "CC3", "CC4")[min(len(polls), 4) - 1]
+            finished.add(sid)
+            self.finish(sid)
+        with mock.patch.object(night, "untouched", return_value=True):
+            self.assertTrue(night.supervise(self.date, go_=go_, sleep=sleep, ps=ps, out=lambda *_: None))
+        self.assertEqual(launched, ["openrouter", "claude", "codex", "codex-plain", "devin", "muse", "windows", "claude-5m"])
+        self.assertEqual(len(polls), 4, "claude-5m waited until CC1 - CC4 had ended")
+
+    def test_devin_terra_pi_goes_only_if_s3b_saw_cached_tokens(self):
+        self.assertNotIn("devin-terra-pi", night.night_parts(self.date))
+        folder = os.path.join(self.root, night.folders(self.date)["smoke"])
+        os.makedirs(folder)
+        with open(os.path.join(folder, "S3b.jsonl"), "w") as f:
+            f.write(json.dumps({"event": "check", "usage": {"total": 9000, "cached": 0}}) + "\n")
+        self.assertNotIn("devin-terra-pi", night.night_parts(self.date))
+        with open(os.path.join(folder, "S3b.jsonl"), "a") as f:
+            f.write(json.dumps({"event": "check", "usage": {"total": 9000, "cached": 8800}}) + "\n")
+        self.assertIn("devin-terra-pi", night.night_parts(self.date))
+
+    def test_a_part_that_cannot_start_lets_the_next_go_on_but_an_everyday_change_stops_all(self):
+        launched = []
+
+        def go_(steps, date, out):
+            part = night.PART_OF[steps[0]["id"]]
+            launched.append(part)
+            if part == "openrouter":
+                raise SystemExit("OR3: would pass the 4.00 USD stop")
+            if part == "devin":
+                raise night.NightStop("the everyday folders changed")
+        lines = []
+        self.assertFalse(night.supervise(self.date, go_=go_, sleep=lambda s: None, ps=lambda p: "", out=lines.append))
+        self.assertEqual(launched, ["openrouter", "claude", "codex", "codex-plain", "devin"])
+        self.assertTrue(any("STOPPED" in x for x in lines))
+
+    def test_every_launch_compares_the_everyday_state_first(self):
+        compares = []
+
+        def untouched(date, mode, out=print, **kw):
+            compares.append(mode)
+            return len(compares) < 2
+
+        def popen(argv, **kw):
+            return SimpleNamespace(pid=300)
+        with mock.patch.object(night, "untouched", untouched), mock.patch.object(night, "keychain", return_value="k"), \
+                mock.patch.object(night.scan_secrets, "remember"), self.assertRaises(night.NightStop):
+            night.go(night.select(["CC1", "CC2"]), self.date, popen=popen, sleep=lambda s: None, out=lambda *_: None)
+        self.assertEqual(compares, ["compare", "compare"])
+        self.assertTrue(night.done(night.ALL_STEPS["CC1"], self.date))
+        self.assertFalse(night.done(night.ALL_STEPS["CC2"], self.date))
+
+    def test_pi_runs_get_provimux_s_key_in_the_variable_pi_provimux_reads(self):
+        envs = {}
+
+        def popen(argv, env, **kw):
+            envs[argv[argv.index("--label") + 1]] = env
+            return SimpleNamespace(pid=301)
+        with mock.patch.object(night, "keychain", side_effect=lambda item: "value of " + item), \
+                mock.patch.object(night.scan_secrets, "remember"), \
+                mock.patch.dict(os.environ, {"CLIPROXYAPI_API_KEY": "the shell's"}):
+            night.go(night.select(["CC3", "P-CC3"]), self.date, popen=popen, sleep=lambda s: None,
+                     check_everyday=False, out=lambda *_: None)
+        self.assertEqual(envs["P-CC3"]["CLIPROXYAPI_API_KEY"], "value of groundtruth PROVIMUX_KEY")
+        self.assertNotIn("CLIPROXYAPI_API_KEY", envs["CC3"])
+
+    def test_go_night_starts_one_detached_supervisor(self):
+        started = []
+
+        def popen(argv, **kw):
+            started.append((argv, kw))
+            return SimpleNamespace(pid=4321)
+        with mock.patch.object(night, "pi_ready", return_value=True), \
+                mock.patch.object(night, "untouched", return_value=True):
+            night.launch_night(self.date, popen=popen, out=lambda *_: None, ps=lambda p: "")
+            (argv, kw), = started
+            self.assertEqual(argv[:3], ["nohup", "caffeinate", "-i"])
+            self.assertEqual(argv[-1], "supervise")
+            self.assertTrue(kw["start_new_session"])  # its own session: closing the terminal does not end it
+            self.assertEqual(kw["env"]["GROUNDTRUTH_NIGHT_SUPERVISOR"], "1")
+            running = lambda p: f"python3 harness/night.py --date {self.date} --provimux-config x supervise"  # noqa: E731
+            with self.assertRaisesRegex(SystemExit, "runs already"):
+                night.launch_night(self.date, popen=popen, out=lambda *_: None, ps=running)
+        with mock.patch.object(night, "pi_ready", return_value=True), \
+                mock.patch.object(night, "untouched", return_value=False), \
+                self.assertRaisesRegex(SystemExit, "nothing started"):
+            os.remove(os.path.join(night.logs_dir(self.date), "supervisor.pid"))
+            night.launch_night(self.date, popen=popen, out=lambda *_: None, ps=lambda p: "")
+        self.assertEqual(len(started), 1)
+
+    def test_supervise_only_from_go_night(self):
+        with self.assertRaisesRegex(SystemExit, "--go night"):
+            night.main(["--date", self.date, "supervise"])
+
+    def test_status_says_what_runs_what_is_done_what_failed(self):
+        self.finish("CC1")
+        self.finish("CC2", event="stop")
+        logs = os.path.join(self.root, night.folders(self.date)["own"], "logs")
+        os.makedirs(logs, exist_ok=True)
+        for sid, pid in (("CC3", 501), ("CC4", 502)):
+            with open(os.path.join(logs, sid + ".pid"), "w") as f:
+                f.write(f"{pid}\n")
+        ps = lambda p: "caffeinate -i python3 probe.py --label CC3 --out x" if str(p) == "501" else ""  # noqa: E731
+        lines = []
+        counts = night.status(self.date, ps=ps, out=lines.append)
+        text = "\n".join(lines)
+        self.assertIn("supervisor: not running", text)
+        self.assertRegex(text, r"CC1 +done")
+        self.assertRegex(text, r"CC2 +failed  stop: quota")
+        self.assertRegex(text, r"CC3 +running  pid 501")
+        self.assertRegex(text, r"CC4 +failed  ended without")
+        self.assertEqual((counts["done"], counts["failed"], counts["running"]), (1, 2, 1))
+
+    def test_stop_all_stops_the_supervisor_first_then_every_running_run(self):
+        logs = os.path.join(self.root, night.folders(self.date)["own"], "logs")
+        os.makedirs(logs, exist_ok=True)
+        for name, pid in (("supervisor", 600), ("CC3", 601), ("DV1", 602)):
+            with open(os.path.join(logs, name + ".pid"), "w") as f:
+                f.write(f"{pid}\n")
+        table = {"600": f"python3 harness/night.py --date {self.date} --provimux-config x supervise",
+                 "601": "python3 probe.py --label CC3 --out y", "602": "something else now"}
+        killed = []
+        night.stop_all(self.date, ps=lambda p: table.get(str(p), ""), killpg=lambda p, s: killed.append(p),
+                       out=lambda *_: None)
+        self.assertEqual(killed, [600, 601])  # DV1's pid was reused: left alone
 
 
 class Everyday(unittest.TestCase):
