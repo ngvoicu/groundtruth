@@ -315,6 +315,12 @@ def main(argv=None):
     # it), kept until the last check: a session is resumed from the folder it was started in.
     tmp = tempfile.mkdtemp(prefix=f"groundtruth-{a.label}-")
     try:
+        # The working folder must be outside every checkout (a client reads CLAUDE.md / AGENTS.md above it), whatever
+        # TMPDIR says.
+        C.check_folder("the working folder (TMPDIR)", tmp, ROOT, os.path.realpath(os.path.expanduser("~")))
+        if env is not None:
+            os.makedirs(os.path.join(tmp, "tmp"))
+            env["TMPDIR"] = os.path.join(tmp, "tmp")
         session = C.Session(client, env=env, io=os.path.join(tmp, "io"), work=os.path.join(tmp, "work"),
                             home=home, keep=keep)
         start.update(client_version=client.version(env),

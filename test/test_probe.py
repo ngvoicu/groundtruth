@@ -212,6 +212,28 @@ class Main(unittest.TestCase):
         self.assertFalse(os.path.exists("/nonexistent/out"))
 
 
+class WorkFolder(unittest.TestCase):
+    def test_a_working_folder_inside_a_checkout_is_refused(self):
+        # Review finding 1: a repository-local TMPDIR put the client's working folder inside the checkout.
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as t:
+            repo_tmp = os.path.join(probe.ROOT, ".probe-test-tmp-" + os.path.basename(t))
+            os.makedirs(repo_tmp)
+            try:
+                with mock.patch.object(tempfile, "tempdir", repo_tmp), \
+                        mock.patch.object(C, "state_folder", return_value=t), \
+                        mock.patch.object(C.Codex, "version", return_value="x"), \
+                        mock.patch.object(probe, "run_probe") as rp:
+                    with self.assertRaisesRegex(SystemExit, "inside the repository"):
+                        probe.main(["--harness", "codex", "--model", "m", "--replicas", "0", "--label", "w",
+                                    "--out", os.path.join(t, "out")])
+                    rp.assert_not_called()
+            finally:
+                import shutil
+                shutil.rmtree(repo_tmp, ignore_errors=True)
+
+
 class Effort(unittest.TestCase):
     def start(self, *args):
         import io

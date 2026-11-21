@@ -419,30 +419,103 @@ class Pi(Client):
 CLIENTS = {c.harness: c for c in (Claude, Codex, Devin, Muse, Pi)}
 
 
+# Every client's everyday folders, and pi's: no state folder lies in any of them, whichever client it is for.
+EVERYDAY = ("~/.claude", "~/.claude.json", "~/.codex", "~/.devin", "~/.muse", "~/.pi", "~/.config", "~/.local/share",
+            "~/.local/state", "~/.cache", "~/Library/Application Support", "~/Library/Keychains")
+
+
+def inside(path, folder):
+    return path == folder or path.startswith(folder.rstrip(os.sep) + os.sep)
+
+
+def in_git_checkout(path):
+    """The work tree that holds `path` (a folder with .git above it), or None."""
+    p = os.path.realpath(path)
+    while True:
+        if os.path.exists(os.path.join(p, ".git")):
+            return p
+        parent = os.path.dirname(p)
+        if parent == p:
+            return None
+        p = parent
+
+
+def links_out(folder):
+    """Symbolic links under `folder`, at any depth, whose target leaves it (or does not resolve)."""
+    real, out = os.path.realpath(folder), []
+    for d, dirs, files in os.walk(folder, followlinks=False):
+        for name in dirs + files:
+            p = os.path.join(d, name)
+            if os.path.islink(p) and not inside(os.path.realpath(p), real):
+                out.append(os.path.relpath(p, folder))
+    return sorted(out)
+
+
+def check_folder(what, path, root, user_home):
+    """A folder the run writes to: outside the repository, any Git checkout and every everyday folder."""
+    real = os.path.realpath(path)
+    if real == user_home or any(inside(real, os.path.realpath(user_home + d[1:])) for d in EVERYDAY):
+        raise SystemExit(f"{what} is an everyday folder of a client or of pi (or inside one)")
+    if inside(real, os.path.realpath(root)):
+        raise SystemExit(f"{what} is inside the repository")
+    checkout = in_git_checkout(real)
+    if checkout:
+        raise SystemExit(f"{what} is inside a Git checkout")
+
+
+def login_ok(client, code, out, err):
+    """None when the status output shows the login the route needs (a subscription, never an API key), else why not."""
+    text = f"{out or ''}\n{err or ''}"
+    if code:
+        return f"the status command exited {code}"
+    if client.harness == "claude":
+        try:
+            st = json.loads(out)
+        except ValueError:
+            return "the status output is not JSON"
+        method = str(st.get("authMethod") or "")
+        if not st.get("loggedIn"):
+            return "not logged in"
+        if method not in ("claude.ai", "claudeai", "claude_ai", "oauth"):
+            return f"logged in with {method or 'an unknown method'}, not a Claude subscription"
+        if st.get("apiProvider") not in (None, "firstParty", "anthropic"):
+            return f"routed through {st.get('apiProvider')}, not Anthropic"
+        return None
+    if client.harness == "codex":
+        if re.search(r"api[ _-]?key", text, re.I):
+            return "logged in with an API key, not a ChatGPT plan"
+        if not re.search(r"logged in using chatgpt", text, re.I):
+            return "the status does not say 'Logged in using ChatGPT'"
+        return None
+    if re.search(r"api[ _-]?key", text, re.I):
+        return "the status names an API key"
+    return None
+
+
 def state_folder(client, base, root, user_home=None, env=None, run=None, check_login=True):
-    """The client's state folder, `<base>/<client id>`, or SystemExit: it must exist, be none of the client's everyday
-    folders (nor inside one, nor the home folder itself), lie outside the repository, and be logged in."""
+    """The client's state folder, `<base>/<client id>` made absolute, or SystemExit. It must exist, lie outside the
+    repository, every Git checkout and every everyday folder (any client's, and pi's), hold no symbolic link that
+    leaves it, and be logged in with the login the route needs (its status output read, not only its exit code)."""
     if not base:
         raise SystemExit(f"{client.client_id}: --client-home (or GROUNDTRUTH_CLIENT_HOME) is required for an own client")
     user_home = os.path.realpath(user_home or os.path.expanduser("~"))
-    home = os.path.join(base, client.client_id)
+    name = getattr(client, "state_name", None) or client.client_id
+    home = os.path.realpath(os.path.abspath(os.path.join(base, name)))
     if not os.path.isdir(home):
-        raise SystemExit(f"{client.client_id}: its state folder <client-home>/{client.client_id} does not exist: "
+        raise SystemExit(f"{client.client_id}: its state folder <client-home>/{name} does not exist: "
                          "create it and log the client in there first (docs/own-clients-RUN.md)")
-    real = os.path.realpath(home)
-
-    def inside(path, folder):
-        return path == folder or path.startswith(folder.rstrip(os.sep) + os.sep)
-    if real == user_home or any(inside(real, os.path.realpath(user_home + d[1:])) for d in client.defaults):
-        raise SystemExit(f"{client.client_id}: the state folder is the client's everyday folder (or inside it)")
-    if inside(real, os.path.realpath(root)):
-        raise SystemExit(f"{client.client_id}: the state folder is inside the repository")
+    check_folder(f"{client.client_id}: the state folder", home, root, user_home)
+    out = links_out(home)
+    if out:
+        raise SystemExit(f"{client.client_id}: the state folder holds links that leave it: {', '.join(out[:5])}")
     if check_login:
         cmd = client.login_command()
+        e = env if env is not None else client.environment(home)
         if cmd:
-            code, _, _ = (run or _run)(cmd, env=env if env is not None else client.environment(home), cwd=None, stdin=None, timeout=120)
-            if code:
-                raise SystemExit(f"{client.client_id}: not logged in in its state folder ({' '.join(cmd[:3])} exited {code})")
+            code, o, er = (run or _run)(cmd, env=e, cwd=None, stdin=None, timeout=120)
+            why = login_ok(client, code, o, er)
+            if why:
+                raise SystemExit(f"{client.client_id}: refused: {why} ({' '.join(cmd[:4])})")
         for k in client.passthrough:
             if not (env if env is not None else os.environ).get(k):
                 raise SystemExit(f"{client.client_id}: {k} is not set (read it from the Keychain into the environment)")

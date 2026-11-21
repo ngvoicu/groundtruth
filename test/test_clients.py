@@ -177,18 +177,21 @@ class StateFolder(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def run_ok(self, code):
+    STATUS = {"claude": '{"loggedIn": true, "authMethod": "claude.ai", "apiProvider": "firstParty", "subscriptionType": "max"}',
+              "codex": "Logged in using ChatGPT", "devin": "Logged in", "muse": ""}
+
+    def run_ok(self, code, out=None):
         def run(argv, env, cwd, stdin, timeout):
             self.calls.append((argv, env))
-            return code, "", ""
+            return code, out if out is not None else self.STATUS[argv[0]], ""
         return run
 
-    def folder(self, client, base, code=0, env=None):
-        return C.state_folder(client, base, self.repo, user_home=self.user, run=self.run_ok(code), env=env)
+    def folder(self, client, base, code=0, env=None, out=None):
+        return C.state_folder(client, base, self.repo, user_home=self.user, run=self.run_ok(code, out), env=env)
 
     def test_a_logged_in_folder_is_accepted_and_checked_in_its_own_environment(self):
         home = self.folder(C.Claude("m"), self.base)
-        self.assertEqual(home, os.path.join(self.base, "claude-code"))
+        self.assertEqual(home, os.path.realpath(os.path.join(self.base, "claude-code")))
         argv, env = self.calls[0]
         self.assertEqual(argv, ["claude", "auth", "status", "--json"])
         self.assertEqual(env["CLAUDE_CONFIG_DIR"], home)
@@ -200,13 +203,19 @@ class StateFolder(unittest.TestCase):
             self.folder(C.Codex("m"), self.base)
 
     def test_not_logged_in(self):
-        with self.assertRaisesRegex(SystemExit, "not logged in"):
+        with self.assertRaisesRegex(SystemExit, "refused: the status command exited 1"):
             self.folder(C.Claude("m"), self.base, code=1)
+        with self.assertRaisesRegex(SystemExit, "refused: not logged in"):
+            self.folder(C.Claude("m"), self.base, out='{"loggedIn": false}')
 
     def test_never_the_everyday_folder(self):
         os.makedirs(os.path.join(self.user, ".claude", "claude-code"))
         with self.assertRaisesRegex(SystemExit, "everyday"):
             self.folder(C.Claude("m"), os.path.join(self.user, ".claude"))
+        # any client's and pi's: a Codex state folder under ~/.pi is refused too (it was accepted)
+        os.makedirs(os.path.join(self.user, ".pi", "codex-cli"))
+        with self.assertRaisesRegex(SystemExit, "everyday"):
+            self.folder(C.Codex("m"), os.path.join(self.user, ".pi"))
         os.makedirs(os.path.join(self.user, ".config", "muse-code"))
         with self.assertRaisesRegex(SystemExit, "everyday"):
             self.folder(C.Muse("m"), os.path.join(self.user, ".config"), env={"META_API_KEY": "k"})
@@ -220,6 +229,57 @@ class StateFolder(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "META_API_KEY"):
             self.folder(C.Muse("m"), self.base, env={})
         self.assertTrue(self.folder(C.Muse("m"), self.base, env={"META_API_KEY": "k"}).endswith("muse-code"))
+
+
+class StateFolderReview(StateFolder):
+    """Review findings 1 and 2: links out of the state folder, a Git checkout, a relative path, an API-key login."""
+
+    def test_a_link_that_leaves_the_state_folder_is_refused_at_any_depth(self):
+        everyday = os.path.join(self.user, ".codex", "sessions")
+        os.makedirs(everyday)
+        os.makedirs(os.path.join(self.base, "codex-cli", "deep"))
+        os.symlink(everyday, os.path.join(self.base, "codex-cli", "deep", "sessions"))
+        with self.assertRaisesRegex(SystemExit, "links that leave it: deep/sessions"):
+            self.folder(C.Codex("m"), self.base)
+        # a link that stays inside is fine
+        os.remove(os.path.join(self.base, "codex-cli", "deep", "sessions"))
+        os.symlink(os.path.join(self.base, "codex-cli", "deep"), os.path.join(self.base, "codex-cli", "here"))
+        os.makedirs(os.path.join(self.base, "codex-cli", "x"), exist_ok=True)
+        self.assertTrue(self.folder(C.Codex("m"), self.base))
+
+    def test_never_inside_a_git_checkout(self):
+        other = os.path.join(self.tmp.name, "other-checkout")
+        os.makedirs(os.path.join(other, ".git"))
+        os.makedirs(os.path.join(other, "state", "codex-cli"))
+        with self.assertRaisesRegex(SystemExit, "Git checkout"):
+            self.folder(C.Codex("m"), os.path.join(other, "state"))
+
+    def test_a_relative_path_is_made_absolute(self):
+        os.makedirs(os.path.join(self.base, "codex-cli"))
+        cwd = os.getcwd()
+        try:
+            os.chdir(self.tmp.name)
+            home = self.folder(C.Codex("m"), "client-home")
+        finally:
+            os.chdir(cwd)
+        self.assertTrue(os.path.isabs(home))
+        self.assertEqual(home, os.path.realpath(os.path.join(self.base, "codex-cli")))
+
+    def test_an_api_key_login_is_refused(self):
+        # the statuses the review used
+        os.makedirs(os.path.join(self.base, "codex-cli"))
+        with self.assertRaisesRegex(SystemExit, "API key"):
+            self.folder(C.Codex("m"), self.base, out="Logged in using an API key")
+        with self.assertRaisesRegex(SystemExit, "not a Claude subscription"):
+            self.folder(C.Claude("m"), self.base, out='{"loggedIn":true,"authMethod":"api_key"}')
+        with self.assertRaisesRegex(SystemExit, "not a Claude subscription"):
+            self.folder(C.Claude("m"), self.base, out='{"loggedIn":true,"authMethod":"console"}')
+        with self.assertRaisesRegex(SystemExit, "not Anthropic"):
+            self.folder(C.Claude("m"), self.base, out='{"loggedIn":true,"authMethod":"claude.ai","apiProvider":"bedrock"}')
+        with self.assertRaisesRegex(SystemExit, "Logged in using ChatGPT"):
+            self.folder(C.Codex("m"), self.base, out="")
+        self.assertTrue(self.folder(C.Codex("m"), self.base))
+        self.assertTrue(self.folder(C.Claude("m"), self.base))
 
 
 class SessionRuns(unittest.TestCase):
