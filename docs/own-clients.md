@@ -356,35 +356,37 @@ truth.
 
 The file says which kind each client and each route is. providers.dev applies the rule; groundtruth does not
 choose a winner. Everything is added; no existing key changes its type or its meaning, and `schema` stays 1.
-providers.dev reads `clients` as a map of texts today, so the kinds are a map of their own.
+providers.dev's import reads `clients` as a map of texts (client id to label) and refuses the file when a value is
+anything else, while it tolerates a key it does not know. So `clients` stays as it is and the kinds are a map of
+their own, with the three kind names the site's design uses.
 
 **Two new top-level keys.**
 
 ```json
 "client_kinds": {
   "direct": "direct",
-  "claude-code": "own-client", "codex-cli": "own-client", "devin-cli": "own-client",
-  "muse-code": "own-client", "antigravity-cli": "own-client",
+  "claude-code": "own_client", "codex-cli": "own_client", "devin-cli": "own_client",
+  "muse-code": "own_client", "antigravity-cli": "own_client",
   "cliproxyapi": "proxy", "pi+cliproxyapi": "proxy"
 },
 "route_kinds": {
-  "anthropic-api": "api-key", "openai-api": "api-key", "openrouter": "api-key",
+  "anthropic-api": "api_key", "openai-api": "api_key", "openrouter": "api_key",
   "claude-subscription": "login", "codex-subscription": "login", "devin": "login",
   "meta-subscription": "login", "antigravity": "login"
 }
 ```
 
-- `client_kinds`: every key of `clients`, each `direct` (plain requests to the route's own address), `own-client`
+- `client_kinds`: every key of `clients`, each `direct` (plain requests to the route's own address), `own_client`
   (a client the route's vendor ships, driven as its user drives it) or `proxy` (anything that goes through a proxy,
   with or without an agent in front; Provimux will be one).
-- `route_kinds`: every key of `routes`, each `api-key` or `login`.
+- `route_kinds`: every key of `routes`, each `api_key` or `login`.
 - `build_observed.py` refuses a client or a route without a kind, and an own client on a route that is not its
   vendor's: `claude-code` only on `claude-subscription`, `codex-cli` on `codex-subscription`, `devin-cli` on
   `devin`, `muse-code` on `meta-subscription`, `antigravity-cli` on `antigravity`.
 
-**The rule, as providers.dev applies it.** Rank the kinds: `direct` 0, `own-client` 1, `proxy` 2.
+**The rule, as providers.dev applies it.** Rank the kinds: `direct` 0, `own_client` 1, `proxy` 2.
 
-1. On a route of kind `api-key`, only runs and rows of kind `direct` count.
+1. On a route of kind `api_key`, only runs and rows of kind `direct` count.
 2. On a route of kind `login`, for one value (a cache lifetime of one model in one retention profile; the input
    window of one model), the runs or rows that count are those of the lowest rank present among the ones the site
    counts today. Between clients of the same kind, today's rule stands (the lowest decides).
