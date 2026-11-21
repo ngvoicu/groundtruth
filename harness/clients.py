@@ -98,6 +98,7 @@ class Client:
     settable = ()             # variables a run may set for the client (recorded in the run's start event)
     passthrough = ()          # variables passed from the caller's environment as they are (a key, never logged)
     defaults = ()             # the client's everyday folders under the home folder: never a state folder
+    retries_note = None       # what is known of the client's own retries (recorded in the run's start event)
 
     def __init__(self, model, effort="low", settings=None):
         self.model, self.effort = model, effort
@@ -155,7 +156,9 @@ class Client:
     def command(self, prompt_file, resume=None, session=None, files=None):
         raise NotImplementedError
 
-    def parse(self, stdout, stderr, code, files):
+    def parse(self, stdout, stderr, code, files, expect=None):
+        """`expect`: {"prompt": the text sent, "session": the session resumed or None}, where the output can be tied
+        to them."""
         raise NotImplementedError
 
     def shown(self, argv, prompt_file, files=None):
@@ -177,10 +180,16 @@ class Claude(Client):
         return {"CLAUDE_CONFIG_DIR": home}
 
     def run_vars(self):
-        return {"DISABLE_AUTOUPDATER": "1"}
+        # Claude Code retries a failed request up to ten times by itself (design, 1.1), unseen by the harness: a check
+        # could then be a re-send. CLAUDE_CODE_MAX_RETRIES=0 switches that off (the variable is in the 2.1.330 binary;
+        # whether it is honoured is shown only by a failure, so every run records it and the retries note).
+        return {"DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_MAX_RETRIES": "0"}
+
+    retries_note = ("internal retries switched off with CLAUDE_CODE_MAX_RETRIES=0 (found in the client's binary, not "
+                    "verified by a failure): a check may hide a retry if the client does not honour it")
 
     def login_command(self):
-        return ["claude", "auth", "status"]
+        return ["claude", "auth", "status", "--json"]
 
     def new_session(self):
         return str(uuid.uuid4())
@@ -192,7 +201,7 @@ class Claude(Client):
                 *(["--resume", resume] if resume else ["--session-id", session]),
                 "--strict-mcp-config", "--disable-slash-commands", "--permission-prompts", "none"]
 
-    def parse(self, stdout, stderr, code, files):
+    def parse(self, stdout, stderr, code, files, expect=None):
         result = None
         for d in json_lines(stdout):
             if d.get("type") == "result" or "usage" in d:
@@ -247,14 +256,15 @@ class Codex(Client):
             return ["codex", "exec", "resume", resume, *base, "-"]
         return ["codex", "exec", *base, "-s", "read-only", "-"]
 
-    def parse(self, stdout, stderr, code, files):
-        tid, usage, tools, failure = None, None, set(), None
+    def parse(self, stdout, stderr, code, files, expect=None):
+        tid, usage, tools, failure, turns = None, None, set(), None, 0
         for d in json_lines(stdout):
             t = d.get("type")
             if t == "thread.started":
                 tid = d.get("thread_id")
             elif t == "turn.completed":
                 usage = d.get("usage")
+                turns += 1
             elif t in ("error", "turn.failed"):
                 e = d.get("error")
                 failure = (failure or "") + " " + str((e or {}).get("message") if isinstance(e, dict) else d.get("message") or e)
@@ -263,12 +273,16 @@ class Codex(Client):
                 if item.get("type") not in CODEX_TEXT_ITEMS:
                     tools.add(item.get("id") or len(tools))
         text = (failure or "") + "\n" + (stderr or "")
-        if usage is None:
+        # A failure is a failure, whatever usage came with it: a non-zero exit, an error or a failed turn.
+        if usage is None or code or failure:
             if CODEX_CAP.search(text):
                 raise Refused("client-cap", text.strip()[-2000:])
-            raise classify(text if text.strip() else stdout)
+            raise classify(text if text.strip() else (stdout or f"exit {code}"))
+        if expect and expect.get("session") and tid and tid != expect["session"]:
+            raise ClientError(f"the output is of thread {tid}, not of the resumed one")
+        # One model request: one completed turn and no tool item in it.
         return Usage(total=usage.get("input_tokens", 0), cached=usage.get("cached_input_tokens", 0),
-                     write=usage.get("cache_write_input_tokens", 0), calls=1 + len(tools), handle=tid)
+                     write=usage.get("cache_write_input_tokens", 0), calls=turns + len(tools), handle=tid)
 
 
 class Devin(Client):
@@ -300,13 +314,22 @@ class Devin(Client):
                 "--prompt-file", prompt_file, "-p", "--respect-workspace-trust", "false",
                 "--export", (files or {})["export"][0]]
 
-    def parse(self, stdout, stderr, code, files):
+    def parse(self, stdout, stderr, code, files, expect=None):
         raw = files.get("export")
-        if not raw:
-            raise classify(f"no export (exit {code}): {stderr or ''}\n{stdout or ''}")
+        if code or not raw:
+            # A failed invocation is a failure even when an export is there: it may be the priming's, unchanged.
+            raise classify(f"exit {code}{'' if raw else ', no export'}: {stderr or ''}\n{stdout or ''}")
         d = json.loads(raw)
         steps = d.get("steps") or []
         last_user = max((i for i, s in enumerate(steps) if s.get("source") == "user"), default=-1)
+        if expect:
+            # The turn must be this invocation's: the session resumed, and the last user step the prompt just sent.
+            if expect.get("session") and d.get("session_id") != expect["session"]:
+                raise ClientError(f"the export is of session {d.get('session_id')}, not of the resumed one")
+            said = steps[last_user].get("message") if last_user >= 0 else None
+            said = said if isinstance(said, str) else json.dumps(said)
+            if (expect.get("prompt") or "").strip()[:200] not in (said or ""):
+                raise ClientError("the export's last user step is not the prompt just sent: no new turn")
         turn = [s for s in steps[last_user + 1:] if s.get("metrics")]
         if not turn:
             raise classify(f"no step with metrics in the export (exit {code}): {stderr or ''}\n{stdout or ''}")
@@ -337,16 +360,23 @@ class Muse(Client):
         return ["muse", "exec", "--json", "--model", self.model, "--reasoning-effort", self.effort,
                 "--session-id", resume or session, "--prompt-file", prompt_file]
 
-    def parse(self, stdout, stderr, code, files):
-        u, failure = None, []
+    def parse(self, stdout, stderr, code, files, expect=None):
+        u, failure, other = None, [], []
         for d in json_lines(stdout):
-            if d.get("payload_type") == "run.usage":
+            kind = str(d.get("payload_type") or d.get("type") or "")
+            if kind == "run.usage":
                 u = d.get("payload") or {}
-            elif "error" in str(d.get("payload_type") or d.get("type") or ""):
+            elif "error" in kind or "fail" in kind:
                 failure.append(json.dumps(d.get("payload") or d))
+            elif "usage" in kind:
+                other.append(json.dumps(d)[:400])
+        if failure or code:
+            # A failure is a failure, whatever usage came with it.
+            raise classify("\n".join(failure) + "\n" + (stderr or "") + (f"\nexit {code}" if code else ""))
         if u is None:
-            # No run.usage line is no reading, never zero (Muse leaves it out when it cannot count a run).
-            raise classify("\n".join(failure) + "\n" + (stderr or "") if failure or code else "no run.usage line")
+            # No run.usage line is no reading, never zero (Muse leaves it out when it cannot count a run). An event
+            # that looks like usage is kept (redacted by the Session) so that the fixture can be corrected.
+            raise ClientError("no run.usage line" + (f"; usage-like events: {' | '.join(other[:2])}" if other else ""))
         ms = u.get("models") or []
         return Usage(total=sum(m.get("input_tokens", 0) for m in ms), cached=sum(m.get("cached_tokens", 0) for m in ms),
                      write=None, calls=u.get("calls"), model=ms[0].get("model") if len(ms) == 1 else None)
@@ -372,10 +402,10 @@ class Pi(Client):
         return ["pi", "-p", "--session-dir", sd, "--session-id", resume or session, "--model", "cliproxyapi/" + self.model,
                 "--thinking", self.effort, prompt_file]
 
-    def parse(self, stdout, stderr, code, files):
+    def parse(self, stdout, stderr, code, files, expect=None):
         raw = files.get("session")
-        if not raw:
-            raise classify(f"no session (exit {code}): {stderr or stdout}")
+        if code or not raw:
+            raise classify(f"exit {code}{'' if raw else ', no session'}: {stderr or stdout}")
         msgs = [(json.loads(x).get("message") or {}) for x in raw.splitlines() if x.strip()]
         last_user = max((i for i, m in enumerate(msgs) if m.get("role") == "user"), default=-1)
         turn = [m for m in msgs[last_user + 1:] if m.get("role") == "assistant"]
@@ -419,6 +449,33 @@ def state_folder(client, base, root, user_home=None, env=None, run=None, check_l
     return home
 
 
+# What never reaches a public file from a client's output: a value of a secret variable of the client's environment,
+# a folder of the run (home, state folder, temporary folders), a token shape, an e-mail address.
+SECRET_NAME = re.compile(r"KEY|TOKEN|SECRET|PASSWORD|AUTH|COOKIE|CREDENTIAL", re.I)
+TOKEN_SHAPE = re.compile(r"(?<![A-Za-z0-9_+/=-])(sk-[A-Za-z0-9_-]{16,}|Bearer [A-Za-z0-9._-]{16,}|eyJ[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_.-]{16,})")
+EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
+HOME_PATH = re.compile(r"/(?:Users|home)/[^/\s\"']+")
+OPAQUE = re.compile(r"(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{32,}(?![A-Za-z0-9_-])")
+
+
+class Redactor:
+    def __init__(self, env=None, paths=()):
+        env = env or {}
+        self.secrets = sorted({v for k, v in env.items() if SECRET_NAME.search(k) and v and len(v) >= 8}, key=len, reverse=True)
+        self.paths = sorted({os.path.realpath(p) for p in paths if p} | {p for p in paths if p}, key=len, reverse=True)
+
+    def __call__(self, text):
+        text = text or ""
+        for v in self.secrets:
+            text = text.replace(v, "<secret>")
+        for i, p in enumerate(self.paths):
+            text = text.replace(p, "<folder>")
+        text = TOKEN_SHAPE.sub("<token>", text)
+        text = EMAIL.sub("<e-mail>", text)
+        text = HOME_PATH.sub("<home>", text)
+        return OPAQUE.sub("<opaque>", text)
+
+
 def _run(argv, env, cwd, stdin, timeout):
     p = subprocess.run(argv, cwd=cwd, env=env, stdin=stdin if stdin is not None else subprocess.DEVNULL,
                        capture_output=True, text=True, timeout=timeout)
@@ -429,9 +486,15 @@ class Session:
     """start() and resume() for the loops, from a client's command() and parse(). `io` holds the prompt and export
     files (deleted after each invocation); `work` is the client's working folder and stays empty."""
 
-    def __init__(self, client, env, io, work, run=None, timeout=900, create=True):
+    def __init__(self, client, env, io, work, run=None, timeout=900, create=True, home=None, keep=None):
         self.client, self.env, self.io, self.work = client, env, io, work
         self.run, self.timeout = run or _run, timeout
+        # Every text of the client's that leaves this object (an error, a refusal, a kept output) is redacted.
+        self.redact = Redactor(env, [home, io, work, os.path.dirname(io), (env or {}).get("HOME"),
+                                     os.path.expanduser("~")])
+        self.keep, self.count = keep, 0  # a private folder for the redacted raw output (smoke runs), or None
+        if keep:
+            os.makedirs(keep, exist_ok=True)
         if create:
             os.makedirs(io, exist_ok=True)
             os.makedirs(work, exist_ok=True)
@@ -473,11 +536,27 @@ class Session:
         finally:
             if os.path.exists(pf):
                 os.remove(pf)
+        self.count += 1
+        if self.keep:
+            # The minimum to correct a fixture from: what the client printed and wrote, redacted, kept privately.
+            for name, text in (("stdout", out), ("stderr", err), *contents.items()):
+                with open(os.path.join(self.keep, f"{self.count:03d}-{'check' if resume else 'start'}-{name}.txt"), "w") as f:
+                    f.write(self.redact(text))
+        expect = {"prompt": prompt, "session": resume}
         try:
-            u = self.client.parse(out, err, code, contents)
-        except (Refused, ClientError) as e:
-            e.code = code  # the client's exit code, kept with a refusal row
-            raise
+            u = self.client.parse(out, err, code, contents, expect=expect)
+        except Refused as e:
+            r = Refused(e.kind, self.redact(e.text))
+            r.code = code  # the client's exit code, kept with a refusal row
+            raise r from None
+        except ClientError as e:
+            r = ClientError(self.redact(str(e)))
+            r.code = code
+            raise r from None
+        except (ValueError, KeyError, TypeError) as e:
+            r = ClientError(self.redact(f"unreadable output ({type(e).__name__}): {e}"))
+            r.code = code
+            raise r from None
         if u.handle is None:
             u.handle = resume or session
         return u

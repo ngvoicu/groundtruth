@@ -135,7 +135,7 @@ class Environment(unittest.TestCase):
     def test_only_the_allow_list_and_the_folder(self):
         with tempfile.TemporaryDirectory() as home:
             expected = {
-                "claude": {"CLAUDE_CONFIG_DIR": home, "DISABLE_AUTOUPDATER": "1"},
+                "claude": {"CLAUDE_CONFIG_DIR": home, "DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_MAX_RETRIES": "0"},
                 "codex": {"CODEX_HOME": home},
                 "devin": {"XDG_CONFIG_HOME": home + "/config", "XDG_DATA_HOME": home + "/data", "XDG_STATE_HOME": home + "/state",
                           "XDG_CACHE_HOME": home + "/cache", "DEVIN_SESSIONS_DIR": home + "/sessions"},
@@ -190,7 +190,7 @@ class StateFolder(unittest.TestCase):
         home = self.folder(C.Claude("m"), self.base)
         self.assertEqual(home, os.path.join(self.base, "claude-code"))
         argv, env = self.calls[0]
-        self.assertEqual(argv, ["claude", "auth", "status"])
+        self.assertEqual(argv, ["claude", "auth", "status", "--json"])
         self.assertEqual(env["CLAUDE_CONFIG_DIR"], home)
 
     def test_required_and_must_exist(self):
@@ -264,6 +264,101 @@ class SessionRuns(unittest.TestCase):
             self.assertEqual(s.plan(resume="surf-sleep"),
                              ["devin", "--process-model", "in-process", "-r", "<session>", "--prompt-file", "<prompt>", "-p",
                               "--respect-workspace-trust", "false", "--export", "<export>"])
+
+
+def fx(harness, case):
+    return load(os.path.join(FIXTURES, harness, case + ".json"))
+
+
+class Failures(unittest.TestCase):
+    """Review finding 5: a failed or repeated check never parses as one successful request."""
+
+    def test_codex_two_completed_turns_are_two_calls(self):
+        out = fx("codex", "prime")["stdout"] + fx("codex", "warm")["stdout"]
+        self.assertEqual(C.Codex("m").parse(out, "", 0, {}).calls, 2)
+
+    def test_usage_with_a_failure_is_a_failure(self):
+        cases = (("codex", fx("codex", "warm")["stdout"] + '{"type":"turn.failed","error":{"message":"usage limit"}}\n', "You've hit your usage limit", {}),
+                 ("devin", "", "429 quota exceeded", fx("devin", "warm")["files"]),
+                 ("muse", fx("muse", "warm")["stdout"] + '{"payload_type":"run.error","payload":{"message":"429 quota exceeded"}}\n', "429 quota exceeded", {}))
+        for harness, out, err, files in cases:
+            with self.subTest(harness=harness), self.assertRaises(C.Refused) as e:
+                C.CLIENTS[harness]("m").parse(out, err, 1, files)
+            self.assertEqual(e.exception.kind, "quota")
+
+    def test_a_non_zero_exit_with_usage_is_a_failure(self):
+        for harness in ("codex", "muse"):
+            with self.subTest(harness=harness), self.assertRaises((C.ClientError, C.Refused)):
+                C.CLIENTS[harness]("m").parse(fx(harness, "warm")["stdout"], "", 1, {})
+
+    def test_devin_a_failed_resume_with_the_primings_export_is_a_failure(self):
+        old = fx("devin", "prime")["files"]
+        with self.assertRaises((C.ClientError, C.Refused)):
+            C.Devin("m").parse("", "429 quota exceeded", 1, old)
+        # exit 0, but the export holds no turn for the prompt just sent
+        with self.assertRaisesRegex(C.ClientError, "not the prompt just sent"):
+            C.Devin("m").parse("", "", 0, old, expect={"prompt": "Reply with OK only.", "session": "surf-sleep"})
+        with self.assertRaisesRegex(C.ClientError, "not of the resumed one"):
+            C.Devin("m").parse("", "", 0, fx("devin", "warm")["files"], expect={"prompt": "<check>", "session": "other"})
+        u = C.Devin("m").parse("", "", 0, fx("devin", "warm")["files"], expect={"prompt": "<check>", "session": "surf-sleep"})
+        self.assertEqual(u.calls, 1)
+
+    def test_claude_switches_its_own_retries_off_and_says_so(self):
+        env = C.Claude("m").environment("/s", base=BASE)
+        self.assertEqual(env["CLAUDE_CODE_MAX_RETRIES"], "0")
+        self.assertIn("CLAUDE_CODE_MAX_RETRIES=0", C.Claude.retries_note)
+
+
+class Redaction(unittest.TestCase):
+    """Review finding 3 (the drivers' part): a client's output reaches a public file only redacted."""
+
+    CANARY = "reviewonly_opaque_" + "A23" * 8
+    # Built here, so that this file holds no home path and no e-mail address itself (the scan reads it too).
+    HOME = "/" + "Users/someone"
+    MAIL = "a.person" + "@" + "example.com"
+
+    def session(self, tmp, run, keep=None):
+        return C.Session(C.Muse("m"), env={"META_API_KEY": self.CANARY, "HOME": self.HOME},
+                         io=tmp + "/io", work=tmp + "/work", run=run, home="/Volumes/measure/campaign/muse-code", keep=keep)
+
+    def test_errors_lose_the_child_only_key_and_the_paths(self):
+        def run(argv, env, cwd, stdin, timeout):
+            return 1, "", ("context overflow; credential=" + self.CANARY + " state=/Volumes/measure/campaign/muse-code "
+                           "home=" + self.HOME + "/x mail=" + self.MAIL)
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(C.Refused) as e:
+                self.session(tmp, run).start("p")
+        text = e.exception.text
+        for leak in (self.CANARY, "/Volumes/measure/campaign", self.HOME, self.MAIL):
+            self.assertNotIn(leak, text)
+        self.assertIn("<secret>", text)
+
+    def test_the_kept_raw_output_is_redacted_and_an_unknown_usage_event_is_kept(self):
+        def run(argv, env, cwd, stdin, timeout):
+            return 0, '{"payload_type":"run.usage.v2","payload":{"calls":1,"key":"' + self.CANARY + '"}}\n', ""
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(C.ClientError, "usage-like events: .*run.usage.v2") as e:
+                self.session(tmp, run, keep=tmp + "/keep").start("p")
+            self.assertNotIn(self.CANARY, str(e.exception))
+            kept = sorted(os.listdir(tmp + "/keep"))
+            self.assertEqual(kept, ["001-start-stderr.txt", "001-start-stdout.txt"])
+            with open(tmp + "/keep/001-start-stdout.txt") as f:
+                text = f.read()
+            self.assertIn("run.usage.v2", text)
+            self.assertNotIn(self.CANARY, text)
+
+    def test_devins_export_is_kept_for_the_smoke_run(self):
+        f = fx("devin", "prime")
+
+        def run(argv, env, cwd, stdin, timeout):
+            with open(argv[argv.index("--export") + 1], "w") as out:
+                out.write(f["files"]["export"].replace("<prompt>", "the prompt"))
+            return 0, "OK", ""
+        with tempfile.TemporaryDirectory() as tmp:
+            s = C.Session(C.Devin("m"), env={}, io=tmp + "/io", work=tmp + "/work", run=run, keep=tmp + "/keep")
+            s.start("the prompt")
+            self.assertIn("001-start-export.txt", os.listdir(tmp + "/keep"))
+            self.assertEqual(os.listdir(tmp + "/io"), [])
 
 
 if __name__ == "__main__":

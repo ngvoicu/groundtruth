@@ -249,6 +249,9 @@ def parser():
                          "default: GROUNDTRUTH_CLIENT_HOME. Required for an own client")
     ap.add_argument("--client-env", action="append", default=[], metavar="KEY=VALUE",
                     help="a setting the run makes for the client (Claude Code: CLAUDE_CODE_PROMPT_CACHE_TTL=5m); recorded")
+    ap.add_argument("--keep-raw", metavar="DIR",
+                    help="keep every invocation's output, redacted, in DIR (outside the repository): for the smoke runs, "
+                         "to correct the fixtures")
     ap.add_argument("--dry-run", action="store_true", help="print the run's start event and plan; run nothing, send nothing")
     return ap
 
@@ -278,6 +281,11 @@ def main(argv=None):
              "salt": salt}
     if settings:
         start["client_env"] = settings
+    fixed = client.run_vars()
+    if fixed:
+        start["client_settings"] = fixed  # what the run sets for every invocation (no secret, no path)
+    if client.retries_note:
+        start["retries"] = client.retries_note
     if client.own:
         start["isolation"] = dict(ISOLATION)
     if a.dry_run:
@@ -294,6 +302,10 @@ def main(argv=None):
         else:
             print(f"{a.label}: the caller's environment (a proxy client). Dry run: nothing run, nothing sent.")
         return
+    keep = os.path.abspath(a.keep_raw) if a.keep_raw else None
+    if keep and (keep + os.sep).startswith(os.path.realpath(ROOT) + os.sep):
+        raise SystemExit("--keep-raw: a folder outside the repository (the raw output is never published)")
+    home = None
     if client.own:
         home = C.state_folder(client, a.client_home, ROOT)
         env = client.environment(home)
@@ -303,7 +315,8 @@ def main(argv=None):
     # it), kept until the last check: a session is resumed from the folder it was started in.
     tmp = tempfile.mkdtemp(prefix=f"groundtruth-{a.label}-")
     try:
-        session = C.Session(client, env=env, io=os.path.join(tmp, "io"), work=os.path.join(tmp, "work"))
+        session = C.Session(client, env=env, io=os.path.join(tmp, "io"), work=os.path.join(tmp, "work"),
+                            home=home, keep=keep)
         start.update(client_version=client.version(env),
                      command={"prime": session.plan(), "check": session.plan(resume="<session>")})
         os.makedirs(a.out, exist_ok=True)
