@@ -379,6 +379,36 @@ class Pi(Client):
 CLIENTS = {c.harness: c for c in (Claude, Codex, Devin, Muse, Pi)}
 
 
+def state_folder(client, base, root, user_home=None, env=None, run=None, check_login=True):
+    """The client's state folder, `<base>/<client id>`, or SystemExit: it must exist, be none of the client's everyday
+    folders (nor inside one, nor the home folder itself), lie outside the repository, and be logged in."""
+    if not base:
+        raise SystemExit(f"{client.client_id}: --client-home (or GROUNDTRUTH_CLIENT_HOME) is required for an own client")
+    user_home = os.path.realpath(user_home or os.path.expanduser("~"))
+    home = os.path.join(base, client.client_id)
+    if not os.path.isdir(home):
+        raise SystemExit(f"{client.client_id}: its state folder <client-home>/{client.client_id} does not exist: "
+                         "create it and log the client in there first (docs/own-clients-RUN.md)")
+    real = os.path.realpath(home)
+
+    def inside(path, folder):
+        return path == folder or path.startswith(folder.rstrip(os.sep) + os.sep)
+    if real == user_home or any(inside(real, os.path.realpath(user_home + d[1:])) for d in client.defaults):
+        raise SystemExit(f"{client.client_id}: the state folder is the client's everyday folder (or inside it)")
+    if inside(real, os.path.realpath(root)):
+        raise SystemExit(f"{client.client_id}: the state folder is inside the repository")
+    if check_login:
+        cmd = client.login_command()
+        if cmd:
+            code, _, _ = (run or _run)(cmd, env=env if env is not None else client.environment(home), cwd=None, stdin=None, timeout=120)
+            if code:
+                raise SystemExit(f"{client.client_id}: not logged in in its state folder ({' '.join(cmd[:3])} exited {code})")
+        for k in client.passthrough:
+            if not (env if env is not None else os.environ).get(k):
+                raise SystemExit(f"{client.client_id}: {k} is not set (read it from the Keychain into the environment)")
+    return home
+
+
 def _run(argv, env, cwd, stdin, timeout):
     p = subprocess.run(argv, cwd=cwd, env=env, stdin=stdin if stdin is not None else subprocess.DEVNULL,
                        capture_output=True, text=True, timeout=timeout)

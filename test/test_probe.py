@@ -190,6 +190,28 @@ class Loop(unittest.TestCase):
         self.assertEqual(control["usage"]["raw"]["cached"], 2 * SHARED + BLOCK)
 
 
+class Main(unittest.TestCase):
+    def test_an_own_client_needs_its_state_folder(self):
+        for harness in ("claude", "codex", "devin", "muse"):
+            with self.subTest(harness=harness), self.assertRaisesRegex(SystemExit, "client-home"):
+                probe.main(["--harness", harness, "--model", "m", "--label", "X", "--out", "/nonexistent/out", "--client-home", ""])
+
+    def test_the_dry_run_records_the_isolation_and_sends_nothing(self):
+        import io
+        import json
+        from contextlib import redirect_stdout
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            probe.main(["--harness", "claude", "--model", "m", "--label", "X", "--out", "/nonexistent/out", "--dry-run",
+                        "--client-env", "CLAUDE_CODE_PROMPT_CACHE_TTL=5m"])
+        start = json.loads(buf.getvalue().splitlines()[0])
+        self.assertEqual(start["isolation"], {"home": "dedicated", "work": "temporary"})
+        self.assertEqual(start["client_env"], {"CLAUDE_CODE_PROMPT_CACHE_TTL": "5m"})
+        self.assertNotIn("/", "".join(start["command"]["prime"]).replace("<", "").replace(">", ""))
+        self.assertIn("nothing sent", buf.getvalue())
+        self.assertFalse(os.path.exists("/nonexistent/out"))
+
+
 class Fillers(unittest.TestCase):
     def test_each_sample_has_its_own_block(self):
         for filler in probe.FILLERS:

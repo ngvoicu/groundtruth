@@ -24,7 +24,7 @@ Usage:
   harness/probe.py --harness claude|codex|devin|muse|pi --model ID [--schedule std|long | --ages 30m,1h] --replicas 3 \
       --label H1 --out DIR [--filler random|list] [--dry-run]
 """
-import argparse, heapq, json, os, random, sys, time
+import argparse, heapq, json, os, random, shutil, sys, tempfile, time
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -244,42 +244,82 @@ def parser():
     ap.add_argument("--words", type=int, default=3000, help="unique block size in words (~2 tokens each)")
     ap.add_argument("--filler", choices=sorted(FILLERS), default="random", help="random syllables, or plain numbered lines")
     ap.add_argument("--effort", default="low")
+    ap.add_argument("--client-home", default=os.environ.get("GROUNDTRUTH_CLIENT_HOME"),
+                    help="the folder of the clients' state folders (<client-home>/<client id>, logged in once by the owner); "
+                         "default: GROUNDTRUTH_CLIENT_HOME. Required for an own client")
+    ap.add_argument("--client-env", action="append", default=[], metavar="KEY=VALUE",
+                    help="a setting the run makes for the client (Claude Code: CLAUDE_CODE_PROMPT_CACHE_TTL=5m); recorded")
     ap.add_argument("--dry-run", action="store_true", help="print the run's start event and plan; run nothing, send nothing")
     return ap
+
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ISOLATION = {"home": "dedicated", "work": "temporary"}
+
+
+def settings_of(pairs):
+    out = {}
+    for p in pairs:
+        if "=" not in p:
+            raise SystemExit(f"--client-env {p}: KEY=VALUE")
+        k, v = p.split("=", 1)
+        out[k] = v
+    return out
 
 
 def main(argv=None):
     a = parser().parse_args(argv)
     ages, labels = ages_of(a.schedule, a.ages)
-    client = HARNESSES[a.harness](a.model, a.effort)
-    work = os.path.abspath(os.path.join(a.out, f"work-{a.label}"))
-    session = C.Session(client, env=None, io=work, work=work) if not a.dry_run else None
+    settings = settings_of(a.client_env)
+    client = HARNESSES[a.harness](a.model, a.effort, settings=settings)
     salt = os.urandom(4).hex()
     start = {"event": "start", "harness": a.harness, "client": client.client_id, "model": a.model,
              "ages": ",".join(labels), "replicas": a.replicas, "words": a.words, "filler": a.filler, "effort": a.effort,
              "salt": salt}
+    if settings:
+        start["client_env"] = settings
+    if client.own:
+        start["isolation"] = dict(ISOLATION)
     if a.dry_run:
         plan = C.Session(client, env=None, io="<io>", work="<work>", create=False)
         start.update(command={"prime": plan.plan(), "check": plan.plan(resume="<session>")})
+        env = client.environment("<client-home>/" + client.client_id, base={k: "<" + k + ">" for k in C.ALLOW})
         requests = 3 + 2 * a.replicas * len(ages)
         print(json.dumps(start))
         print(f"{a.label}: {a.harness} {a.model}: baseline, control (checked at 30 s), then {a.replicas} x "
-              f"{len(ages)} samples ({', '.join(labels)}): at most {requests} requests. Dry run: nothing run, nothing sent.")
+              f"{len(ages)} samples ({', '.join(labels)}): at most {requests} requests.")
+        if client.own:
+            print(f"{a.label}: environment {json.dumps(env)}; working folder: a new empty folder under the system's "
+                  "temporary folder. Dry run: nothing run, nothing sent.")
+        else:
+            print(f"{a.label}: the caller's environment (a proxy client). Dry run: nothing run, nothing sent.")
         return
-    start.update(client_version=client.version(None),
-                 command={"prime": session.plan(), "check": session.plan(resume="<session>")})
-    os.makedirs(a.out, exist_ok=True)
-    path = os.path.join(a.out, f"{a.label}.jsonl")
+    if client.own:
+        home = C.state_folder(client, a.client_home, ROOT)
+        env = client.environment(home)
+    else:
+        env = None
+    # A new empty working folder outside every repository (a client reads CLAUDE.md / AGENTS.md from the folders above
+    # it), kept until the last check: a session is resumed from the folder it was started in.
+    tmp = tempfile.mkdtemp(prefix=f"groundtruth-{a.label}-")
+    try:
+        session = C.Session(client, env=env, io=os.path.join(tmp, "io"), work=os.path.join(tmp, "work"))
+        start.update(client_version=client.version(env),
+                     command={"prime": session.plan(), "check": session.plan(resume="<session>")})
+        os.makedirs(a.out, exist_ok=True)
+        path = os.path.join(a.out, f"{a.label}.jsonl")
 
-    def log(ev):
-        ev["at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        with open(path, "a") as f:
-            f.write(json.dumps(ev) + "\n")
-        print(json.dumps(ev), flush=True)
+        def log(ev):
+            ev["at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            with open(path, "a") as f:
+                f.write(json.dumps(ev) + "\n")
+            print(json.dumps(ev), flush=True)
 
-    log(start)
-    run_probe(Harness(session), ages=ages, labels=labels, replicas=a.replicas, words=a.words, salt=salt, log=log,
-              filler=a.filler)
+        log(start)
+        run_probe(Harness(session), ages=ages, labels=labels, replicas=a.replicas, words=a.words, salt=salt, log=log,
+                  filler=a.filler)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 if __name__ == "__main__":

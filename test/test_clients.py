@@ -161,6 +161,67 @@ class Environment(unittest.TestCase):
         self.assertNotIn("CLAUDE_CODE_PROMPT_CACHE_TTL", C.Claude("m").environment("/s", base=BASE))
 
 
+class StateFolder(unittest.TestCase):
+    """The state folder: <client-home>/<client id>, never an everyday folder, outside the repository, logged in."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        t = self.tmp.name
+        self.user = os.path.join(t, "user")              # stands for the home folder; the real one is never read
+        self.repo = os.path.join(t, "repo")
+        self.base = os.path.join(t, "client-home")
+        for d in (self.user, self.repo, self.base, os.path.join(self.base, "claude-code"), os.path.join(self.base, "muse-code")):
+            os.makedirs(d)
+        self.calls = []
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def run_ok(self, code):
+        def run(argv, env, cwd, stdin, timeout):
+            self.calls.append((argv, env))
+            return code, "", ""
+        return run
+
+    def folder(self, client, base, code=0, env=None):
+        return C.state_folder(client, base, self.repo, user_home=self.user, run=self.run_ok(code), env=env)
+
+    def test_a_logged_in_folder_is_accepted_and_checked_in_its_own_environment(self):
+        home = self.folder(C.Claude("m"), self.base)
+        self.assertEqual(home, os.path.join(self.base, "claude-code"))
+        argv, env = self.calls[0]
+        self.assertEqual(argv, ["claude", "auth", "status"])
+        self.assertEqual(env["CLAUDE_CONFIG_DIR"], home)
+
+    def test_required_and_must_exist(self):
+        with self.assertRaisesRegex(SystemExit, "required"):
+            self.folder(C.Claude("m"), None)
+        with self.assertRaisesRegex(SystemExit, "does not exist"):
+            self.folder(C.Codex("m"), self.base)
+
+    def test_not_logged_in(self):
+        with self.assertRaisesRegex(SystemExit, "not logged in"):
+            self.folder(C.Claude("m"), self.base, code=1)
+
+    def test_never_the_everyday_folder(self):
+        os.makedirs(os.path.join(self.user, ".claude", "claude-code"))
+        with self.assertRaisesRegex(SystemExit, "everyday"):
+            self.folder(C.Claude("m"), os.path.join(self.user, ".claude"))
+        os.makedirs(os.path.join(self.user, ".config", "muse-code"))
+        with self.assertRaisesRegex(SystemExit, "everyday"):
+            self.folder(C.Muse("m"), os.path.join(self.user, ".config"), env={"META_API_KEY": "k"})
+
+    def test_never_inside_the_repository(self):
+        os.makedirs(os.path.join(self.repo, "state", "claude-code"))
+        with self.assertRaisesRegex(SystemExit, "repository"):
+            self.folder(C.Claude("m"), os.path.join(self.repo, "state"))
+
+    def test_muse_needs_its_key(self):
+        with self.assertRaisesRegex(SystemExit, "META_API_KEY"):
+            self.folder(C.Muse("m"), self.base, env={})
+        self.assertTrue(self.folder(C.Muse("m"), self.base, env={"META_API_KEY": "k"}).endswith("muse-code"))
+
+
 class SessionRuns(unittest.TestCase):
     """Session against a fake runner: the prompt reaches the client, the files are read and removed, the work folder
     stays empty."""
