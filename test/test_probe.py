@@ -253,6 +253,41 @@ class Effort(unittest.TestCase):
         self.assertEqual(self.start("--harness", "codex", "--effort", "low")["effort"], "low")
 
 
+class Waves(unittest.TestCase):
+    """M-3: an age's samples are primed in three waves at least five minutes apart."""
+
+    def test_the_samples_of_an_age_are_primed_five_minutes_apart(self):
+        clock = FakeClock()
+        c = FakeClient(clock, ttl=36000)
+        primed = []
+        orig = c.start
+
+        def start(prompt):
+            primed.append(clock.now())
+            return orig(prompt)
+        c.start = start
+        events = []
+        probe.run_probe(c, ages=[150, 300], labels=["2.5m", "5m"], replicas=3, words=10, salt="t", log=events.append,
+                        clock=clock)
+        by_age = {}
+        for e in events:
+            if e["event"] == "prime" and e["age"] != "control":
+                by_age.setdefault(e["age"], []).append(e["wave"])
+        self.assertEqual(by_age, {"5m": [0, 1, 2], "2.5m": [0, 1, 2]})
+        starts = primed[2:]  # after the baseline and the control
+        waves = [starts[0], starts[2], starts[4]]
+        self.assertGreaterEqual(waves[1] - waves[0], 300)
+        self.assertGreaterEqual(waves[2] - waves[1], 300)
+        checks = [e for e in events if e["event"] == "check" and e["age"] != "control"]
+        self.assertEqual(len(checks), 6)
+        self.assertFalse(any(e["late"] for e in checks))
+
+    def test_one_wave_when_asked(self):
+        clock = FakeClock()
+        reason, ev = go(FakeClient(clock, ttl=36000), clock, ages=("2.5m",), replicas=3)
+        self.assertIsNone(reason)
+
+
 class Fillers(unittest.TestCase):
     def test_each_sample_has_its_own_block(self):
         for filler in probe.FILLERS:

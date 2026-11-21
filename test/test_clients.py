@@ -138,7 +138,8 @@ class Environment(unittest.TestCase):
                 "claude": {"CLAUDE_CONFIG_DIR": home, "DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_MAX_RETRIES": "0"},
                 "codex": {"CODEX_HOME": home},
                 "devin": {"XDG_CONFIG_HOME": home + "/config", "XDG_DATA_HOME": home + "/data", "XDG_STATE_HOME": home + "/state",
-                          "XDG_CACHE_HOME": home + "/cache", "DEVIN_SESSIONS_DIR": home + "/sessions"},
+                          "XDG_CACHE_HOME": home + "/cache", "DEVIN_SESSIONS_DIR": home + "/sessions",
+                          "DEVIN_CACHE_KEEPALIVE_MAX_PINGS": "0"},
                 "muse": {"XDG_CONFIG_HOME": home + "/config", "XDG_DATA_HOME": home + "/data", "XDG_STATE_HOME": home + "/state",
                          "XDG_CACHE_HOME": home + "/cache", "MUSE_NO_AUTO_UPDATE": "1"},
             }
@@ -420,6 +421,52 @@ class Redaction(unittest.TestCase):
             s.start("the prompt")
             self.assertIn("001-start-export.txt", os.listdir(tmp + "/keep"))
             self.assertEqual(os.listdir(tmp + "/io"), [])
+
+
+class Parity(unittest.TestCase):
+    """Provimux's client-parity.md, section 4.5: M-1, M-2, M-4."""
+
+    def test_devin_runs_in_process_with_the_keepalive_off_and_says_so(self):
+        c = C.Devin("glm-5-3-low")
+        self.assertIn("--process-model", c.command("/p", files={"export": ("/e", False)}))
+        self.assertEqual(c.environment("/s", base=BASE)["DEVIN_CACHE_KEEPALIVE_MAX_PINGS"], "0")
+        self.assertEqual(c.run_info(), {"process_model": "in-process", "keepalive_max_pings": 0})
+        c.daemon = True  # pair DV-5
+        self.assertNotIn("--process-model", c.command("/p", files={"export": ("/e", False)}))
+        self.assertNotIn("DEVIN_CACHE_KEEPALIVE_MAX_PINGS", c.environment("/s", base=BASE))
+        self.assertEqual(c.run_info()["process_model"], "client default (daemon)")
+
+    def test_pi_runs_from_its_own_folder_and_asks_the_devin_variant_as_given(self):
+        c = C.Pi("devin/nemotron-3-5-super-none")
+        home = "/s/" + "pi-provimux"  # built here: the scan refuses a state folder's path
+        env = c.environment(home, base=BASE)
+        self.assertEqual(env["PI_CODING_AGENT_DIR"], home)
+        for k in FORBIDDEN:
+            self.assertNotIn(k, env)
+        argv = c.command("/p", session="S", files={"session": ("/io/pi-sessions/*_S.jsonl", True)})
+        self.assertEqual(argv[argv.index("--model") + 1], "cliproxyapi/devin/nemotron-3-5-super-none")
+        self.assertEqual(argv[argv.index("--thinking") + 1], "off")
+        self.assertEqual(c.effective_effort(), "off")
+        self.assertEqual(C.Pi("gpt-6.1-terra").thinking(), "low")
+
+    def test_pi_records_what_pi_and_provimux_were(self):
+        def run(argv, env, cwd, stdin, timeout):
+            return 0, {"provimux": "provimux 8.1.0-pmx.1", "pi": "1.6.0", "git": "cef8aee0000a"}[argv[0]], ""
+        with tempfile.TemporaryDirectory() as home:
+            from unittest import mock
+            with mock.patch.dict(os.environ, {"PI_PROVIMUX_DIR": "/x/pi-provimux-checkout"}):
+                with self.assertRaisesRegex(SystemExit, "payload-rules.json"):
+                    C.Pi("m").describe(home, {}, run=run)
+                with open(os.path.join(home, "payload-rules.json"), "w") as f:
+                    f.write("[]")
+                info = C.Pi("m").describe(home, {}, run=run)
+            self.assertEqual(info["provimux_build"], "provimux 8.1.0-pmx.1")
+            self.assertEqual((info["pi_version"], info["pi_provimux_commit"], info["payload_rules"]), ("1.6.0", "cef8aee0000a", []))
+            self.assertIn("requested", info["transport"])
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("PI_PROVIMUX_DIR", None)
+                with self.assertRaisesRegex(SystemExit, "PI_PROVIMUX_DIR"):
+                    C.Pi("m").describe(home, {}, run=run)
 
 
 if __name__ == "__main__":

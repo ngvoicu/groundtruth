@@ -106,7 +106,11 @@ def written_ttl(usage):
     return "1h" if h1 else "5m" if m5 else None
 
 
-def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler="random", cumulative=None):
+WAVES, WAVE_GAP = 3, 300.0
+
+
+def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler="random", cumulative=None,
+              waves=WAVES, wave_gap=WAVE_GAP):
     """The loop. `h` has start(prompt) -> (handle, usage dict) and resume(handle, prompt) -> usage dict and raises
     clients.Refused / another exception; `log` takes one event; `clock` has now() and sleep(). Returns the stop reason
     or None."""
@@ -190,24 +194,38 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
         if not warm:
             raise Stop("no-observable-cache")
 
-        # Long ages first, so the short checks do not wait behind a long queue of primings; a check that falls due
-        # is made before the next priming.
-        samples = sorted([(x, ag, r) for r in range(replicas) for x, ag in zip(labels, ages)], key=lambda s: -s[1])
-        queue, due, n = list(samples), [], 0
+        # The samples of one age are primed in waves (replica r in wave r mod `waves`), a wave starting at least
+        # `wave_gap` seconds after the one before, so the checks of an age fall at different moments (M-3 of the
+        # parity design). Within a wave, long ages first, so the short checks do not wait behind a long queue of
+        # primings; a check that falls due is made before the next priming.
+        waves = max(1, min(waves, replicas or 1))
+        samples = sorted([(x, ag, r, r % waves) for r in range(replicas) for x, ag in zip(labels, ages)],
+                         key=lambda s: (s[3], -s[1]))
+        queue, due, n, wave_start = list(samples), [], 0, {}
         while queue or due:
-            if due and due[0][0] <= clock.now():
+            now = clock.now()
+            if due and due[0][0] <= now:
                 _, _, name, age, handle, primed, t0 = heapq.heappop(due)
                 check(name, age, handle, primed, t0, baseline)
-            elif queue:
-                name, age, rep = queue.pop(0)
+                continue
+            if queue:
+                name, age, rep, wave = queue[0]
+                ready = wave_start[wave - 1] + wave_gap if wave and wave - 1 in wave_start else None
+                if ready is not None and now < ready:
+                    clock.sleep(min(ready, due[0][0]) - now if due else ready - now)
+                    continue
+                queue.pop(0)
                 n += 1
                 p = prime(prime_prompt(f"{salt}-{n}", words, filler), name, rep)
                 if p:
                     handle, primed, t0 = p
-                    log({"event": "prime", "age": name, "rep": rep, "handle": handle, "usage": primed})
+                    wave_start.setdefault(wave, t0)
+                    log({"event": "prime", "age": name, "rep": rep, "wave": wave, "handle": handle, "usage": primed})
                     heapq.heappush(due, (t0 + age, n, name, age, handle, primed, t0))
+                else:
+                    wave_start.setdefault(wave, clock.now())
             else:
-                clock.sleep(due[0][0] - clock.now())
+                clock.sleep(due[0][0] - now)
     except Stop as s:
         log({"event": "stop", "reason": s.reason, **({"error": s.text} if s.text else {})})
         return s.reason
@@ -249,6 +267,11 @@ def parser():
                          "default: GROUNDTRUTH_CLIENT_HOME. Required for an own client")
     ap.add_argument("--client-env", action="append", default=[], metavar="KEY=VALUE",
                     help="a setting the run makes for the client (Claude Code: CLAUDE_CODE_PROMPT_CACHE_TTL=5m); recorded")
+    ap.add_argument("--waves", type=int, default=WAVES,
+                    help=f"prime an age's samples in this many waves (default {WAVES}; M-3 of the parity design)")
+    ap.add_argument("--wave-gap", type=float, default=WAVE_GAP, help=f"seconds between two waves (default {WAVE_GAP:g})")
+    ap.add_argument("--devin-daemon", action="store_true",
+                    help="Devin only (pair DV-5): leave the process model and the cache keepalive as the client has them")
     ap.add_argument("--keep-raw", metavar="DIR",
                     help="keep every invocation's output, redacted, in DIR (outside the repository): for the smoke runs, "
                          "to correct the fixtures")
@@ -275,6 +298,10 @@ def main(argv=None):
     ages, labels = ages_of(a.schedule, a.ages)
     settings = settings_of(a.client_env)
     client = HARNESSES[a.harness](a.model, a.effort, settings=settings)
+    if a.devin_daemon:
+        if a.harness != "devin":
+            raise SystemExit("--devin-daemon is for the Devin CLI only")
+        client.daemon = True
     salt = os.urandom(4).hex()
     start = {"event": "start", "harness": a.harness, "client": client.client_id, "model": a.model,
              "ages": ",".join(labels), "replicas": a.replicas, "words": a.words, "filler": a.filler, "effort": client.effective_effort(),
@@ -286,17 +313,20 @@ def main(argv=None):
         start["client_settings"] = fixed  # what the run sets for every invocation (no secret, no path)
     if client.retries_note:
         start["retries"] = client.retries_note
-    if client.own:
+    if client.isolated:
         start["isolation"] = dict(ISOLATION)
+    start["waves"] = {"waves": max(1, min(a.waves, a.replicas or 1)), "gap_s": a.wave_gap}
+    if client.run_info():
+        start[a.harness] = client.run_info()
     if a.dry_run:
         plan = C.Session(client, env=None, io="<io>", work="<work>", create=False)
         start.update(command={"prime": plan.plan(), "check": plan.plan(resume="<session>")})
-        env = client.environment("<client-home>/" + client.client_id, base={k: "<" + k + ">" for k in C.ALLOW})
+        env = client.environment("<client-home>/" + (getattr(client, "state_name", None) or client.client_id), base={k: "<" + k + ">" for k in C.ALLOW})
         requests = 3 + 2 * a.replicas * len(ages)
         print(json.dumps(start))
         print(f"{a.label}: {a.harness} {a.model}: baseline, control (checked at 30 s), then {a.replicas} x "
               f"{len(ages)} samples ({', '.join(labels)}): at most {requests} requests.")
-        if client.own:
+        if client.isolated:
             print(f"{a.label}: environment {json.dumps(env)}; working folder: a new empty folder under the system's "
                   "temporary folder. Dry run: nothing run, nothing sent.")
         else:
@@ -306,7 +336,7 @@ def main(argv=None):
     if keep and (keep + os.sep).startswith(os.path.realpath(ROOT) + os.sep):
         raise SystemExit("--keep-raw: a folder outside the repository (the raw output is never published)")
     home = None
-    if client.own:
+    if client.isolated:
         home = C.state_folder(client, a.client_home, ROOT)
         env = client.environment(home)
         import scan_secrets
@@ -326,6 +356,8 @@ def main(argv=None):
             env["TMPDIR"] = os.path.join(tmp, "tmp")
         session = C.Session(client, env=env, io=os.path.join(tmp, "io"), work=os.path.join(tmp, "work"),
                             home=home, keep=keep)
+        if a.harness == "pi":
+            start["pi"] = client.describe(home, env)
         start.update(client_version=client.version(env),
                      command={"prime": session.plan(), "check": session.plan(resume="<session>")})
         os.makedirs(a.out, exist_ok=True)
@@ -339,7 +371,7 @@ def main(argv=None):
 
         log(start)
         run_probe(Harness(session), ages=ages, labels=labels, replicas=a.replicas, words=a.words, salt=salt, log=log,
-                  filler=a.filler)
+                  filler=a.filler, waves=a.waves, wave_gap=a.wave_gap)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

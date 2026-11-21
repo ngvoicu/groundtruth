@@ -93,6 +93,7 @@ def json_lines(text):
 class Client:
     harness = client_id = binary = None
     own = True                # a client its route's vendor ships (driven apart from everyday use)
+    isolated = True           # driven with a state folder of its own and the short environment
     cumulative = False
     prompt_mode = "file"      # stdin: the prompt file on stdin; file: its path on the command line; arg: its text
     settable = ()             # variables a run may set for the client (recorded in the run's start event)
@@ -110,6 +111,10 @@ class Client:
     def effective_effort(self):
         """The reasoning level the client is actually asked for (recorded in the run's start event)."""
         return self.effort
+
+    def run_info(self):
+        """What the run records about how the client was driven, beyond its settings (None: nothing)."""
+        return None
 
     # --- the state folder and the environment -------------------------------------------------------------------
     def home_vars(self, home):
@@ -296,10 +301,24 @@ class Devin(Client):
         return tail if tail in self.LEVELS else None
     defaults = ("~/.devin", "~/.config", "~/.local/share", "~/.local/state", "~/.cache")
 
+    # M-2 of the parity design: in-process (no shared daemon) and the client's cache keepalive off; the run records
+    # both. `daemon=True` (pair DV-5 only) leaves both as the client has them, and says so.
+    daemon = False
+
     def home_vars(self, home):
         return {"XDG_CONFIG_HOME": os.path.join(home, "config"), "XDG_DATA_HOME": os.path.join(home, "data"),
                 "XDG_STATE_HOME": os.path.join(home, "state"), "XDG_CACHE_HOME": os.path.join(home, "cache"),
                 "DEVIN_SESSIONS_DIR": os.path.join(home, "sessions")}
+
+    def run_vars(self):
+        return {} if self.daemon else {"DEVIN_CACHE_KEEPALIVE_MAX_PINGS": "0"}
+
+    def run_info(self):
+        return {"process_model": "client default (daemon)" if self.daemon else "in-process",
+                "keepalive_max_pings": "client default" if self.daemon else 0}
+
+    def _process(self):
+        return [] if self.daemon else ["--process-model", "in-process"]
 
     def login_command(self):
         return ["devin", "auth", "--process-model", "in-process", "status"]
@@ -310,7 +329,7 @@ class Devin(Client):
     def command(self, prompt_file, resume=None, session=None, files=None):
         # in-process: a sample is a process that ends, never a shared background daemon that could touch its cache.
         # The model id carries the reasoning level (claude-opus-5-5-low); a resumed session keeps its model.
-        return ["devin", "--process-model", "in-process", *(["-r", resume] if resume else ["--model", self.model]),
+        return ["devin", *self._process(), *(["-r", resume] if resume else ["--model", self.model]),
                 "--prompt-file", prompt_file, "-p", "--respect-workspace-trust", "false",
                 "--export", (files or {})["export"][0]]
 
@@ -382,14 +401,34 @@ class Muse(Client):
                      write=None, calls=u.get("calls"), model=ms[0].get("model") if len(ms) == 1 else None)
 
 
+PI_THINKING = {"none": "off", "minimal": "minimal", "low": "low", "medium": "medium", "high": "high", "xhigh": "xhigh"}
+
+
 class Pi(Client):
-    """pi through CLIProxyAPI (a proxy client, client pi+cliproxyapi): driven as before, with the caller's environment."""
+    """pi through Provimux (a proxy client, client pi+cliproxyapi): the pi side of a parity pair (Provimux's design
+    client-parity.md, section 6). pi runs from a state folder of its own (PI_CODING_AGENT_DIR = <client-home>/pi-provimux,
+    set up once by the owner with pi-provimux and the proxy's key), never ~/.pi. The model is given as Provimux names
+    it, a Devin id with its effort suffix as given (M-1). Each run records what pi and Provimux were (M-4)."""
     harness, client_id, binary = "pi", "pi+cliproxyapi", "pi"
     own = False
+    state_name = "pi-provimux"
     prompt_mode = "arg"
+    defaults = ("~/.pi",)
+    provider = "cliproxyapi"  # the pi provider pi-provimux registers for the proxy
 
-    def environment(self, home, base=None):
-        return dict(os.environ if base is None else base)
+    def home_vars(self, home):
+        return {"PI_CODING_AGENT_DIR": home}
+
+    def run_vars(self):
+        return {"PI_SKIP_VERSION_CHECK": "1"}
+
+    def thinking(self):
+        # A Devin id names its level; pi is asked the same one, so that both sides ask one variant (M-1).
+        tail = self.model.rsplit("-", 1)[-1]
+        return PI_THINKING.get(tail, self.effort) if self.model.startswith("devin/") else self.effort
+
+    def effective_effort(self):
+        return self.thinking()
 
     def new_session(self):
         return "hp-" + uuid.uuid4().hex[:12]
@@ -399,8 +438,8 @@ class Pi(Client):
 
     def command(self, prompt_file, resume=None, session=None, files=None):
         sd = os.path.dirname((files or {})["session"][0])
-        return ["pi", "-p", "--session-dir", sd, "--session-id", resume or session, "--model", "cliproxyapi/" + self.model,
-                "--thinking", self.effort, prompt_file]
+        return ["pi", "-p", "--session-dir", sd, "--session-id", resume or session,
+                "--model", f"{self.provider}/{self.model}", "--thinking", self.thinking(), prompt_file]
 
     def parse(self, stdout, stderr, code, files, expect=None):
         raw = files.get("session")
@@ -414,6 +453,42 @@ class Pi(Client):
         u = turn[-1].get("usage") or {}
         return Usage(total=u.get("input", 0) + u.get("cacheRead", 0) + u.get("cacheWrite", 0), cached=u.get("cacheRead", 0),
                      write=u.get("cacheWrite", 0), calls=len(turn), model=turn[-1].get("model"))
+
+    def describe(self, home, env, run=None):
+        """M-4: the Provimux build, pi's version, pi-provimux's commit, the transport and the payload rules. Read from
+        `provimux --version` (the installed binary), `pi --version`, the checkout named by PI_PROVIMUX_DIR, pi's
+        settings in the state folder, and payload-rules.json in it (the rules of the owner's Provimux configuration
+        that touch this login's requests, written there by the owner; the configuration itself is never read)."""
+        run = run or _run
+        info = {}
+
+        def first(argv):
+            code, out, err = run(argv, env=env, cwd=None, stdin=None, timeout=60)
+            lines = (out or err or "").strip().splitlines()
+            if code or not lines:
+                raise SystemExit(f"pi run: {' '.join(argv)} failed: it is needed for the run's record (M-4)")
+            return lines[-1].strip()
+        info["provimux_build"] = first([os.environ.get("GROUNDTRUTH_PROVIMUX_BIN", "provimux"), "--version"])
+        info["pi_version"] = first(["pi", "--version"])
+        checkout = os.environ.get("PI_PROVIMUX_DIR")
+        if not checkout:
+            raise SystemExit("pi run: PI_PROVIMUX_DIR (the pi-provimux checkout pi loads) is not set (M-4)")
+        info["pi_provimux_commit"] = first(["git", "-C", checkout, "rev-parse", "--short=12", "HEAD"])
+        settings = {}
+        try:
+            with open(os.path.join(home, "settings.json")) as f:
+                settings = json.load(f)
+        except (OSError, ValueError):
+            pass
+        info["transport"] = {"requested": settings.get("transport") or "auto (pi-provimux: WebSocket first, SSE fallback)",
+                             "used": "not recorded by pi"}
+        try:
+            with open(os.path.join(home, "payload-rules.json")) as f:
+                info["payload_rules"] = json.load(f)
+        except (OSError, ValueError):
+            raise SystemExit("pi run: <client-home>/pi-provimux/payload-rules.json is missing or not JSON: the owner "
+                             "writes there the payload rules of Provimux's configuration in force ([] for none) (M-4)")
+        return info
 
 
 CLIENTS = {c.harness: c for c in (Claude, Codex, Devin, Muse, Pi)}
