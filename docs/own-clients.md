@@ -1,0 +1,596 @@
+# Measuring a login through its vendor's own client
+
+A design, written on 2026-11-22. Nothing in it has been run: no request was sent to a provider or a login for it.
+It says how groundtruth measures each login through the client its vendor ships, how OpenRouter's proxy-only
+entries are measured again directly, what changes in `observed.json`, which runs are owed and what has to be built.
+
+## Why
+
+providers.dev publishes, for each value, the most direct measurement that exists for its route:
+
+- **An API-key route** (`anthropic-api`, `openai-api`, `openrouter`): only `direct` runs. A proxy run on such a
+  route stays in the records and feeds no value.
+- **A login** (`claude-subscription`, `codex-subscription`, `devin`, `meta-subscription`, `antigravity`): the
+  vendor's own client first; a proxy (CLIProxyAPI, Provimux) only where no own client can be scripted.
+
+What the records hold today (`observed.json` at `72e0c29`):
+
+| Route | Cache runs | Limits rows |
+|---|---|---|
+| `claude-subscription` | `cliproxyapi` 8 | `cliproxyapi` 4 |
+| `codex-subscription` | `cliproxyapi` 14, `pi+cliproxyapi` 4, `codex-cli` 2 | `cliproxyapi` 4 |
+| `devin` | `pi+cliproxyapi` 20, `devin-cli` 12, `cliproxyapi` 8 | `cliproxyapi` 12 |
+| `meta-subscription` | `cliproxyapi` 8, `pi+cliproxyapi` 6, `muse-code` 1 | `cliproxyapi` 3 |
+| `antigravity` | `cliproxyapi` 2 | none |
+| `openrouter` | `direct` 88, `cliproxyapi` 24 | `direct` 4, `cliproxyapi` 9 |
+
+The own-client runs that exist (15, of 7 to 9 November) were made before the ladder rule: two or three samples per
+age, other ages than today's start, and the clients' everyday folders. They stay as they are; section 4 measures
+again.
+
+**Where each statement below comes from.** *(help)*: the client's own `--help` on the version installed, read for
+this design. *(doc)*: the vendor's documentation, read on 2026-11-22. *(src)*: the client's public source.
+*(run)*: groundtruth's own raw files. *(open)*: not established; the smoke run of section 5, step 6, settles it.
+Versions: Claude Code 2.1.330, Codex CLI 0.170.0, Devin CLI 3000.14, Muse Code 1.4.24, Antigravity CLI 1.5.14.
+
+## 1. Per login
+
+One method for all of them, the one `harness/probe.py` already has: every sample is a new session of the client
+whose first message carries a block of text no other sample has; after its age the session is resumed once with a
+short message, and the cached-token count the client reports for that request is read. A check is warm when the
+cache covers the part every session shares (the client's own system prompt and tools) and at least half of the
+sample's block: `cached >= baseline + unique / 2`.
+
+Four rules are new, for every client:
+
+1. **One model request per check.** A client that makes two requests in one turn (a tool call, then the answer)
+   reports their sum, and the second request reads what the first one wrote: a cold check would count as warm. A
+   check counts only when the client shows that the turn was one model request; otherwise it is logged as
+   `check-invalid` and left out.
+2. **A check is never sent twice.** Today a failed resume is retried after 30 seconds. If the first try reached the
+   provider, the second measures a re-send, not the age. A check that fails is logged as `check-failed` and its
+   sample is lost. A priming may be retried.
+3. **The control comes first.** The control sample is primed, checked at 30 seconds, and only then are the others
+   primed. A control that misses ends the run (`no-observable-cache`, as the method says) after three requests
+   instead of ninety.
+4. **A quota refusal ends the run.** It is never retried (`--stop-on-refusal` in the TypeScript probe).
+
+Ages count from the start of the priming request, as the README says; `probe.py` counts from its end today.
+
+### 1.1 `claude-subscription`: Claude Code (new client id `claude-code`)
+
+**Driving it.**
+
+```bash
+# a sample's first message, the prompt on stdin
+claude -p --output-format json --model <id> --effort low --session-id <uuid> \
+       --strict-mcp-config --disable-slash-commands --permission-prompts none < prime.txt
+# its one check
+claude -p --output-format json --model <id> --effort low --resume <uuid> \
+       --strict-mcp-config --disable-slash-commands --permission-prompts none \
+       "Reply with OK only. Do not use any tools."
+```
+
+- `--strict-mcp-config` with no `--mcp-config`: no MCP server, also none of those attached to the account. They
+  would put the owner's connector names in the request and change it from day to day.
+- `--permission-prompts none`: nobody is asked; anything that would ask is denied *(help)*.
+- Never `--bare`: it reads no login *(doc, headless)*. Never `--no-session-persistence`: the session could not be
+  resumed *(help)*.
+- A resumed session sends its recorded system prompt again, so the check's prefix is the priming's
+  *(help: `--system-prompt-snapshot`, on by default; doc, prompt-caching)*.
+- A session id is looked up first in the folder the session was started in *(doc, sessions)*: priming and check
+  run in the same working folder.
+
+**Reading it.** The `json` output is one result object *(doc, agent-sdk/typescript)*:
+
+| Read | From |
+|---|---|
+| Input not from cache | `usage.input_tokens` |
+| Cache read | `usage.cache_read_input_tokens` |
+| Cache write | `usage.cache_creation_input_tokens` |
+| Which lifetime was written | `usage.cache_creation.ephemeral_1h_input_tokens`, `.ephemeral_5m_input_tokens` |
+| One model request | `num_turns` is 1 and `modelUsage` names one model |
+| The model that answered | the key of `modelUsage` |
+| A failure | `is_error`, `subtype`, the text in `result`; a non-zero exit |
+
+`total = input + cache read + cache write`; `cached = cache read`. `usage` covers the main conversation of that
+invocation only, so a resumed run reports the resumed turn, not the session's sum *(doc; open: confirmed by the
+smoke run)*. `total_cost_usd` is the client's estimate, not a bill, and is not used.
+
+**Input limit.**
+
+- A prompt on stdin may be up to 10 MB *(doc, headless)*: about 1.6 million repetitions of `" hello"`, more than
+  the window.
+- Accepted: the request's `total`, which counts Claude Code's own system prompt and tools.
+- Refused: Claude Code prints `Prompt is too long` *(doc, errors)*. Whether Anthropic's own sentence with the two
+  counts (`prompt is too long: N tokens > M maximum`) reaches the output, stderr or `--debug-file` is *(open)*. If
+  it does, the row has `context` as the proxy's row has; if not, the walk gives `input_accepted` and
+  `input_refused`, the refused size converted from two accepted ones as `build_observed.py` already checks.
+- Auto-compaction answers this error, but one exchange cannot be compacted *(doc, env-vars)*: a first message that
+  is too long is refused, not cut.
+
+**What Claude Code decides by itself.**
+
+| Decision | What it is | Basis |
+|---|---|---|
+| Cache lifetime | The 1-hour lifetime for the main conversation on a subscription inside the plan's included usage, `-p` runs included; the 5-minute lifetime once the subscriber is in overage. A person can choose: `CLAUDE_CODE_PROMPT_CACHE_TTL=5m\|1h`, the `promptCacheTtl` setting, `FORCE_PROMPT_CACHING_5M`, `ENABLE_PROMPT_CACHING_1H` | doc, prompt-caching |
+| What is cached | System prompt and tools, then project context, then the conversation. Where the markers sit is not documented | doc |
+| The shared prefix | Its own system prompt and tool list in front of every conversation; the cache is "effectively scoped to one machine and directory" | doc |
+| Window | The 1M window by default on Haiku 5.5, Sonnet 5 and later, Opus 4.7 and later, Fable | doc, model-config |
+| Retries | Up to 10, with backoff, before it reports a failure. The harness does not see them | doc, errors |
+
+**What the measurement means.** How long the cache of a paused Claude Code session lives on the login, with the
+lifetime Claude Code asked for. The run records which lifetime was written, from the replies. A default run
+therefore measures the 1-hour lifetime while the account is inside its included usage; in overage the same command
+measures the 5-minute one. A run whose replies change lifetime on the way ends (`tier-changed`) and is excluded. It
+does not say what a request that asks for nothing gets on the login: no own client sends such a request.
+
+### 1.2 `codex-subscription`: Codex CLI (`codex-cli`, exists)
+
+**Driving it** (as `probe.py` does, plus the state folder of section 2):
+
+```bash
+codex exec --json --skip-git-repo-check -m <id> -c model_reasoning_effort="low" -s read-only - < prime.txt
+codex exec resume <thread-id> --json --skip-git-repo-check -m <id> -c model_reasoning_effort="low" "<short message>"
+```
+
+**Reading it.** `thread.started` gives the thread id; `turn.completed` gives `usage`: `input_tokens`,
+`cached_input_tokens`, `cache_write_input_tokens`, `output_tokens`, `reasoning_output_tokens`. The figures are the
+thread's running total, also after a resume *(src: `exec/src/event_processor_with_jsonl_output.rs`,
+`core/src/session/mod.rs` at `rust-v0.170.0`; run: H1)*, so a check is the difference to its priming, as
+`probe.py` already computes. One model request: the turn's events hold no tool item (`item.*` of a command or tool
+call). A failure is `{"type":"error"}` followed by `turn.failed`; a plan's limit reads "You've hit your usage
+limit" *(src: `protocol/src/error.rs`)*.
+
+**Input limit: not through this client.** Codex refuses a single message above 1,048,576 characters before sending
+it *(src: `MAX_USER_INPUT_TEXT_CHARS`)*. That is about 175,000 tokens of `" hello"`, where the login refused at
+about 922,000 tokens through the proxy. A longer input can only be built over several turns, and then Codex's own
+window and compaction (`model_context_window`, `model_auto_compact_token_limit`) decide, not the provider. The
+route's input limit stays measured through the proxy.
+
+**What Codex decides by itself** *(src, none of it in OpenAI's documentation)*: the ChatGPT backend as endpoint;
+`store: false`; a `prompt_cache_key` that is the session id and stays the same across a resume; no retention asked
+in `codex exec`, so the server's default applies; its own window per model and its own compaction.
+
+**What the measurement means.** How long the cache of a paused Codex session lives on the plan, on the server's
+default retention.
+
+### 1.3 `devin`: Devin CLI (`devin-cli`, exists)
+
+**Driving it** (as `probe.py` does, with one addition):
+
+```bash
+devin --process-model in-process --model <id>-<effort> --prompt-file prime.txt -p \
+      --respect-workspace-trust false --export <file>
+devin --process-model in-process -r <session-id> --prompt-file check.txt -p \
+      --respect-workspace-trust false --export <file>
+```
+
+`--process-model in-process` is new. The default may serve a run from a background daemon that other `devin`
+commands share *(help)*, and Devin has "a background cache-refresh task" for long-running tasks *(doc, changelog
+3000.6.14)*. A sample must be a process that ends, so that nothing can touch its cache between priming and check.
+Which process model the 12 existing `devin-cli` runs used was not recorded.
+
+**Reading it.** `-p` has no JSON output; the export is the record: the last step with `metrics` gives
+`prompt_tokens` (cached and not), `cached_tokens`, and `extra.cache_creation_input_tokens` *(run: D1c; the export
+is the ATIF format, doc)*. One model request: the turn added exactly one step with `metrics`.
+
+**Input limit.** `--prompt-file` carries the input. What Devin prints for an input that is too long is *(open)*.
+
+**What Devin decides by itself.** Devin's service chooses the upstream and how it is asked to cache, per model; a
+user sets nothing. The reasoning level is part of the model id (`claude-opus-5-5-low`). For some models the CLI
+reported no cached token in any reply, also where the same account and model showed hits through the proxy the
+same day (*run*: H9 against H10, GPT-6.1 Terra; `devin-harness-2026-11-08/run.sh` names GPT-6.1 Sol, GPT-6 Astra
+and Muse Wonder). Whether Devin does not cache there or does not report it cannot be told from the client.
+
+**What the measurement means.** What the Devin CLI reports for a paused session. Where it reports nothing at all,
+it measured nothing (decision 1 of section 6).
+
+### 1.4 `meta-subscription`: Muse Code (`muse-code`, exists)
+
+**Driving it** (as `probe.py` does):
+
+```bash
+muse exec --json --model <id> --reasoning-effort low --session-id <uuid> --prompt-file prime.txt
+muse exec --json --model <id> --reasoning-effort low --session-id <uuid> "<short message>"
+```
+
+**Reading it.** The `run.usage` line: `calls`, and per model `input_tokens`, `cached_tokens` *(run: H5)*. It
+"counts every model call of the run", and when Muse Code cannot count a run it leaves the line out *(doc,
+changelog)*: no line is no reading, never zero. One model request: `calls` is 1. Muse Code reports no cache write.
+
+**Input limit.** `--prompt-file`. Muse Code's changelog names a `contextOverflow` failure; its output is *(open)*.
+
+**What Muse Code decides by itself.** The credential order: `META_API_KEY`, then a stored key, then a browser
+login *(doc, auth)*. The reasoning level (default high). Its compaction thresholds *(help)*. Whether it asks Meta
+for a retention is not documented and not visible in its output. On 2026-11-07 it cached its own system prompt and
+never the conversation *(run: H5, version not recorded)*.
+
+**What the measurement means.** What a Muse Code session gets. H5 again on the ladder shows whether 1.4.24 still
+does not cache the conversation; if so, the own-client value of the route is 0 (decision 2 of section 6).
+
+### 1.5 `antigravity`: something scriptable exists
+
+`agy`, Google's Antigravity CLI, is installed and has a print mode *(help)*:
+
+```bash
+agy -p --output-format json --model <id> --effort low < prime.txt
+agy -p --output-format json --conversation <conversation-id> "<short message>"
+```
+
+The `json` object carries `conversation_id`, `status`, `response` and `usage` with `input_tokens`,
+`output_tokens`, `thinking_tokens`, `cache_read_tokens`, `total_tokens` *(doc, cli/headless)*. So cache reads can
+be read; there is no cache-write figure. Proposed client id: `antigravity-cli`.
+
+Three things are *(open)*, and Antigravity moves to its own client only when the smoke run settles all three:
+
+1. Whether `usage` after `--conversation` in a new process is that turn's or the conversation's sum (the
+   documentation says "cumulative over the session"). If it is a sum, it is handled as Codex's is.
+2. Whether a run can be kept out of the owner's history. The login is in the system keyring and the settings in a
+   fixed folder *(doc, install, settings)*; no documented flag or variable moves them. `agy acp` has `--gemini-dir`
+   and `--app-data-dir` *(help)*; whether print mode takes them is not known. Without them, every sample is a
+   conversation in the owner's own list.
+3. What a refusal looks like (quota, and an input that is too long).
+
+Google's FAQ says headless mode "is intended for direct scripting and CI workflows", and that wrapping `agy` in
+third-party agents or applications, and third-party software reaching Antigravity, are not supported on consumer
+plans *(doc, faq)*. Which of the two a measuring script is, is the owner's reading (decision 6). Until the three
+points are settled, `antigravity` stays on the proxy.
+
+### 1.6 Summary
+
+| Route | Own client | Cache read from | Cache write | Input limit through it |
+|---|---|---|---|---|
+| `claude-subscription` | `claude-code` (new) | `usage.cache_read_input_tokens` | yes, with its lifetime | yes; the wording of the refusal is open |
+| `codex-subscription` | `codex-cli` | `cached_input_tokens`, less the priming's | `cache_write_input_tokens` | no: the client caps a message |
+| `devin` | `devin-cli` | `metrics.cached_tokens` of the export | `extra.cache_creation_input_tokens` | open |
+| `meta-subscription` | `muse-code` | `run.usage`, `cached_tokens` | not reported | open |
+| `antigravity` | `antigravity-cli` (if the smoke run passes) | `usage.cache_read_tokens` | not reported | open |
+
+## 2. The owner's setup
+
+### 2.1 Running a client apart from everyday use
+
+Three things keep a run out of the owner's settings, history and projects.
+
+**A state folder per client, used for nothing else.** One folder outside the repository and outside the client's
+default folder, named by `GROUNDTRUTH_CLIENT_HOME`; each client gets a subfolder. The client is pointed at it by
+its own variable, and logged in there once by the owner. `probe.py` refuses to start when the folder is missing,
+is not logged in, or is the client's default folder.
+
+| Client | Pointed at the folder by | Login in that folder | Never |
+|---|---|---|---|
+| Claude Code | `CLAUDE_CONFIG_DIR`: settings, session history and plugins live under it, and a different folder reads a different Keychain entry *(doc, env-vars, authentication)* | `claude auth login` with the variable set, once. The everyday login is another Keychain entry and is not touched | `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` in the environment: with `-p` a key is always used when present, and the run would be on the API, not the login *(doc)* |
+| Codex CLI | `CODEX_HOME`: `config.toml`, `auth.json`, `sessions/`, `history.jsonl`, logs *(doc)* | `codex login -c cli_auth_credentials_store="file"` with the variable set, once, so the login is a file in that folder | Copying the everyday `auth.json`: both copies would refresh one token, and the copy that loses is logged out ("refresh token was already used") *(doc, auth; src)* |
+| Devin CLI | `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `DEVIN_SESSIONS_DIR` *(doc)*; `--process-model in-process` | `devin auth login` with them set, once. Where the standard build keeps the token is *(open)* | `devin auth logout` in any environment, until it is known that the two logins are apart |
+| Muse Code | `XDG_CONFIG_HOME` (the credential file is `$XDG_CONFIG_HOME/muse/auth.json`, *launcher script*); `XDG_DATA_HOME` for the sessions *(open)*; `MUSE_NO_AUTO_UPDATE=1` | None: the subscription key in `META_API_KEY`, read from a Keychain item of groundtruth's into the client's environment, as `key.py` does for OpenRouter | The key on a command line or in a file |
+| Antigravity CLI | Not established (1.5, point 2) | The everyday login: there is one keyring entry | — |
+
+The alternative for Claude Code is a token from `claude setup-token` in `CLAUDE_CODE_OAUTH_TOKEN`. It works with
+any folder, but it is a secret that lives for a year and has to be stored and passed by groundtruth. A login in
+the state folder needs neither.
+
+**A working folder with nothing in it.** A new folder under the system's temporary folder per run, outside every
+repository, kept until the last check (a session is resumed from the folder it was started in). Not under
+`results/` as today: a client reads `CLAUDE.md` or `AGENTS.md` from the folders above its working folder, and a
+checkout of this repository can hold either.
+
+**A clean environment.** The client's process gets a short allow-list (`PATH`, `HOME`, `USER`, `LANG`, `TERM`,
+`TMPDIR`), the variables of the table, and what the run itself sets. So no API key, base URL, proxy setting or
+cache switch of the owner's shell reaches it. Updates are held for the run (`DISABLE_AUTOUPDATER=1` for Claude
+Code, `MUSE_NO_AUTO_UPDATE=1`), so a run has one client version; nothing else is switched off, because a client
+with its feature flags off may no longer ask for what it asks a user for.
+
+The smoke run checks the first of these from outside: the modification times of the client's default folders are
+read before and after (`stat` only; nothing in them is opened), and must not have changed.
+
+**What cannot be kept apart.** The quota is the account's: a run and the owner's own work draw on the same
+allowance. A vendor that keeps sessions on its side (Devin) may list them in the account. Claude Code changes
+lifetime when the account enters overage, so a Claude run is started when the plan's meter is low.
+
+### 2.2 What it costs
+
+A subscription's allowance is not published in tokens, so the cost is given as what the client will report.
+Measured on the earlier runs *(run: H1, H3, H5, H7, D1c, D6c, D9c)*: a request carries 16,000 to 36,000 input
+tokens (the client's own prompt, plus 7,000 to 11,000 of the sample's block), a priming takes 2 to 13 seconds, and
+none of the seven logs holds a retry or a failure.
+
+| Run | Samples | Requests | Input tokens, about | Of them read from cache while warm |
+|---|---|---|---|---|
+| Control only (the control missed) | 1 | 3 | 0.1 million | — |
+| 5-minute lifetime (to 15 min) | 16 | 33 | 1.0 million | about two thirds |
+| `std` with 65 min (to 2 h) | 46 | 93 | 2.7 million | about two thirds |
+| `long` (to 12 h) | 52 | 105 | 3.0 million | about two thirds |
+
+Output: a few tokens per request, plus reasoning at the lowest level. Claude Code's request size is not known
+before its smoke run; the table assumes Codex's.
+
+| Login | Cache runs (section 4) | Requests | Input tokens, at most |
+|---|---|---|---|
+| `claude-subscription` | 4 `std` + 4 short | 500 | 15 million |
+| `codex-subscription` | 6 `long` | 630 | 18 million |
+| `devin` | 13 `std` + 4 `long`, fewer where the control misses | 1,630 | 47 million |
+| `meta-subscription` | 3 `std`, or 3 controls | 280 | 8 million |
+| `antigravity` | 1 `std` | 93 | 2.7 million |
+
+**Limits walks cost more per request.** A refused request is free. An accepted one just under a window of a
+million tokens is a million tokens of the allowance: one per model where the refusal names the window, two or three
+where it does not. Claude: 4 models, 4 to 12 million tokens. Devin: 12 models, 12 to 36 million.
+
+**OpenRouter, in dollars**, by the ledger of `results/openrouter-2026-11-18` (a `std` run of 65 to 86 requests at
+about 2,500 prompt tokens):
+
+| Entry | Compared with | About |
+|---|---|---|
+| `openai/gpt-6-astra` | `openai/gpt-6.2-astra` $1.23, `~openai/gpt-astra-latest` $1.21 | $1.25 |
+| `openai/gpt-6-luna` | `~openai/gpt-luna-latest` $0.02, `openai/gpt-6-luna-pro` $0.04 | $0.05 |
+| `meta/muse-spark-1.3` | `meta/muse-spark-open` $0.20, `meta/muse-ember` $0.02 | $0.20 |
+| `deepseek/deepseek-v4.1-flash` | `deepseek/deepseek-v4.1-flash-1017` $0.01 | $0.02 |
+| `z-ai/glm-5.3-flash` | `~z-ai/glm-flash-latest` $0.02, `z-ai/glm-5.3-flashx` $0.06 | $0.05 |
+| A second run at about 8,000 tokens, where the first control reads nothing | three times the first: DeepSeek, GLM and Muse Spark together | up to $0.80 |
+| 9 window requests | refused by OpenRouter itself, not billed | $0 |
+
+About $1.60, with those second runs about $2.40. A second Astra run would be about $3.75 and is not started without
+a go; its control hit at 2,500 tokens through the proxy. A key made for the campaign with a limit of $5 and a stop
+at $4, the prices read again before each run, as on 18 November.
+
+### 2.3 How long it takes
+
+| Part | Wall time | Note |
+|---|---|---|
+| Smoke, per client | 5 minutes | baseline, one sample checked at 30 seconds, one refused request |
+| OpenRouter, 5 cache runs together | 2 h 15 min | another 2 h 15 min where a second run at 8,000 tokens is owed |
+| OpenRouter, 9 window requests | 10 minutes | |
+| Claude Code, 4 runs together | 2 h 10 min | then the 4 short runs, 25 minutes |
+| Codex CLI, 6 runs together | 12 h 10 min | |
+| Devin CLI, 17 runs together | 2 h 10 min for 13, 12 h 10 min for 4 | started 20 seconds apart, as on 8 November |
+| Muse Code, 3 runs together | 2 h 10 min | minutes if the control misses |
+| Limits walks | 10 to 20 minutes per model, one after the other per login | a request of a million tokens takes minutes |
+
+The logins are different accounts and run side by side: the cache runs are one night of about 12 and a half
+hours, with the computer kept awake (`caffeinate`) and on the network. A check that runs more than
+`age × 1.1 + 90 s` after its priming is counted as late and left out, so a sleeping computer loses checks, not
+truth.
+
+## 3. `observed.json`
+
+The file says which kind each client and each route is. providers.dev applies the rule; groundtruth does not
+choose a winner. Everything is added; no existing key changes its type or its meaning, and `schema` stays 1.
+providers.dev reads `clients` as a map of texts today, so the kinds are a map of their own.
+
+**Two new top-level keys.**
+
+```json
+"client_kinds": {
+  "direct": "direct",
+  "claude-code": "own-client", "codex-cli": "own-client", "devin-cli": "own-client",
+  "muse-code": "own-client", "antigravity-cli": "own-client",
+  "cliproxyapi": "proxy", "pi+cliproxyapi": "proxy"
+},
+"route_kinds": {
+  "anthropic-api": "api-key", "openai-api": "api-key", "openrouter": "api-key",
+  "claude-subscription": "login", "codex-subscription": "login", "devin": "login",
+  "meta-subscription": "login", "antigravity": "login"
+}
+```
+
+- `client_kinds`: every key of `clients`, each `direct` (plain requests to the route's own address), `own-client`
+  (a client the route's vendor ships, driven as its user drives it) or `proxy` (anything that goes through a proxy,
+  with or without an agent in front; Provimux will be one).
+- `route_kinds`: every key of `routes`, each `api-key` or `login`.
+- `build_observed.py` refuses a client or a route without a kind, and an own client on a route that is not its
+  vendor's: `claude-code` only on `claude-subscription`, `codex-cli` on `codex-subscription`, `devin-cli` on
+  `devin`, `muse-code` on `meta-subscription`, `antigravity-cli` on `antigravity`.
+
+**The rule, as providers.dev applies it.** Rank the kinds: `direct` 0, `own-client` 1, `proxy` 2.
+
+1. On a route of kind `api-key`, only runs and rows of kind `direct` count.
+2. On a route of kind `login`, for one value (a cache lifetime of one model in one retention profile; the input
+   window of one model), the runs or rows that count are those of the lowest rank present among the ones the site
+   counts today. Between clients of the same kind, today's rule stands (the lowest decides).
+3. Every other run and row stays in the file and is shown as measured.
+
+**New keys on a cache entry made by `harness/probe.py`** (computed from the raw file, absent on older runs):
+
+- `client_version`: what `<client> --version` printed when the run started. What a client decides changes with
+  its version.
+- `written_ttl`, only where the client reports the lifetime of its cache writes (Claude Code): `"1h"` or `"5m"`.
+  A run whose writes are mixed is refused.
+
+`options` keep their meaning: what the person running the client asked for. A default Claude Code run has no
+`ttl` there, as the proxy's runs without a ttl have none, though the client asked for one hour by itself;
+`written_ttl` says so. A run made with `CLAUDE_CODE_PROMPT_CACHE_TTL=5m` has `"ttl": "5m"`, and
+`build_observed.py` refuses it when `written_ttl` says otherwise.
+
+**Two new `known` rows** for `claude-subscription` / `claude-code` / `*`, from Anthropic's documentation
+(https://code.claude.com/docs/en/prompt-caching): `ttl_s` 3600 inside the plan's included usage, and `ttl_s` 300
+with `"when": {"usage": "overage"}`.
+
+**Three rules for what may become an entry.**
+
+- **Cache, own client:** a run in which no reply reported a cached token (baseline, primings and checks all 0) is
+  not a run: it goes in `excluded` with that reason (decision 1). `build_observed.py` refuses it in `runs`.
+- **Cache, own client:** a run needs the state folder and the empty working folder of section 2; the raw file's
+  `start` event records both, and `build_observed.py` refuses an own-client run dated after this design without
+  them.
+- **Limits, own client:** a row needs `context` or `input_refused`, from the provider's own answer. A walk that
+  ended at a cap of the client's (Codex's message size) gives no row: an `input_accepted` alone would stand in
+  front of the proxy's refusal by rule 2 and publish less than the login accepts.
+
+**providers.dev's side, not part of this repository:** read the two maps, apply the rule, and name the two new
+clients in its labels file (an undescribed client is published as "Another client").
+
+## 4. The run plan
+
+Folders: `results/own-clients-<date>/` and `results/openrouter-direct-<date>/`, each with its README, its `run.sh`
+and its raw files. Every run: 3 samples per age, the control first, the lowest reasoning level the model has.
+
+### 4.1 OpenRouter, directly (first: it needs no login)
+
+Method of `results/openrouter-2026-11-18`: the TypeScript probe straight to `https://openrouter.ai/api/v1`,
+Responses format, a `prompt_cache_key` per sample, about 2,500 prompt tokens of the default filler, 16 output
+tokens, nothing asked about caching, `std`, `--stop-on-refusal`, `--usage-log`, no upstream pinned, each reply's
+upstream looked up afterwards, the ledger and the money stop. Each model is checked as still offered just before
+its run; one that is gone is written down and not run.
+
+| Id | Model | Today, through the proxy |
+|---|---|---|
+| OR1 | `openai/gpt-6-astra` | G8: warm through 30 min, cold at 40 |
+| OR2 | `openai/gpt-6-luna` | G9: warm through 30 min, cold at 40 |
+| OR3 | `meta/muse-spark-1.3` | S1: misses from 2.5 min, last hit at 15 |
+| OR4 | `deepseek/deepseek-v4.1-flash` | F6: every check warm through 2.5 min, hits to 60; about 6,000 prompt tokens |
+| OR5 | `z-ai/glm-5.3-flash` | F4: last hit at 30 min, cold at 40; about 6,000 prompt tokens |
+| OR1b – OR5b | the same at about 8,000 prompt tokens | only where the first run's control read no cached token; OR1b only with a go (2.2) |
+
+Windows, one Chat Completions request each of `" hello"` × 1,200,000 with 16 output tokens and `transforms: []`
+(`window.py` of that folder); the refusal names the endpoint's window, nothing near a limit is accepted:
+
+| Id | Model | Id | Model |
+|---|---|---|---|
+| OW1 | `anthropic/claude-haiku-5.5` | OW6 | `meta/muse-wonder` |
+| OW2 | `anthropic/claude-opus-5.5` | OW7 | `moonshotai/kimi-k3.1-pro` |
+| OW3 | `anthropic/claude-sonnet-5.5` | OW8 | `openai/gpt-6.1-sol` |
+| OW4 | `deepseek/deepseek-v4.1-flash` | OW9 | `openai/gpt-6.1-terra` |
+| OW5 | `google/gemini-4-argon` | | |
+
+Cheapest first. A request that is answered instead of refused ends the list: it was billed for over a million
+tokens, and the next one waits for a decision.
+
+### 4.2 The smoke runs (before any login's batch)
+
+One model per client: the baseline, one sample checked at 30 seconds, one request far above the window. Three
+answered requests and one refused. They settle every *(open)* of section 1 and give the test fixtures of section
+5. They are published in the folder and listed in `excluded`.
+
+| Id | Client | Model |
+|---|---|---|
+| S1 | Claude Code | `claude-haiku-5-5` |
+| S2 | Codex CLI | `gpt-6-luna` |
+| S3 | Devin CLI | `claude-haiku-5-5-low`, then `gpt-6-1-terra-low` (does it still report nothing?) |
+| S4 | Muse Code | `muse-spark-1.3` |
+| S5 | Antigravity CLI | `gemini-3.8-flash-high` |
+
+### 4.3 Cache lifetimes through the own clients
+
+`std+65` is `--ages 10m,15m,20m,25m,30m,40m,50m,60m,65m,75m,90m,120m` on top of the ladder's start: `std` and the
+65-minute age the proxy's Claude runs have.
+
+| Id | Route | Client | Model | Ages | Setting |
+|---|---|---|---|---|---|
+| CC1 | `claude-subscription` | `claude-code` | `claude-fable-5-2` | `std+65` | default; plain numbered filler |
+| CC2 | | | `claude-opus-5-5` | `std+65` | as CC1 |
+| CC3 | | | `claude-sonnet-5-5` | `std+65` | as CC1 |
+| CC4 | | | `claude-haiku-5-5` | `std+65` | as CC1 (this model refused the random filler on the login) |
+| CC5 – CC8 | | | the same four | to 15 min | `CLAUDE_CODE_PROMPT_CACHE_TTL=5m` |
+| CX1 | `codex-subscription` | `codex-cli` | `gpt-6.2-sol` | `long` | default |
+| CX2 | | | `gpt-6.2-astra` | `long` | |
+| CX3 | | | `gpt-6.1-sol` | `long` | |
+| CX4 | | | `gpt-6.1-terra` | `long` | |
+| CX5 | | | `gpt-6-astra` | `long` | |
+| CX6 | | | `gpt-6-luna` | `long` | |
+| DV1 – DV3 | `devin` | `devin-cli` | `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` | `std` | default |
+| DV4 – DV7 | | | `gpt-6-1-sol`, `gpt-6-1-terra`, `gpt-6-astra`, `gpt-6-luna` | `std` | |
+| DV8 – DV11 | | | `deepseek-v4-1-flash-1017`, `glm-5-3`, `kimi-k3-1-pro`, `nemotron-3-5-super` | `long` | warm at 2 h in November's runs |
+| DV12 – DV17 | | | `deepseek-v4-pro`, `gemini-4-argon`, `grok-4-7`, `kimi-k3`, `muse-wonder-1-0`, `swe-2` | `std` | |
+| MC1 – MC3 | `meta-subscription` | `muse-code` | `muse-wonder-1.0`, `muse-ember-1.0`, `muse-spark-1.3` | `std` | default |
+| AG1 | `antigravity` | `antigravity-cli` | `gemini-3.8-flash-high` | `std` | only if S5 settles 1.5 |
+
+A model the client no longer offers is written down and not run. The 11 Devin models that have a `devin-cli` run
+are measured again: two samples per age, no 2.5-minute age and an unrecorded process model are not what the rule
+should rest on.
+
+### 4.4 Input limits through the own clients (after 4.3, and after decision 3)
+
+Per model: one request far above the window (free), and, where the provider's answer names the window, one
+accepted request about 1,000 tokens under it. Where it names nothing: one small accepted request, one accepted
+under the proxy's `input_accepted`, one refused above the proxy's `input_refused`.
+
+| Id | Client | Models |
+|---|---|---|
+| CL1 – CL4 | `claude-code` | the four of CC1 – CC4 |
+| DL1 – DL12 | `devin-cli` | the 12 with a proxy row, if S3 shows a provider's refusal |
+| ML1 – ML3 | `muse-code` | the three of MC1 – MC3, if S4 shows a provider's refusal |
+| — | `codex-cli` | none (1.2) |
+
+## 5. What a worker builds
+
+Steps 1 to 5 send nothing and are tested without a network. Step 6 is the first that reaches a login.
+
+1. **`harness/probe.py`: the adapters.** Each client is one class with the same five parts, so the loop knows no
+   client by name:
+
+   ```python
+   class Client:                      # Claude, Codex, Devin, Muse, Agy (and Pi, unchanged)
+       harness: str                   # the --harness value
+       client_id: str                 # the id in observed.json
+       cumulative: bool               # the client reports a session's running total
+       def environment(self, home: str) -> dict[str, str]: ...   # the allow-list and the folder's variables
+       def version(self) -> str: ...                              # `<client> --version`
+       def command(self, prompt_file: str, resume: str | None) -> list[str]: ...
+       def parse(self, stdout: str, stderr: str, code: int, files: dict[str, str]) -> Usage: ...
+   # Usage: total, cached, write, calls, model, and write_5m / write_1h where the client reports them.
+   # parse raises Refused(kind, text) for a quota or an input refusal, ClientError(text) for anything else.
+   ```
+
+   `parse` is a pure function of what the client printed. *Tests:* one recorded output per client and case (a
+   priming, a warm check, a cold check, a two-request turn, a quota refusal, an input refusal) under
+   `test/fixtures/clients/`, each parsed to the expected `Usage` or refusal. Until step 6 the fixtures are the
+   shapes of section 1 and the usage lines of the existing raw files; step 6 replaces them with what the clients
+   really printed, with the prompt, ids and any account detail taken out. *Tests:* each `command` is the argument
+   list of section 1; each `environment` holds the folder's variables and none of `ANTHROPIC_API_KEY`,
+   `ANTHROPIC_AUTH_TOKEN`, `OPENAI_API_KEY`, a base URL or a cache switch that the test put in its own
+   environment.
+2. **`harness/probe.py`: the loop.** `--client-home` (required for an own client; refused when it is missing or
+   the client's default folder), the working folder under the temporary folder, the control first, no second try
+   of a check, `check-invalid` for a turn of more than one request, `stop` events (`no-observable-cache`, `quota`,
+   `tier-changed`), ages from the start of the priming, `--filler list`, and a `start` event that records
+   `client`, `client_version`, the command with `<prompt>` in the prompt's place, and `isolation`
+   (`{"home": "dedicated", "work": "temporary"}`; never a path). *Tests:* the loop against a fake client and a
+   fake clock: a cache that lives 5 minutes gives warm, warm, cold in order; a control that misses ends after
+   three requests; a failed check is not sent again; a quota refusal during priming ends the run and the primed
+   samples are not checked; a two-request check is not counted; a late check is flagged.
+3. **`harness/client_limits.py`** (new; `harness/limits.py` stays the plain-request walk). It walks an input size
+   through a client, with the adapters of step 1, and writes the rows `build_observed.py` reads today (`kind`,
+   `model`, `n`, `status`, `promptTokens`, `message`, `at`), plus `client`, `client_version` and the client's exit
+   code. `status` is 200 for an answered request; for a refused one it is the HTTP status the client printed, or
+   the text `refused`. `--dry-run` prints the plan and sends nothing. *Tests:* the plan for a named window and
+   for none; a refusal's window read by `limits.named_limit`; a client-side cap (Codex's message size) ends the
+   walk with no refusal row.
+4. **`scripts/build_observed.py`.** `CLIENT_KINDS`, `ROUTE_KINDS` and the own client of each login; `client_kinds`
+   and `route_kinds` in the output; the clients `claude-code` and `antigravity-cli` and their `--harness` names;
+   `client_version` and `written_ttl`; `check-invalid` rows ignored; the refusals of section 3. *Tests* in
+   `test/test_build_observed.py`: every client and route has a kind; an own client on another vendor's route is
+   refused; a run with no cached token in any reply is refused; `ttl` in the options against `written_ttl`; an
+   own-client limits row with `input_accepted` alone is refused. Rebuilding `observed.json` at this step adds the
+   two maps, the two client names and the two `known` rows; no run and no limits row changes.
+5. **The scan and the texts.** `harness/scan_secrets.py`: a client's state folder and its session files are never
+   committed (as pi's are not), and `META_API_KEY` and `CLAUDE_CODE_OAUTH_TOKEN` join the variables whose value is
+   searched for. *Test:* a tree holding a session file of each client is refused. `README.md` ("Method",
+   "observed.json", "Pitfalls") and `CONTRIBUTING.md` say what this document says, shorter.
+6. **The smoke runs** (4.2), after the owner has logged the clients in. They answer every *(open)*; this document
+   and the fixtures are corrected from what they show before any batch starts.
+7. **The runs** of 4.1, 4.3 and 4.4, each folder with its README, its entries in `observed/manifest.json`
+   (`excluded` included), and `observed.json` rebuilt.
+
+## 6. Decisions that are the owner's
+
+1. **A client that reports no cached token at all.** Devin's CLI did so for several models. Recommended: such a
+   run is excluded as an instrument that showed nothing, and the proxy's value stands. Counting it would publish 0
+   for a model whose cache the same account shows through the proxy.
+2. **A client that reports cache reads and does not cache the conversation** (Muse Code on 7 November). By the
+   rule its 0 is the login's value, in front of the proxy's hours. Recommended: accept it. It is what the vendor's
+   client gives, and the proxy's line stays beside it. It should be decided knowingly, because it lowers published
+   values.
+3. **Input limits.** Recommended: an own client's row counts only where the provider refused (section 3), so
+   Codex's limit stays the proxy's; and the walks of 4.4 are made for Claude Code now and for Devin and Muse Code
+   only once their smoke runs show a provider's refusal, because every confirmation costs about a million tokens
+   of the allowance.
+4. **Claude Code's second lifetime** (CC5 – CC8). Recommended: yes. Twenty-five minutes, and it is what the same
+   login gives in overage.
+5. **The logins.** Three one-time logins by the owner, in the state folders (Claude Code, Codex, Devin), and the
+   Muse subscription key and an OpenRouter key in the Keychain. Recommended over `claude setup-token`.
+6. **Antigravity.** Recommended: run S5 only if its conversations can be kept out of the owner's list or the
+   owner accepts them there; otherwise the route stays on the proxy. Google's FAQ calls the scripted print mode
+   intended and third-party software on the login unsupported.
+7. **When.** One night with the computer awake, at a time when the plans' meters are low. The Codex and Devin
+   `long` runs can instead be `std` (2 h 10 min) with a second run for the ages past 2 hours.
