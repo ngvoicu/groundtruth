@@ -463,7 +463,11 @@ class Session:
         finally:
             if os.path.exists(pf):
                 os.remove(pf)
-        u = self.client.parse(out, err, code, contents)
+        try:
+            u = self.client.parse(out, err, code, contents)
+        except (Refused, ClientError) as e:
+            e.code = code  # the client's exit code, kept with a refusal row
+            raise
         if u.handle is None:
             u.handle = resume or session
         return u
