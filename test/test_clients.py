@@ -452,22 +452,127 @@ class Parity(unittest.TestCase):
     def test_pi_records_what_pi_and_provimux_were(self):
         def run(argv, env, cwd, stdin, timeout):
             return 0, {"provimux": "provimux 8.1.0-pmx.1", "pi": "1.6.0", "git": "cef8aee0000a"}[argv[0]], ""
+        from unittest import mock
         with tempfile.TemporaryDirectory() as home:
-            from unittest import mock
+            conf = os.path.join(home, "provimux.conf")
+            with open(conf, "w") as f:
+                f.write(FAKE_CONFIG)
+            c = C.Pi("m")
+            c.provimux_config = conf
             with mock.patch.dict(os.environ, {"PI_PROVIMUX_DIR": "/x/pi-provimux-checkout"}):
-                with self.assertRaisesRegex(SystemExit, "payload-rules.json"):
-                    C.Pi("m").describe(home, {}, run=run)
-                with open(os.path.join(home, "payload-rules.json"), "w") as f:
-                    f.write("[]")
-                info = C.Pi("m").describe(home, {}, run=run)
+                info = c.describe(home, {}, run=run)
             self.assertEqual(info["provimux_build"], "provimux 8.1.0-pmx.1")
-            self.assertEqual((info["pi_version"], info["pi_provimux_commit"], info["payload_rules"]), ("1.6.0", "cef8aee0000a", []))
+            self.assertEqual((info["pi_version"], info["pi_provimux_commit"]), ("1.6.0", "cef8aee0000a"))
             self.assertIn("requested", info["transport"])
+            self.assertIn('prompt_cache_retention: "24h"', info["payload_rules"]["section"])
             with mock.patch.dict(os.environ, {}, clear=False):
                 os.environ.pop("PI_PROVIMUX_DIR", None)
                 with self.assertRaisesRegex(SystemExit, "PI_PROVIMUX_DIR"):
-                    C.Pi("m").describe(home, {}, run=run)
+                    c.describe(home, {}, run=run)
 
+
+# A Provimux configuration with secrets everywhere but in its payload section (values built here, not real).
+SECRET_VALUES = ["pmx-client-" + "k3y-0001", "sk-or-v1-" + "a" * 40, "mgmt-" + "s3cret-0002", "ghu_" + "b" * 36,
+                 "upstream-" + "t0ken-0003", "someone" + "@" + "example.org"]
+FAKE_CONFIG = f"""config-version: 8
+# api-keys: ["{SECRET_VALUES[0]}"]
+access:
+  api-keys:
+    - "{SECRET_VALUES[0]}"
+management:
+  secret-key: {SECRET_VALUES[2]}
+requests:
+  retries: 0
+  auth-token: "{SECRET_VALUES[4]}"   # payload: {{not this}}
+  # payload:
+  #   default: commented-out example, never taken
+  payload:
+    default:
+      - models:
+          - name: "muse-*"
+            protocol: "meta"
+        params:
+          prompt_cache_retention: "24h" # Meta's 24 h cache
+    override:
+      - models:
+          - name: "gpt-*"
+            protocol: "codex"
+        params:
+          "reasoning.effort": "high"
+  timeout: 30
+upstream:
+  openrouter:
+    api-key: "{SECRET_VALUES[1]}"
+  github:
+    token: {SECRET_VALUES[3]}
+    owner: {SECRET_VALUES[5]}
+"""
+
+
+class ProvimuxPayload(unittest.TestCase):
+    """Only the payload section of Provimux's configuration is read into a pi run's record: never another key."""
+
+    def write(self, text):
+        d = tempfile.mkdtemp()
+        self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        path = os.path.join(d, "provimux.conf")
+        with open(path, "w") as f:
+            f.write(text)
+        return path
+
+    def test_the_section_and_nothing_else(self):
+        rec = C.payload_record(self.write(FAKE_CONFIG))
+        text = json.dumps(rec)
+        for secret in SECRET_VALUES:
+            self.assertNotIn(secret, text)
+        for other in ("api-keys", "secret-key", "auth-token", "retries", "timeout", "upstream", "commented-out"):
+            self.assertNotIn(other, text)
+        self.assertEqual(rec["section"].splitlines()[0], "payload:")
+        self.assertIn('"reasoning.effort": "high"', rec["section"])
+        self.assertNotIn("#", rec["section"])
+        self.assertEqual(len(rec["sha256"]), 64)
+
+    def test_a_top_level_section_and_none(self):
+        self.assertEqual(C.payload_section("payload:\n  filter: []\nkeys: [a]\n"), "payload:\n  filter: []")
+        self.assertIsNone(C.payload_section("access:\n  api-keys: [x]\nrequests:\n  retries: 1\n"))
+        rec = C.payload_record(self.write("access:\n  api-keys: [\"" + SECRET_VALUES[0] + "\"]\n"))
+        self.assertEqual((rec["section"], rec["note"]), (None, "no payload section"))
+        self.assertNotIn(SECRET_VALUES[0], json.dumps(rec))
+
+    def test_a_token_inside_the_section_is_masked(self):
+        rec = C.payload_record(self.write("payload:\n  override:\n    - params:\n        key: " + SECRET_VALUES[1] + "\n"))
+        self.assertNotIn(SECRET_VALUES[1], json.dumps(rec))
+
+    def test_an_unreadable_file_names_no_content(self):
+        with self.assertRaises(SystemExit) as e:
+            C.payload_record("/nonexistent/provimux.conf")
+        self.assertIn("could not be read", str(e.exception))
+
+    def test_the_probe_start_event_keeps_only_the_section(self):
+        # The whole start event of a pi run, as probe.py writes it, holds no other key of the configuration.
+        import probe
+        path = self.write(FAKE_CONFIG)
+        a = probe.parser().parse_args(["--harness", "pi", "--model", "m", "--label", "x", "--out", "/nonexistent",
+                                       "--provimux-config", path])
+        self.assertEqual(a.provimux_config, path)
+        c = C.Pi("m")
+        c.provimux_config = a.provimux_config
+
+        def run(argv, env, cwd, stdin, timeout):
+            return 0, "v1", ""
+        from unittest import mock
+        with mock.patch.dict(os.environ, {"PI_PROVIMUX_DIR": "/x"}):
+            text = json.dumps(c.describe(os.path.dirname(path), {}, run=run))
+        for secret in SECRET_VALUES:
+            self.assertNotIn(secret, text)
+
+    def test_the_key_reaches_pi_only_from_the_environment(self):
+        c = C.Pi("m")
+        self.assertEqual(c.passthrough, ("CLIPROXYAPI_API_KEY",))
+        env = c.environment("/s/" + "pi-provimux", base={**BASE, "CLIPROXYAPI_API_KEY": "synthetic"})
+        self.assertEqual(env["CLIPROXYAPI_API_KEY"], "synthetic")
+        self.assertEqual(env["CLIPROXYAPI_BASE_URL"], "http://127.0.0.1:8317")
+        self.assertNotIn("CLIPROXYAPI_API_KEY", c.run_vars())  # never in the run's recorded settings
 
 if __name__ == "__main__":
     unittest.main()

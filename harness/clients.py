@@ -18,6 +18,7 @@ Nothing here sends a request by itself: Session runs a command, and only harness
 make Sessions.
 """
 import glob
+import hashlib
 import json
 import os
 import re
@@ -407,20 +408,24 @@ PI_THINKING = {"none": "off", "minimal": "minimal", "low": "low", "medium": "med
 class Pi(Client):
     """pi through Provimux (a proxy client, client pi+cliproxyapi): the pi side of a parity pair (Provimux's design
     client-parity.md, section 6). pi runs from a state folder of its own (PI_CODING_AGENT_DIR = <client-home>/pi-provimux,
-    set up once by the owner with pi-provimux and the proxy's key), never ~/.pi. The model is given as Provimux names
-    it, a Devin id with its effort suffix as given (M-1). Each run records what pi and Provimux were (M-4)."""
+    set up by `night.py pi-setup` with pi-provimux and no key), never ~/.pi. Provimux's key reaches pi only in
+    CLIPROXYAPI_API_KEY, the variable pi-provimux reads first, from the Keychain at the night's go. The model is given as
+    Provimux names it, a Devin id with its effort suffix as given (M-1). Each run records what pi and Provimux were,
+    the payload section of Provimux's configuration included (M-4)."""
     harness, client_id, binary = "pi", "pi+cliproxyapi", "pi"
     own = False
     state_name = "pi-provimux"
     prompt_mode = "arg"
     defaults = ("~/.pi",)
     provider = "cliproxyapi"  # the pi provider pi-provimux registers for the proxy
+    passthrough = ("CLIPROXYAPI_API_KEY",)
+    provimux_config = None    # Provimux's configuration file: only its payload section is read (M-4)
 
     def home_vars(self, home):
         return {"PI_CODING_AGENT_DIR": home}
 
     def run_vars(self):
-        return {"PI_SKIP_VERSION_CHECK": "1"}
+        return {"PI_SKIP_VERSION_CHECK": "1", "CLIPROXYAPI_BASE_URL": PROVIMUX_ROOT, "CLIPROXYAPI_FAST": "false"}
 
     def thinking(self):
         # A Devin id names its level; pi is asked the same one, so that both sides ask one variant (M-1).
@@ -457,8 +462,8 @@ class Pi(Client):
     def describe(self, home, env, run=None):
         """M-4: the Provimux build, pi's version, pi-provimux's commit, the transport and the payload rules. Read from
         `provimux --version` (the installed binary), `pi --version`, the checkout named by PI_PROVIMUX_DIR, pi's
-        settings in the state folder, and payload-rules.json in it (the rules of the owner's Provimux configuration
-        that touch this login's requests, written there by the owner; the configuration itself is never read)."""
+        settings in the state folder, and the payload section of Provimux's configuration (payload_section: nothing
+        else of that file is read into the record, logged or kept)."""
         run = run or _run
         info = {}
 
@@ -482,13 +487,87 @@ class Pi(Client):
             pass
         info["transport"] = {"requested": settings.get("transport") or "auto (pi-provimux: WebSocket first, SSE fallback)",
                              "used": "not recorded by pi"}
-        try:
-            with open(os.path.join(home, "payload-rules.json")) as f:
-                info["payload_rules"] = json.load(f)
-        except (OSError, ValueError):
-            raise SystemExit("pi run: <client-home>/pi-provimux/payload-rules.json is missing or not JSON: the owner "
-                             "writes there the payload rules of Provimux's configuration in force ([] for none) (M-4)")
+        info["payload_rules"] = payload_record(self.provimux_config or PROVIMUX_CONFIG)
         return info
+
+
+PROVIMUX_CONFIG = "/opt/homebrew/etc/provimux.conf"  # Provimux's configuration as Homebrew installs it
+PROVIMUX_ROOT = "http://127.0.0.1:8317"
+
+
+def _strip_comment(line):
+    """A YAML line without its trailing comment (a # after a space, outside quotes)."""
+    quote = None
+    for i, c in enumerate(line):
+        if quote:
+            if c == quote:
+                quote = None
+        elif c in "\"'":
+            quote = c
+        elif c == "#" and (i == 0 or line[i - 1] in " \t"):
+            return line[:i].rstrip()
+    return line.rstrip()
+
+
+def payload_section(text):
+    """The `payload` section of a Provimux (YAML) configuration, as text: the key at the top level, or under
+    `requests:` (configuration version 8). Comments and blank lines are left out, and nothing outside the section is
+    returned. None when the configuration has no payload section."""
+    lines = text.splitlines()
+    top = None          # the current top-level key
+    child_indent = None  # the indentation of the current top-level key's children
+    for i, line in enumerate(lines):
+        body = line.lstrip(" ")
+        if not body or body.startswith("#") or ":" not in body:
+            continue
+        indent = len(line) - len(body)
+        key = body.split(":", 1)[0].strip().strip("\"'")
+        if indent == 0:
+            top, child_indent = key, None
+            if key != "payload":
+                continue
+        else:
+            if child_indent is None:
+                child_indent = indent
+            if not (top == "requests" and key == "payload" and indent == child_indent):
+                continue
+        rest = _strip_comment(body.split(":", 1)[1]).strip()
+        out = ["payload: " + rest] if rest else ["payload:"]
+        block = []
+        for nxt in lines[i + 1:]:
+            b = nxt.lstrip(" ")
+            if not b or b.startswith("#"):
+                continue
+            if len(nxt) - len(b) <= indent:
+                break
+            kept = _strip_comment(nxt)
+            if kept.strip():
+                block.append(kept)
+        if block:
+            cut = min(len(x) - len(x.lstrip(" ")) for x in block)
+            out += ["  " + x[cut:] for x in block]
+        return "\n".join(out) if rest or block else "payload: null"
+    return None
+
+
+def payload_record(path):
+    """What a pi run records of Provimux's configuration: the payload section only, with its hash. The file's other
+    keys (API keys, upstream credentials, management secrets) are never returned, logged or kept: an error names the
+    file, never its content. A token or e-mail shape inside the section is still masked."""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    except OSError as e:
+        raise SystemExit(f"pi run: Provimux's configuration could not be read ({e.__class__.__name__}): its payload "
+                         "rules are part of the run's record (M-4); give it with --provimux-config")
+    section = payload_section(text)
+    del text
+    if section is None:
+        return {"source": "Provimux configuration, payload section", "section": None, "note": "no payload section"}
+    for shape in (TOKEN_SHAPE, EMAIL, HOME_PATH, OPAQUE):
+        section = shape.sub("<redacted>", section)
+    return {"source": "Provimux configuration, payload section", "section": section,
+            "sha256": hashlib.sha256(section.encode()).hexdigest()}
 
 
 CLIENTS = {c.harness: c for c in (Claude, Codex, Devin, Muse, Pi)}

@@ -284,6 +284,9 @@ def parser():
     ap.add_argument("--keep-raw", metavar="DIR",
                     help="keep every invocation's output, redacted, in DIR (outside the repository): for the smoke runs, "
                          "to correct the fixtures")
+    ap.add_argument("--provimux-config", default=C.PROVIMUX_CONFIG,
+                    help="pi runs: Provimux's configuration, of which only the payload section is read into the run's "
+                         f"record (default {C.PROVIMUX_CONFIG})")
     ap.add_argument("--dry-run", action="store_true", help="print the run's start event and plan; run nothing, send nothing")
     return ap
 
@@ -311,6 +314,8 @@ def main(argv=None):
         if a.harness != "devin":
             raise SystemExit("--devin-daemon is for the Devin CLI only")
         client.daemon = True
+    if a.harness == "pi":
+        client.provimux_config = a.provimux_config
     salt = os.urandom(4).hex()
     start = {"event": "start", "harness": a.harness, "client": client.client_id, "model": a.model,
              "ages": ",".join(labels), "replicas": a.replicas, "words": a.words, "filler": a.filler, "effort": client.effective_effort(),
@@ -335,6 +340,9 @@ def main(argv=None):
         print(json.dumps(start))
         print(f"{a.label}: {a.harness} {a.model}: baseline, control (checked at 30 s), then {a.replicas} x "
               f"{len(ages)} samples ({', '.join(labels)}): at most {requests} requests.")
+        if a.harness == "pi":
+            print(f"{a.label}: at the start, the run records the payload section of {a.provimux_config} (nothing else of "
+                  "that file), Provimux's build, pi's version and pi-provimux's commit.")
         if client.isolated:
             print(f"{a.label}: environment {json.dumps(env)}; working folder: a new empty folder under the system's "
                   "temporary folder. Dry run: nothing run, nothing sent.")
