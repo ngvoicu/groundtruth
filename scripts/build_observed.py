@@ -55,6 +55,8 @@ ROUTE_KINDS = {
 # The one route an own client may measure: its vendor's login.
 OWN_CLIENT_ROUTE = {"claude-code": "claude-subscription", "codex-cli": "codex-subscription", "devin-cli": "devin",
                     "muse-code": "meta-subscription", "antigravity-cli": "antigravity"}
+# Own-client limits rows: refused until harness/client_limits.py is trusted (the first night measures none).
+OWN_CLIENT_LIMITS = False
 # From this design on, an own-client run must record its state folder and empty working folder.
 OWN_CLIENTS_SINCE = "2026-11-22"
 ISOLATION = {"home": "dedicated", "work": "temporary"}
@@ -94,10 +96,11 @@ def read_harness(path):
     for r in rows:
         if r["event"] != "check":
             continue
-        if r["age"] == "control":
-            control.append(bool(r["warm"]))
-        elif r.get("late"):
+        if r.get("late"):
+            # A late control is no control: a 30-second re-send made minutes later shows nothing about the cache.
             late += 1
+        elif r["age"] == "control":
+            control.append(bool(r["warm"]))
         else:
             checks.setdefault(age_seconds(r["age"]), []).append(bool(r["warm"]))
     return {
@@ -113,6 +116,7 @@ def read_harness(path):
         "isolation": start.get("isolation"),
         "any_cached": any((u.get("cached") or 0) > 0 or (u.get("raw") or {}).get("cached") for u in usages),
         "written_ttls": sorted(ttls),
+        "stop": next((r.get("reason") for r in rows if r["event"] == "stop"), None),
     }
 
 
@@ -213,6 +217,16 @@ def build_cache(manifest):
         path = run["file"]
         data = read_harness(path) if path.endswith(".jsonl") else read_plain(path)
         client = run.get("client") or data["client"]
+        # The client is the raw file's: the manifest may name it again, never another one.
+        if data.get("client") and run.get("client") and run["client"] != data["client"]:
+            raise SystemExit(f"{run['id']}: the manifest says client {run['client']}, its raw file records "
+                             f"{data['client']}")
+        if CLIENT_KINDS.get(client) == "own_client" and not data.get("client"):
+            raise SystemExit(f"{run['id']}: an own-client entry needs a raw file of harness/probe.py that records the "
+                             f"client; {path} records none")
+        if data.get("stop") == "tier-changed":
+            raise SystemExit(f"{run['id']}: the run stopped because its replies changed the lifetime they wrote "
+                             f"(tier-changed); its checks mix two lifetimes: it goes in excluded")
         if client not in CLIENTS or run["route"] not in ROUTES:
             raise SystemExit(f"{run['id']}: unknown client or route")
         check_own_route(run["id"], client, run["route"])
@@ -396,7 +410,12 @@ def check_limit(entry, name):
     if entry["route"] not in ROUTES or entry["client"] not in CLIENTS:
         raise SystemExit(f"{name}: unknown route or client")
     check_own_route(name, entry["client"], entry["route"])
-    # An own client's row counts only where the provider refused: an input_accepted alone (a walk that ended at a cap
+    # No own-client input limit is published for now: the first night measures none, and harness/client_limits.py is
+    # not yet trusted (review of own-clients, finding 11). A login's input limits stay the proxy's.
+    if CLIENT_KINDS.get(entry["client"]) == "own_client" and not OWN_CLIENT_LIMITS:
+        raise SystemExit(f"{name}: own-client input limits are not published yet (harness/client_limits.py is not yet "
+                         f"trusted); the login's limits stay the proxy's")
+    # When they are: a row counts only where the provider refused. An input_accepted alone (a walk that ended at a cap
     # of the client's) would stand in front of the proxy's refusal and publish less than the login accepts.
     if CLIENT_KINDS.get(entry["client"]) == "own_client" and entry.get("context") is None and entry.get("input_refused") is None:
         raise SystemExit(f"{name}: an own client's limits row needs context or input_refused, from the provider's refusal")
@@ -423,6 +442,16 @@ def check_limit(entry, name):
         raise SystemExit(f"{name}: note is not text")
 
 
+def check_limit_provenance(item, used, name):
+    """An own client's row rests only on raw rows that its own walk wrote (harness/client_limits.py records the
+    client in every row): a proxy's refusal never becomes an own client's limit."""
+    if CLIENT_KINDS.get(item["client"]) != "own_client":
+        return
+    other = sorted({str(r.get("client")) for r in used if r.get("client") != item["client"]})
+    if other:
+        raise SystemExit(f"{name}: its evidence rows were written by {', '.join(other)}, not by {item['client']}")
+
+
 def build_limits(manifest):
     files = {}
     out = []
@@ -441,6 +470,7 @@ def build_limits(manifest):
         if path not in files:
             files[path] = [json.loads(line) for line in open(os.path.join(ROOT, path)) if line.strip()]
         used, proves = check_evidence(files[path], item, name)
+        check_limit_provenance(item, used, name)
         # Every token count of the row is one that a piece of its evidence proves.
         for field in ("input_accepted", "input_refused", "input_read", "output_accepted"):
             if item.get(field) is not None and item[field] not in proves.get(field, ()):

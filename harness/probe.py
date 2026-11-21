@@ -274,7 +274,7 @@ def main(argv=None):
     client = HARNESSES[a.harness](a.model, a.effort, settings=settings)
     salt = os.urandom(4).hex()
     start = {"event": "start", "harness": a.harness, "client": client.client_id, "model": a.model,
-             "ages": ",".join(labels), "replicas": a.replicas, "words": a.words, "filler": a.filler, "effort": a.effort,
+             "ages": ",".join(labels), "replicas": a.replicas, "words": a.words, "filler": a.filler, "effort": client.effective_effort(),
              "salt": salt}
     if settings:
         start["client_env"] = settings

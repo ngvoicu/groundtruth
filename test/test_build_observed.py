@@ -261,11 +261,18 @@ class OwnClients(unittest.TestCase):
 
     def test_an_own_client_limits_row_needs_the_providers_refusal(self):
         row = {"route": "claude-subscription", "client": "claude-code", "model": "m", "input_accepted": 900000}
+        saved, bo.OWN_CLIENT_LIMITS = bo.OWN_CLIENT_LIMITS, True
+        self.addCleanup(setattr, bo, "OWN_CLIENT_LIMITS", saved)
         with self.assertRaisesRegex(SystemExit, "needs context or input_refused"):
             bo.check_limit(row, "row")
         bo.check_limit({**row, "context": 1000000}, "row")
         bo.check_limit({**row, "input_refused": 1003000}, "row")
         bo.check_limit({**row, "client": "cliproxyapi"}, "row")  # a proxy row as before
+
+    def test_no_own_client_limits_row_for_now(self):
+        row = {"route": "claude-subscription", "client": "claude-code", "model": "m", "context": 1000000}
+        with self.assertRaisesRegex(SystemExit, "not published yet"):
+            bo.check_limit(row, "row")
 
     def test_the_maps_are_in_the_output(self):
         bo.ROOT = os.path.join(HERE, "..")
@@ -275,6 +282,72 @@ class OwnClients(unittest.TestCase):
         self.assertEqual(out["schema"], 1)
         known = [k for k in out["known"] if k["client"] == "claude-code"]
         self.assertEqual(sorted(k["ttl_s"] for k in known), [300, 3600])
+
+
+class Review(unittest.TestCase):
+    """The review of own-clients (findings 7, 8): a late control, a run stopped on a change of lifetime, a client the
+    manifest gives that the raw file does not record, a proxy's limits row given to an own client."""
+
+    def build(self, rows, route="claude-subscription", **run):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "results"))
+            with open(os.path.join(root, "results", "H.jsonl"), "w") as out:
+                out.write("".join(json.dumps(r) + "\n" for r in rows))
+            bo.ROOT = root
+            return bo.build_cache({"runs": [{"id": "x/H", "file": "results/H.jsonl", "route": route, "model": "m", **run}]})[0]
+
+    def rows(self, control_late=False, stop=None):
+        start = {"event": "start", "harness": "claude", "at": "2026-11-23T10:00:00Z", "effort": "low",
+                 "client_version": "2.1.330", "isolation": {"home": "dedicated", "work": "temporary"}}
+        u = {"total": 29000, "cached": 28000, "write": 100, "calls": 1, "write_1h": 100}
+        rows = [start, {"event": "baseline", "usage": u},
+                {"event": "check", "age": "control", "ageSec": 30, "realAgeSec": 600 if control_late else 31,
+                 "late": control_late, "warm": True, "usage": u},
+                {"event": "check", "age": "2.5m", "late": False, "warm": True, "usage": u}]
+        if stop:
+            rows.append({"event": "stop", "reason": stop})
+        return rows
+
+    def test_a_late_control_is_no_control(self):
+        with self.assertRaisesRegex(SystemExit, "must start with a control"):
+            self.build(self.rows(control_late=True))
+        e = self.build(self.rows())
+        self.assertEqual(e["control"], {"warm": 1, "total": 1})
+
+    def test_a_run_stopped_on_a_change_of_lifetime_is_refused(self):
+        with self.assertRaisesRegex(SystemExit, "tier-changed"):
+            self.build(self.rows(stop="tier-changed"))
+        self.build(self.rows(stop="quota"))  # another stop publishes what was measured, as before
+
+    def test_the_manifest_cannot_change_the_raw_files_client(self):
+        bo.ROOT = os.path.join(HERE, "..")
+        run = {"id": "relabel", "file": "results/harness-2026-11-07/H1.jsonl", "route": "claude-subscription",
+               "client": "claude-code", "model": "m"}
+        with self.assertRaisesRegex(SystemExit, "raw file records codex-cli"):
+            bo.build_cache({"runs": [run]})
+
+    def test_an_own_client_entry_needs_its_own_raw_file(self):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "results"))
+            with open(os.path.join(root, "results", "T.json"), "w") as f:
+                json.dump(run_file(None), f)
+            bo.ROOT = root
+            with self.assertRaisesRegex(SystemExit, "records none"):
+                bo.build_cache({"runs": [{"id": "x/T", "file": "results/T.json", "route": "claude-subscription",
+                                          "client": "claude-code", "model": "m"}]})
+
+    def test_a_proxy_limits_row_never_becomes_an_own_clients(self):
+        bo.ROOT = os.path.join(HERE, "..")
+        with open(os.path.join(bo.ROOT, "observed", "manifest.json")) as f:
+            manifest = json.load(f)
+        proxy = next(e for e in manifest["limits"] if e["route"] == "claude-subscription" and e["client"] == "cliproxyapi")
+        with self.assertRaisesRegex(SystemExit, "not published yet"):
+            bo.build_limits({**manifest, "limits": [{**proxy, "client": "claude-code"}]})
+        # and once own-client rows are allowed, the evidence must be the client's own
+        saved, bo.OWN_CLIENT_LIMITS = bo.OWN_CLIENT_LIMITS, True
+        self.addCleanup(setattr, bo, "OWN_CLIENT_LIMITS", saved)
+        with self.assertRaisesRegex(SystemExit, "written by None, not by claude-code"):
+            bo.build_limits({**manifest, "limits": [{**proxy, "client": "claude-code"}]})
 
 
 if __name__ == "__main__":

@@ -212,6 +212,25 @@ class Main(unittest.TestCase):
         self.assertFalse(os.path.exists("/nonexistent/out"))
 
 
+class Effort(unittest.TestCase):
+    def start(self, *args):
+        import io
+        import json
+        from contextlib import redirect_stdout
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            probe.main(["--model", "m", "--label", "X", "--out", "/nonexistent/out", "--dry-run", *args])
+        return json.loads(buf.getvalue().splitlines()[0])
+
+    def test_devin_records_the_level_its_model_id_asks(self):
+        # Review finding 12: DV11 and DV17 recorded "low" while their ids ask none and medium.
+        for model, effort in (("nemotron-3-5-super-none", "none"), ("swe-2-medium", "medium"), ("claude-opus-5-5-low", "low")):
+            self.assertEqual(self.start("--harness", "devin", "--model", model)["effort"], effort)
+
+    def test_other_clients_record_the_level_they_pass(self):
+        self.assertEqual(self.start("--harness", "codex", "--effort", "low")["effort"], "low")
+
+
 class Fillers(unittest.TestCase):
     def test_each_sample_has_its_own_block(self):
         for filler in probe.FILLERS:

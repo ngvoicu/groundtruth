@@ -106,6 +106,10 @@ class Client:
         if bad:
             raise SystemExit(f"{self.client_id}: a run may not set {', '.join(bad)} (allowed: {', '.join(self.settable) or 'none'})")
 
+    def effective_effort(self):
+        """The reasoning level the client is actually asked for (recorded in the run's start event)."""
+        return self.effort
+
     # --- the state folder and the environment -------------------------------------------------------------------
     def home_vars(self, home):
         return {}
@@ -270,6 +274,12 @@ class Codex(Client):
 class Devin(Client):
     """The Devin CLI, on a Devin subscription (devin). The export (ATIF) is the record: -p has no JSON output."""
     harness, client_id, binary = "devin", "devin-cli", "devin"
+    LEVELS = ("none", "minimal", "low", "medium", "high", "xhigh", "max")
+
+    def effective_effort(self):
+        # The model id carries the level (nemotron-3-5-super-none, swe-2-medium); --effort is not passed to Devin.
+        tail = self.model.rsplit("-", 1)[-1]
+        return tail if tail in self.LEVELS else None
     defaults = ("~/.devin", "~/.config", "~/.local/share", "~/.local/state", "~/.cache")
 
     def home_vars(self, home):
