@@ -63,6 +63,9 @@ Older files have no `request`.
 2. **Prime every sample once.** One sample per (age, replica), each with its own prefix, all primed up front.
 3. **Check each sample exactly once**, when it reaches its age. Never poll one prefix: most caches restart their timer
    on every hit, so polling measures how long your own polling keeps the entry alive.
+   From 0.3.5 a check, and the control's re-send, is sent once: a failed one is recorded as an error and never
+   sent again, because a first try that reached the model would make the second read what it wrote. A priming may
+   still be retried.
 4. **Warm** = at least half of the prompt and at least 500 tokens reported as cached.
 5. **Stop** after two consecutive ages where every replica is cold.
 

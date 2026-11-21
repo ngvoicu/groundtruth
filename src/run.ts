@@ -181,7 +181,7 @@ export interface Spent {
   replyHeaders?: Record<string, Record<string, number>>;
 }
 
-export const PROBE_VERSION = "0.3.4";
+export const PROBE_VERSION = "0.3.5";
 
 /** How long after its planned age a check may still run: 30 s, or 10 % of the age when longer. */
 export function lateAfterMs(ageMs: number): number {
@@ -213,8 +213,11 @@ export function isRefusal(err: unknown): boolean {
   return err instanceof HttpError && (err.status === 429 || err.status === 402 || (err.status >= 400 && QUOTA.test(err.message)));
 }
 
-/** Sends one request for a prefix and returns its usage, retrying transient failures. */
-async function call(o: RunOptions, deps: Deps, prefix: string, sampleId: string, spent?: Spent): Promise<{ usage: Usage; startedAt: number; replyHeaders: Record<string, string> }> {
+/**
+ * Sends one request for a prefix and returns its usage. A priming is retried on a transient failure; a check
+ * (`once`) never is: if the first try reached the model, a second one measures a re-send, not the age (0.3.5).
+ */
+async function call(o: RunOptions, deps: Deps, prefix: string, sampleId: string, spent?: Spent, once = false): Promise<{ usage: Usage; startedAt: number; replyHeaders: Record<string, string> }> {
   // sampleId also keys the prompt cache and the session, so a re-primed sample (id~2) starts on fresh keys.
   const req = buildRequest(o.format, {
     cacheKey: o.cacheKey === false ? undefined : `groundtruth-${o.runSalt}-${sampleId}`,
@@ -267,7 +270,7 @@ async function call(o: RunOptions, deps: Deps, prefix: string, sampleId: string,
         const e = err as HttpError;
         throw new RefusalStop(e.status, `quota or rate refusal, not retried: ${e.message}`);
       }
-      if (attempt >= RETRY_DELAYS_MS.length || !retryable(err)) throw err;
+      if (once || attempt >= RETRY_DELAYS_MS.length || !retryable(err)) throw err;
       deps.log(`  retry in ${RETRY_DELAYS_MS[attempt] / 1000}s: ${(err as Error).message}`);
       await deps.sleep(RETRY_DELAYS_MS[attempt]);
     }
@@ -316,14 +319,17 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
     deps.log(`control: ${o.label}`);
     const controlPrefix = makePrefix(o.runSalt, "control", o.prefixTokens, o.filler);
     const prime = await call(o, deps, controlPrefix, "control", spent);
+    // One re-send, sent once (0.3.5): a second one after a cold or lost answer would read what the first wrote.
+    await deps.sleep(3_000);
     let check: Usage | undefined;
     let checkHeaders: Record<string, string> = {};
-    for (const wait of [3_000, 10_000]) {
-      await deps.sleep(wait);
-      const got = await call(o, deps, controlPrefix, "control", spent);
+    try {
+      const got = await call(o, deps, controlPrefix, "control", spent, true);
       check = got.usage;
       checkHeaders = got.replyHeaders;
-      if (warmOf(check)) break;
+    } catch (err) {
+      if (err instanceof RefusalStop) throw err;
+      return finish("failed", `the control's re-send failed and is not sent again: ${(err as Error).message.slice(0, 300)}`);
     }
     const warm = check !== undefined && warmOf(check);
     result.control = { prime: prime.usage, check: check as Usage, warm, replyHeaders: { prime: prime.replyHeaders, check: checkHeaders } };
@@ -393,7 +399,7 @@ export async function runProbe(o: RunOptions, deps: Deps): Promise<RunResult> {
       const pid = prefixId.get(s.id) as string;
       let got: { usage: Usage; startedAt: number; replyHeaders: Record<string, string> };
       try {
-        got = await call(o, deps, makePrefix(o.runSalt, pid, o.prefixTokens, o.filler), pid, spent);
+        got = await call(o, deps, makePrefix(o.runSalt, pid, o.prefixTokens, o.filler), pid, spent, true);
       } catch (err) {
         if (err instanceof RefusalStop) throw err;
         const message = (err as Error).message.slice(0, 300);

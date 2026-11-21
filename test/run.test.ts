@@ -62,10 +62,10 @@ test("no observable cache stops after the control round", async () => {
   const { deps, calls } = fakeUpstream(10 * MIN, { caches: false });
   const r = await runProbe(opts([5 * MIN]), deps);
   assert.equal(r.status, "no-observable-cache");
-  assert.equal(calls(), 3, "prime + two re-sends");
+  assert.equal(calls(), 2, "prime + one re-send, never a second");
 });
 
-test("transient errors are retried", async () => {
+test("transient errors are retried while priming", async () => {
   const { deps } = fakeUpstream(60 * MIN, { failFirst: 2 });
   const r = await runProbe(opts([5 * MIN], 1), deps);
   assert.equal(r.status, "completed");
@@ -141,8 +141,8 @@ test("a check that keeps failing is recorded as an error and the run continues",
   let n = 0;
   deps.send = async (u, h, b) => {
     n++;
-    // control (prime + warm re-send) and 2 primes succeed; the first check then fails on every attempt (1 + 7 retries)
-    if (n >= 5 && n <= 12) return { status: 503, text: "down" };
+    // control (prime + warm re-send) and 2 primes succeed; the first check then fails, and is not sent again
+    if (n === 5) return { status: 503, text: "down" };
     return send(u, h, b);
   };
   const r = await runProbe(opts([5 * MIN, 10 * MIN], 1), deps);
@@ -282,4 +282,47 @@ test("every reply's x-cpa-auth-kind is recorded: per check, for the control, and
   const plain = fakeUpstream(60 * MIN);
   const r2 = await runProbe({ ...opts([5 * MIN], 1), replyHeaders: ["x-other"] }, plain.deps);
   assert.deepEqual(r2.spent?.replyHeaders, { "x-other": { "(absent)": 4 } });
+});
+
+test("a timed check is never sent again, even after a lost reply (0.3.5)", async () => {
+  // The review's offline case: the 2.5-minute check reached the model cold, its reply was lost, and a re-send two
+  // seconds later read what the first try had written and was published as warm.
+  let now = 0;
+  const perKey = new Map<string, number>();
+  const r = await runProbe({ ...opts([150_000], 1), concurrency: 1, prefixTokens: 2500 }, {
+    now: () => now,
+    sleep: async (ms) => { now += ms; },
+    log: () => {},
+    send: async (_url, _headers, body) => {
+      const key = JSON.parse(body).prompt_cache_key as string;
+      const n = (perKey.get(key) ?? 0) + 1;
+      perKey.set(key, n);
+      const control = key.endsWith("-control");
+      if (!control && n === 2) throw new Error("offline transport lost the reply after a cold check");
+      const cached = (control && n >= 2) || (!control && n >= 3) ? 2500 : 0;
+      return { status: 200, text: JSON.stringify({ usage: { input_tokens: 2500, input_tokens_details: { cached_tokens: cached } } }) };
+    },
+  });
+  const timed = [...perKey.entries()].find(([k]) => !k.endsWith("-control"));
+  assert.equal(timed?.[1], 2, "the priming and one check: never a third request");
+  assert.equal(perKey.get("groundtruth-t-control"), 2, "the control's prime and one re-send");
+  assert.equal(r.checks.length, 1);
+  assert.ok(r.checks[0].error, "the lost check is an error, not a warm check");
+  assert.equal(r.checks[0].warm, false);
+});
+
+test("the control's re-send is sent once: a failure ends the run (0.3.5)", async () => {
+  const { deps, calls } = fakeUpstream(60 * MIN);
+  const send = deps.send;
+  let n = 0;
+  deps.send = async (u, h, b) => {
+    n++;
+    if (n === 2) return { status: 503, text: "down" };
+    return send(u, h, b);
+  };
+  const r = await runProbe(opts([5 * MIN], 1), deps);
+  assert.equal(r.status, "failed");
+  assert.match(r.error ?? "", /not sent again/);
+  assert.equal(n, 2);
+  void calls;
 });
