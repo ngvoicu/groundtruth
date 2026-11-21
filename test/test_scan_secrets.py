@@ -95,5 +95,58 @@ class LogsFolder(unittest.TestCase):
             self.assertIn("1 files scanned", r.stdout)
 
 
+class OwnClients(unittest.TestCase):
+    """An own client's state folder and session files are never committed; its key variables are searched for."""
+
+    # Built here, so that this file does not hold the shapes itself (the scan reads it too).
+    SESSIONS = {
+        # a Claude Code session record, as under <state folder>/projects/<folder>/<uuid>.jsonl
+        "claude.jsonl": '{"parent' + 'Uuid": null, "session' + 'Id": "00000000-0000-4000-8000-000000000001", "type": "user"}\n',
+        # a Codex CLI session file, as under <state folder>/sessions/2026/11/22/
+        "rollout-2026-11-22T10-00-00-0000.jsonl": '{"type": "session_' + 'meta", "payload": {}}\n',
+        # a Devin CLI export
+        "devin-export.json": '{"schema_version": "' + 'ATIF-v1.2", "session_id": "surf-sleep", "steps": []}\n',
+        # Muse Code's login file
+        "auth.json": '{"provider": "meta"}\n',
+    }
+
+    def test_a_session_file_of_each_client_is_refused(self):
+        for name, text in self.SESSIONS.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                tree = os.path.join(tmp, "tree")
+                write(os.path.join(tree, "results", "run", name), text)
+                r = scan(tree, tmp)
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertIn(name + ":", r.stdout)
+
+    def test_a_state_folder_is_refused_whatever_it_holds(self):
+        for folder in ("claude-code", "codex-cli", "devin-cli", "muse-code"):
+            with self.subTest(folder=folder), tempfile.TemporaryDirectory() as tmp:
+                tree = os.path.join(tmp, "tree")
+                write(os.path.join(tree, "results", "run", folder, "settings.txt"), "nothing\n")
+                r = scan(tree, tmp)
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertIn("state folder", r.stdout)
+
+    def test_a_run_file_naming_a_client_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tree = os.path.join(tmp, "tree")
+            write(os.path.join(tree, "results", "run", "CC1.jsonl"),
+                  '{"event": "start", "client": "claude-code", "isolation": {"home": "dedicated", "work": "temporary"}}\n')
+            r = scan(tree, tmp)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_the_key_variables_are_searched_for(self):
+        for var in ("META_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"):
+            value = "kv" + "9x" * 12  # not shaped like a token: only the variable can find it
+            with self.subTest(var=var), tempfile.TemporaryDirectory() as tmp:
+                tree = os.path.join(tmp, "tree")
+                write(os.path.join(tree, "results", "run", "log.txt"), "key " + value + "\n")
+                r = scan(tree, tmp, **{var: value})
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertIn("environment variable " + var, r.stdout)
+                self.assertNotIn(value, r.stdout + r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

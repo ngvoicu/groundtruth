@@ -6,9 +6,11 @@
 It collects every secret-looking value this machine uses for the measurements (the client's key file, the
 management key file, key and token fields of the CLIProxyAPI config, every string in the login files, and the value
 of CACHE_PROBE_KEY when it is set: a contributor's own key) and looks for them in the folder, plus the usual token
-shapes, any e-mail address but office@providers.dev, home folder paths and pi session files
-(a session file stores pi's whole system prompt, with the names and paths of the owner's skills; they stay local). Values are never printed: a finding names
-the file and the field the value came from, so it can be judged.
+shapes, any e-mail address but office@providers.dev, home folder paths, pi session files
+(a session file stores pi's whole system prompt, with the names and paths of the owner's skills; they stay local), and
+an own client's state folder and session files (Claude Code, Codex CLI, Devin CLI, Muse Code: harness/clients.py; a
+state folder holds the client's login, every one of its sessions and its settings). Values are never printed: a
+finding names the file and the field the value came from, so it can be judged.
 
 Model names are not secrets: model lists and the names in a login's `model_aliases` are skipped, because a run that
 measured `devin/some-model` necessarily contains that name.
@@ -38,7 +40,42 @@ HOME_PATH = re.compile(r"/(Users|home)/[A-Za-z0-9._-]+/")  # a personal folder p
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
 PUBLIC_EMAILS = {"office@providers.dev"}
 # A contributor's own key, read from the environment variable the probe reads it from (never printed).
-KEY_ENVS = ("CACHE_PROBE_KEY",)
+KEY_ENVS = ("CACHE_PROBE_KEY", "META_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN")
+# An own client's state folder (<client-home>/<client id>, harness/clients.py) or the probe's temporary folders.
+STATE_FOLDERS = {"claude-code", "codex-cli", "devin-cli", "muse-code", "antigravity-cli"}
+# A client's own files: its login and its session records.
+CLIENT_FILES = {".claude.json": "Claude Code's settings file", ".credentials.json": "a client's login file",
+                "auth.json": "a client's login file (Codex CLI, Muse Code)", "history.jsonl": "a client's history"}
+CLIENT_FILE_SHAPES = [
+    (re.compile(r"^rollout-.*\.jsonl$"), "a Codex CLI session file"),
+    (re.compile(r"^export-[0-9a-f]+\.json$"), "a Devin CLI export"),
+]
+CLIENT_CONTENT = [
+    (re.compile(r'"schema_version"\s*:\s*"ATIF'), "a session export (ATIF: the whole conversation)"),
+    (re.compile(r'"parentUuid"\s*:.*"sessionId"\s*:|"sessionId"\s*:.*"parentUuid"\s*:'), "a Claude Code session file"),
+    (re.compile(r'"type"\s*:\s*"session_meta"'), "a Codex CLI session file"),
+]
+
+
+def client_findings(path, text):
+    """Why a file is an own client's state or session file, or []."""
+    parts = path.split(os.sep)
+    found = []
+    folders = sorted(STATE_FOLDERS.intersection(parts[:-1]))
+    if folders:
+        found.append(f"inside a client's state folder ({folders[0]}): never committed")
+    if any(p.startswith("groundtruth-") for p in parts[:-1]):
+        found.append("inside a probe's temporary folder")
+    name = parts[-1]
+    if name in CLIENT_FILES:
+        found.append(CLIENT_FILES[name])
+    for shape, what in CLIENT_FILE_SHAPES:
+        if shape.match(name):
+            found.append(what)
+    for shape, what in CLIENT_CONTENT:
+        if shape.search(text):
+            found.append(what)
+    return found
 
 
 def collect():
@@ -148,6 +185,7 @@ def main():
                 found.append("a home folder path")
             if "pi-sessions" in path.split(os.sep):
                 found.append("a pi session file (holds the whole system prompt: skill names, folder paths)")
+            found += client_findings(os.path.relpath(path, target) if os.path.isdir(target) else os.path.basename(path), text)
             if found:
                 hits += 1
                 print(f"{path}: {', '.join(found)}")

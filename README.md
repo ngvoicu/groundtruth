@@ -106,6 +106,35 @@ From 0.3.3 every run file records, for every answered request, the value of CLIP
 (`replyHeaders`), for the control, and counted over the run (`spent.replyHeaders`; a reply without it counts as
 `(absent)`). `--record-header <name>` records other reply headers instead; one that can carry a credential is refused.
 
+### Through a vendor's own client
+
+A login (a Claude, ChatGPT, Devin or Muse Code subscription) is measured first through the client its vendor ships,
+driven as its user drives it; a proxy only where no own client can be scripted. The design is
+[`docs/own-clients.md`](docs/own-clients.md). `harness/probe.py` runs the same evaluation through Claude Code
+(`--harness claude`), Codex CLI (`codex`), Devin CLI (`devin`) and Muse Code (`muse`); `harness/clients.py` says how
+each is driven and where its output shows cache reads, cache writes, the number of model requests and a refusal.
+Each sample is a new session whose first message carries a block no other sample has; after its age the session is
+resumed once with a short message. A check is warm when the cache covers the client's own prompt and at least half of
+the block. Four rules hold for every client:
+
+1. **One model request per check.** A turn that made two (a tool call, then the answer) is `check-invalid` and left
+   out: the second request reads what the first wrote.
+2. **A check is never sent twice.** One that fails is `check-failed`; its sample is lost.
+3. **The control first.** It is checked at 30 seconds before any other sample is primed; a miss ends the run.
+4. **A quota refusal ends the run**, never retried.
+
+A run is kept apart from the owner's everyday use: each client has a **state folder** of its own
+(`--client-home`, one subfolder per client id, logged in once there; the probe refuses the client's everyday folder),
+works in a **new empty folder** under the system's temporary folder, and gets a **short environment** (`PATH`, `HOME`,
+`USER`, `LANG`, `TERM`, `TMPDIR`, its folder's variables, and what the run sets with `--client-env`): no API key, base
+URL, proxy or cache switch of the caller's shell reaches it. The run file records the client's version and
+`isolation`, never a path. `--dry-run` prints the commands and sends nothing.
+
+`harness/client_limits.py` walks an input size through the same clients: one request far above the window (refused,
+so free), and an accepted one under the window the refusal names. Only a refusal from the provider makes a row:
+Codex CLI caps a message at 1,048,576 characters before sending it, so that login's input limit stays measured
+through the proxy.
+
 ## observed.json
 
 Everything measured so far, in one file: [`observed.json`](observed.json). providers.dev reads it once a day and
@@ -119,9 +148,19 @@ curl -s https://raw.githubusercontent.com/ngvoicu/groundtruth/main/observed.json
 It holds what catalogs such as [models.dev](https://models.dev) can't: values **as measured**, including
 subscription routes that have no public API (a ChatGPT plan through Codex, Devin, a Claude login, a Muse Code key).
 
+- **`client_kinds`** and **`route_kinds`**: what each client and route is. A client is `direct` (plain requests to
+  the route's own address), `own_client` (a client the route's vendor ships) or `proxy` (anything through a proxy);
+  a route is `api_key` or `login`. providers.dev applies the rule: on an `api_key` route only `direct` runs count; on
+  a login, for one value, the lowest kind present (`direct`, then `own_client`, then `proxy`). Every other run stays in
+  the file and is shown as measured. An own client measures only its vendor's login (`claude-code` only
+  `claude-subscription`, and so on); the build refuses anything else.
 - **`cache`**: one entry per run. `route` (whose account), `client` (what sent the requests), `model` (the id on that
   route), `options` (anything that changes caching: an explicit ttl, a retention setting, reasoning level) and
-  `checks`, the raw counts per age: `{ "age": "30m", "age_s": 1800, "warm": 3, "total": 3 }`.
+  `checks`, the raw counts per age: `{ "age": "30m", "age_s": 1800, "warm": 3, "total": 3 }`. A run of
+  `harness/probe.py` adds `client_version` (what `<client> --version` printed), and `written_ttl` (`1h` or `5m`)
+  where the client reports the lifetime of its cache writes (Claude Code); a run whose writes are mixed, or whose
+  options ask a ttl its writes do not show, is refused. An own-client run in which no reply reported a cached token
+  measured nothing: it goes in `excluded`, never in `cache`.
 - Three numbers summarise a run, all in seconds, `null` when there is none:
   `all_warm_through_s` (every age up to here was fully warm: **the safe value**), `last_warm_s` (the oldest age with
   any warm check) and `first_all_cold_s` (the youngest age with none). When `last_warm_s` is past
@@ -158,6 +197,9 @@ subscription routes that have no public API (a ChatGPT plan through Codex, Devin
     refusal and no named window.
   - `output_accepted`: the largest output cap a request was answered with.
   - `date`: the day the requests were sent (`YYYY-MM-DD`). `note`: what the numbers do not say.
+
+  An own client's row needs `context` or `input_refused`: a walk that ended at a cap of the client's own gives no
+  row.
 
   `scripts/build_observed.py` refuses a row that providers.dev would refuse: two rows for one route, client and
   model, a refusal without an accepted size, an accepted size not below the refused one or above the named window,
@@ -215,6 +257,15 @@ One maintainer, no promised response time. For anything that does not fit an iss
 - **Aggregators can split caches** across upstream providers. Pin the upstream (or a single credential behind a proxy)
   for meaningful results.
 - **A lifetime is a curve.** Report the bracket, not a single number; run 3+ replicas.
+- **An own client decides things by itself.** Claude Code asks for the 1-hour cache inside a plan's included usage
+  and the 5-minute one in overage (a run whose writes change lifetime ends, `tier-changed`); start a Claude run when
+  the plan's meter is low. Codex CLI caps a message at 1,048,576 characters. Devin CLI reported no cached token for
+  some models whose cache the same account showed through the proxy: such a run measured nothing. Muse Code cached
+  only its own system prompt on 7 November: its 0 is what that client gives. A client's quota is the account's,
+  shared with its owner's own work.
+- **Never an own client's everyday folder.** A state folder holds the client's login and every session; it is never
+  committed (the pre-commit scan refuses a state folder and a client's session files), and never the folder the
+  owner works in.
 
 ## Credits
 

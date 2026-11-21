@@ -44,6 +44,12 @@ python3 harness/limits.py --base-url https://api.openai.com/v1 --model gpt-6.1-s
 Run it again without `--dry-run`. `--hi` must be refused and `--lo` accepted. Each request is written to the
 `--out` file, with the provider's own token count for each accepted one.
 
+**Through a subscription's own client** (Claude Code, Codex CLI, Devin CLI, Muse Code): `harness/probe.py --harness
+<client>`, with a state folder of the client's own that you logged in once (`--client-home`), never its everyday
+folder. `--dry-run` shows the commands and the environment the client gets, and sends nothing. The README, section
+"Through a vendor's own client", and [`docs/own-clients.md`](docs/own-clients.md) say how. Never commit the state
+folder or a client's session files; the pre-commit check refuses them.
+
 ## What a pull request contains
 
 1. **The raw result files** under `results/<folder>/`, for example `results/openai-api-2026-11-20/`: the `.json` and
@@ -75,8 +81,9 @@ Run it again without `--dry-run`. `--hi` must be refused and `--lo` accepted. Ea
 ## What is checked
 
 - **The pre-commit check** scans every file to be committed. It refuses a credential (your `CACHE_PROBE_KEY` and
-  anything shaped like a token), an e-mail address, a home-folder path (`/Users/<name>/`, `/home/<name>/`) and a
-  session file of a coding agent. Run it on a results folder before you add it:
+  anything shaped like a token, and the values of `META_API_KEY` and `CLAUDE_CODE_OAUTH_TOKEN` when they are set), an
+  e-mail address, a home-folder path (`/Users/<name>/`, `/home/<name>/`), a session file of a coding agent and a
+  client's state folder. Run it on a results folder before you add it:
   `python3 harness/scan_secrets.py results/<folder>`.
 - **CI** runs the tests, the same scan, and rebuilds `observed.json` from the raw files and compares it with the one
   in the pull request. The build refuses a run or a row that contradicts itself or its raw files.
@@ -85,6 +92,8 @@ Run it again without `--dry-run`. `--hi` must be refused and `--lo` accepted. Ea
 
 - **The control hit.** The prompt sent again at once was served from the cache. Otherwise the run shows nothing
   about the cache's lifetime.
+- **Through an own client:** at least one reply reported a cached token (otherwise the run goes in `excluded`), and
+  the run file records the client's version and its isolation (`harness/probe.py` writes both).
 - **The usual samples.** Three per age, the schedule starting at 2.5 minutes (the default). Fewer only with a reason
   in the README.
 - **Nothing excluded silently.** Every run you made is in the folder. A run left out is in `excluded` with its reason.
