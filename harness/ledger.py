@@ -10,8 +10,9 @@ One file per week, `$G/ledger/<monday>.jsonl` (mode 600), one line per event:
 A cache run starts only when its worst case is at most the run ceiling and fits what is left of the week:
     left = week cap - max(spent, reported) - reserved (of the runs and window checks of the night).
 A window check (the owner's decision of 2026-11-22, "A") is not held to the run ceiling: it is sent only when its
-worst case (the cost if the vendor answers instead of refusing) fits what is left, and that worst case stays
-reserved for the rest of the night; a refused check is then charged $0, an answered one what it cost.
+worst case (the cost if the vendor answers instead of refusing) fits what is left. A refused check is charged $0 and
+its reservation released before the next is considered; an answered one is charged what it cost (its worst case
+when the answer gives none). Window checks go first, one at a time; the cache runs reserve from what is left.
 The API-key part stops when the spent or the reported figure reaches the week's cap.
 
     python3 harness/ledger.py [--week <monday>]       # the week's sums

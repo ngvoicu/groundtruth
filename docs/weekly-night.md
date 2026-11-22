@@ -50,14 +50,15 @@ method is named in the plan, never left out without a word.
   (OpenRouter's own list; providers.dev's elsewhere); a cache run starts only when it is at most $2 and fits what is
   left; when it ends its real cost (the replies' usage at those prices, and OpenRouter's own `usage.cost`) replaces
   the reservation. The part stops when either figure reaches the cap.
-- **owner** (2026-11-22, "A"): a **window check** is **not** held to the $2 a run. Its worst case (the vendor answers
-  instead of refusing: every word a token at the input price) counts toward the $10 a week: it is sent only when that
-  worst case fits what the week has left, and stays reserved for the night. One that does not fit (every one above
-  $10 among them) is not sent and is an ask; the pass goes on. A refused check is charged $0, an answered one what it
-  cost (and the window list ends).
-- The money's pass, before anything is sent: the API-key values in the plan's order (newest first inside each state),
-  window checks and cache runs together, each reserved as above; then the window checks are sent one by one, then
-  the cache runs start.
+- **owner** (2026-11-22, "A"): a **window check** is **not** held to the $2 a run. The checks go first, one at a
+  time, newest first. Before each, its worst case (the vendor answers instead of refusing: every word a token at the
+  input price) must fit in $10 minus what the week has been charged minus the cache runs reserved; one that does not
+  (every one above $10 among them) is not sent and is an ask, and the list goes on. A refused check is charged $0 and
+  its reservation released before the next is considered. An answered one is charged what it cost (its worst case
+  when the answer gives none), raises an ask and ends the window list. So the week never passes $10, even when a
+  check is answered.
+- Then the cache runs, in the plan's order, each held to the $2 a run and reserving its worst case when it starts,
+  from what is left.
 - Reaching a cap stops that part and asks. A night that runs out of candidates ends early; it never fills a cap with
   repeats.
 
