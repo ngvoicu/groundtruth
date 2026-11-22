@@ -4,6 +4,32 @@ A design, written on 2026-11-22. Nothing in it has been run: no request was sent
 It says how groundtruth measures each login through the client its vendor ships, how OpenRouter's proxy-only
 entries are measured again directly, what changes in `observed.json`, which runs are owed and what has to be built.
 
+**Since the second review (2026-11-22): the first night is the own clients' cache runs only** (the chief's decision).
+It supersedes what the list below says of pi, Provimux, OpenRouter and the supervisor:
+
+- **Out of the first night**: every pi run, `pi-setup` and the reading of Provimux's configuration (the parity pairs
+  of section 7 come in a later night; `harness/clients.py` has no pi client any more); every OpenRouter run and window
+  request of 4.1, with the money stop and its reservations; the supervisor. What stays is S1 – S4 and S3b, CC1 – CC8,
+  CX1 – CX6, DV1 – DV17 with DV9d (pair DV-5 compares two Devin runs) and MC1 – MC3. The TypeScript probe (`src/`)
+  stays as it is, shared and reached by no night command.
+- **A launcher, not a supervisor**: `night.py --go <client>` (or `--go all`) starts each of that client's runs as its
+  own background process, staggered by `--delay`, and returns; one lock file per client and night, created
+  exclusively, refuses a second start. `status` reads each run's process (its pid, and its command line carrying the
+  run's label and the launch's id); `stop <client>|all` signals exactly those processes. Every command honours
+  `--dry-run` with no side effect. CC5 – CC8 begin 2 h 30 min after the go, when CC1 – CC4 are over.
+- **The night's folders**: local (none under iCloud Drive, `~/Library/CloudStorage`, Dropbox, Google Drive or
+  OneDrive), private (folders 700, login files 600), Codex's own two helper links allowed by their exact pattern;
+  every client process runs under `sandbox-exec` (no file write under the home folder outside its state folder, its
+  throwaway home and its temporary folder). The raw output of the smoke runs is kept under `<client-home>` only,
+  through no link, folder 700 and files 600.
+- **Codex** runs with `-c model_provider="openai"` on every command line, and a state folder whose `config.toml`
+  selects another provider, a profile or another base URL is refused; the model that answered is read from the
+  thread's session file (its `turn_context`, or a `model_reroute`).
+- **The smoke review** is checked by `night.py` itself: S3b's cold control (`stop`/`no-observable-cache`) is an
+  expected answer; a late control is refused, and a probe whose control can only be checked late stops
+  (`control-late`).
+- **M-3**: two replicas of one age are primed at least five minutes apart, whatever a slow priming did to its wave.
+
 **Since the review of the build (2026-11-22).** What changed against the text below, as built on this branch:
 
 - **The first night is narrowed** (the chief's decision): no input limit through an own client. The limits walks of
@@ -30,9 +56,9 @@ entries are measured again directly, what changes in `observed.json`, which runs
   not a task).`), so that sessions a vendor lists in the account (Devin) can be told apart from the owner's work.
 - **The everyday state is protected by isolation, and reported, never a stop.** Every client process of the night
   gets a throwaway home folder (`HOME=<client-home>/home/<client>`) beside its state folder, for the logins too; a
-  client that ignores its state folder's variable writes there. On macOS the Keychain is found through `HOME`, so no
-  client of the night reaches the owner's Keychain, and Claude Code keeps its login in its state folder
-  (`.credentials.json`). The everyday folders (to their depth: path, size and modification time) and the Keychain's
+  client that ignores its state folder's variable writes there. Under that `HOME`, `security` finds no default
+  keychain, so Claude Code keeps its login in its state folder (`.credentials.json`); this changes where a client
+  looks by default, it is not a boundary around the owner's Keychain. The everyday folders (to their depth: path, size and modification time) and the Keychain's
   item names are snapshot before the logins and reported in the morning, for a person to judge (section 2.1).
 - **The TypeScript probe** (0.3.5) sends a check and the control's re-send once.
 
@@ -333,8 +359,15 @@ with its feature flags off may no longer ask for what it asks a user for.
 `cache_warm` lines under `~/.pi`, Codex refreshes `~/.codex/auth.json`, his agents run Claude Code and Codex), so
 his everyday folders change whatever the night does. `night.py untouched --save` records them before the logins
 (path, size and modification time to their depth, `stat` only; the Keychain's item names, never a secret), and
-`untouched --report` (by the supervisor at the end, or by hand) lists what changed, folder by folder, for a person
-to judge. A Claude Code Keychain item added or changed would be the sign that the isolation failed.
+`untouched --report` (by hand, in the morning) lists what changed, folder by folder, for a person to judge; a file
+removed while the walk passes it is named, not an error. It sees additions, changes and removals, never a read. A
+Claude Code Keychain item added or changed would be the sign that the isolation failed.
+
+**A write boundary.** On macOS every client process runs under `sandbox-exec` with a profile that denies file writes
+under the owner's real home folder except in the client's state folder, its throwaway home and its temporary folder
+(`clients.confine`). All four clients answer `--version` and `--help` under it (2.1.330, 0.171.0, 3000.14.30821,
+1.4.25; Codex's `login --help` too). It covers files only: reads, and requests to macOS services such as the
+Keychain's, are outside it. A login run is untested under it (no login was made for this branch).
 
 **What cannot be kept apart.** The quota is the account's: a run and the owner's own work draw on the same
 allowance. A vendor that keeps sessions on its side (Devin) may list them in the account. Claude Code changes

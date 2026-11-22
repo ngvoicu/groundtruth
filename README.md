@@ -133,17 +133,17 @@ works in a **new empty folder** under the system's temporary folder, and gets a 
 URL, proxy or cache switch of the caller's shell reaches it. The run file records the client's version and
 `isolation`, never a path. `--dry-run` prints the commands and sends nothing.
 
-A pi run through Provimux, the other side of a parity pair, runs the same way from a state folder of its own and
-records the Provimux build, pi's version, pi-provimux's commit, the transport and the payload rules in force (the
-`payload` section of Provimux's configuration, nothing else of the file). An age's
-samples are primed in three waves at least five minutes apart; the Devin CLI runs in-process with its cache keepalive
+On macOS each client process runs under `sandbox-exec`: no file write under the home folder outside its state folder,
+its throwaway home and its temporary folder. An age's samples are primed in three waves, two replicas of an age at
+least five minutes apart; the Devin CLI runs in-process with its cache keepalive
 off; Claude Code's own retries are switched off. Every new session's first line names the measurement.
 
 `harness/client_limits.py` walks an input size through the same clients. It is **not yet trusted**: no own-client
 input limit is published, and a login's input limits stay the proxy's. `harness/night.py` holds the run plan of
 [`docs/own-clients.md`](docs/own-clients.md), section 4, as commands; `--dry-run` prints each one with its tool's own
-dry run and sends nothing, and nothing is sent without `--go`. After the smoke runs, `--go night` runs the rest under
-a detached supervisor (`status`, `stop all`). [`docs/own-clients-RUN.md`](docs/own-clients-RUN.md) has the steps: the
+dry run and sends nothing, and nothing is sent without `--go`. The first night is the own clients' cache runs only;
+after the smoke runs, `--go <client>` (or `--go all`) starts a client's runs in the background under one lock per
+client (`status`, `stop <client>|all`). [`docs/own-clients-RUN.md`](docs/own-clients-RUN.md) has the steps: the
 owner's one-time setup, the night, the morning.
 
 ## observed.json
