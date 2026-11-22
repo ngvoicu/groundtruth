@@ -187,12 +187,13 @@ def audited(root):
 
 def own_file(harness="claude", date="2026-11-23", cached=18000, w1=0, w5=0, client_env=None, isolation=True):
     start = {"event": "start", "harness": harness, "client": bo.HARNESS_CLIENT[harness], "at": f"{date}T10:00:00Z",
-             "effort": "low"}
+             "effort": "low", "model": "m"}
     if isolation:
         start["isolation"] = {"home": "dedicated", "HOME": "throwaway", "work": "temporary"}
     if client_env:
         start["client_env"] = client_env
-    usage = {"total": 29000, "cached": cached, "write": 11000, "calls": 1, "write_1h": w1, "write_5m": w5, "model": "m"}
+    usage = {"total": 29000, "cached": cached, "write": 11000, "calls": 1, "write_1h": w1, "write_5m": w5,
+             "model_matches": True}
     rows = [start, {"event": "baseline", "usage": usage}, {"event": "prime", "age": "control", "usage": usage},
             {"event": "check", "age": "control", "warm": bool(cached), "usage": usage},
             {"event": "check-invalid", "age": "2.5m", "usage": usage},
@@ -308,9 +309,9 @@ class Review(unittest.TestCase):
             return bo.build_cache({"runs": [{"id": "x/H", "file": NIGHT + "/H.jsonl", "route": route, "model": "m", **run}]})[0]
 
     def rows(self, control_late=False, stop=None):
-        start = {"event": "start", "harness": "claude", "at": "2026-11-23T10:00:00Z", "effort": "low",
+        start = {"event": "start", "harness": "claude", "at": "2026-11-23T10:00:00Z", "effort": "low", "model": "m",
                  "isolation": {"home": "dedicated", "HOME": "throwaway", "work": "temporary"}}
-        u = {"total": 29000, "cached": 28000, "write": 100, "calls": 1, "write_1h": 100, "model": "m"}
+        u = {"total": 29000, "cached": 28000, "write": 100, "calls": 1, "write_1h": 100, "model_matches": True}
         rows = [start, {"event": "baseline", "usage": u},
                 {"event": "check", "age": "control", "ageSec": 30, "realAgeSec": 600 if control_late else 31,
                  "late": control_late, "warm": True, "usage": u},

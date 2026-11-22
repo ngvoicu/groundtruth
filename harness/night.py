@@ -140,17 +140,34 @@ def need_client_home(what):
 
 
 def hook_problem(root=None):
-    """None when Git, in the checkout the night runs from, runs that checkout's own scripts/pre-commit (`git config
-    core.hooksPath` is `scripts`, a path relative to each worktree's root), else why not."""
+    """None when Git, in the checkout the night runs from, runs that checkout's own scripts/pre-commit; else why not,
+    with the command that fixes it. Two conditions: `git config core.hooksPath` is exactly `scripts` (unset is refused:
+    in a linked worktree a hook linked under .git/hooks is the main checkout's), and the hook Git really selects
+    (`git rev-parse --git-path hooks/pre-commit`, a spelling such as `scripts ` resolved as Git resolves it) exists, is
+    executable and is the same file as the checkout's scripts/pre-commit."""
+    root = root or ROOT
+    fix = f"run `git -C {root} config core.hooksPath scripts` (docs/own-clients-RUN.md, 'The night')"
+
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, timeout=30)
     try:
-        p = subprocess.run(["git", "config", "--get", "core.hooksPath"], cwd=root or ROOT, capture_output=True,
-                           text=True, timeout=30)
+        value = git("config", "--get", "core.hooksPath").stdout.removesuffix("\n")
+        selected = git("rev-parse", "--path-format=absolute", "--git-path", "hooks/pre-commit")
     except (OSError, subprocess.TimeoutExpired):
-        return "git could not be run in the checkout"
-    value = p.stdout.strip()
+        return f"git could not be run in the checkout: {fix}"
     if value != "scripts":
-        return (f"`git config core.hooksPath` is {json.dumps(value) if value else 'not set'}, not `scripts`: run "
-                "`git config core.hooksPath scripts` in this checkout (docs/own-clients-RUN.md, 'The night')")
+        return f"`git config core.hooksPath` is {json.dumps(value) if value else 'not set'}, not `scripts`: {fix}"
+    hook, own = selected.stdout.removesuffix("\n"), os.path.join(root, "scripts", "pre-commit")
+    if selected.returncode or not hook:
+        return f"git cannot say which commit hook it runs here: {fix}"
+    if not os.path.isfile(hook) or not os.access(hook, os.X_OK):
+        return f"the commit hook Git runs here ({json.dumps(hook)}) does not exist or is not executable: {fix}"
+    try:
+        same = os.path.samefile(hook, own)
+    except OSError:
+        same = False
+    if not same:
+        return f"the commit hook Git runs here ({json.dumps(hook)}) is not this checkout's scripts/pre-commit: {fix}"
     return None
 
 
@@ -168,10 +185,10 @@ def make_night_dir(date):
         raise SystemExit(f"{d}: a link: refused")
     C.check_folder("<client-home>", base, ROOT, os.path.realpath(os.path.expanduser("~")))
     C.check_private("<client-home>", os.path.abspath(base))
+    C.check_folder("<client-home>/night-<date>", d, ROOT, os.path.realpath(os.path.expanduser("~")))  # before mkdir
     if not os.path.isdir(d):
         os.mkdir(d, 0o700)
         os.chmod(d, 0o700)
-    C.check_folder("<client-home>/night-<date>", d, ROOT, os.path.realpath(os.path.expanduser("~")))
     C.check_private("<client-home>/night-<date>", d)
     return d
 
@@ -675,6 +692,7 @@ def launch(name, date, popen=None, out=print):
     popen = popen or subprocess.Popen
     d = make_night_dir(date)
     launch_dir = os.path.join(d, "launch")
+    C.check_folder("<client-home>/night-<date>/launch", launch_dir, ROOT, os.path.realpath(os.path.expanduser("~")))
     if not os.path.isdir(launch_dir):
         os.mkdir(launch_dir, 0o700)
     C.check_private("<client-home>/night-<date>/launch", launch_dir)

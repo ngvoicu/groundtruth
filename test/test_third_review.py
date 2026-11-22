@@ -271,9 +271,9 @@ class Point4ZeroCalls(unittest.TestCase):
             start = {"event": "start", "harness": "muse", "client_version": "f", "isolation": probe.ISOLATION,
                      "model": "muse-wonder-1.0", "at": "2026-11-23T20:00:00Z"}
             bad = {"event": "check", "age": "2.5m", "ageSec": 150, "late": False, "warm": False,
-                   "usage": {"total": 0, "cached": 0, "calls": 0, "model": "muse-wonder-1.0"}}
+                   "usage": {"total": 0, "cached": 0, "calls": 0, "model_matches": True}}
             control = {"event": "check", "age": "control", "late": False, "warm": True,
-                       "usage": {"total": 9, "cached": 9, "calls": 1, "model": "muse-wonder-1.0"}}
+                       "usage": {"total": 9, "cached": 9, "calls": 1, "model_matches": True}}
             path = os.path.join(t, "MC1.jsonl")
             write(path, "".join(json.dumps(x) + "\n" for x in (start, control, bad, {"event": "done"})))
             with self.assertRaisesRegex(SystemExit, "model requests, not 1"):
@@ -420,8 +420,10 @@ class Point6Model(unittest.TestCase):
             turn[:] = [started]
             u = s.resume(tid, "p")
             self.assertEqual((u.model, u.model_issue), (None, "no-model"))
-            astra = dict(luna, model="gpt-6-astra")
-            # The builder: warm checks answered by Astra under the scheduled Luna entry.
+            # The builder: warm checks answered by Astra under the scheduled Luna entry (since the ninth review a public
+            # line says only whether the reported model is the requested one: model_matches).
+            luna = {**{k: v for k, v in luna.items() if k != "model"}, "model_matches": True}
+            astra = dict(luna, model_matches=False)
             start = {"event": "start", "harness": "codex", "client_version": "f", "isolation": probe.ISOLATION,
                      "model": "gpt-6-luna", "at": "2026-11-23T20:00:00Z"}
             rows = [start, {"event": "baseline", "usage": luna},
@@ -430,7 +432,7 @@ class Point6Model(unittest.TestCase):
             path = os.path.join(t, "CX6.jsonl")
             write(path, "".join(json.dumps(x) + "\n" for x in rows))
             run = {"id": "CX6", "file": path, "route": "codex-subscription", "model": "gpt-6-luna"}
-            with self.assertRaisesRegex(SystemExit, "answered by .?gpt-6-astra"):
+            with self.assertRaisesRegex(SystemExit, "model_matches"):
                 B.build_cache({"runs": [run]})
             for r in rows[2:4]:
                 r["usage"] = luna

@@ -112,9 +112,18 @@ export GROUNDTRUTH_CLIENT_HOME="$HOME/groundtruth-clients" N=<YYYY-MM-DD>
 git config core.hooksPath scripts      # once per clone: each worktree runs its own scripts/pre-commit
 ```
 
-`--go` refuses to start unless `git config core.hooksPath` is `scripts` in the checkout it runs from. The path is
+`--go` refuses to start unless `git config core.hooksPath` is exactly `scripts` in the checkout it runs from, and
+the hook Git really selects there (`git rev-parse --git-path hooks/pre-commit`) exists, is executable and is that
+checkout's own `scripts/pre-commit` (the same file); a refusal gives the exact command that fixes it. The path is
 relative, so Git runs the commit hook of the worktree being committed, never an older one linked under the main
-checkout's `.git/hooks` (which every linked worktree would share). `--dry-run all` says whether it is set.
+checkout's `.git/hooks` (which every linked worktree would share), and a spelling such as `scripts ` (a trailing
+blank), which names a missing hook, is refused. `--dry-run all` says whether it is set.
+
+Every folder the night writes (`$G`, its `night-$N` and `launch` folders, the state folders' throwaway homes, the
+raw output, a run's working folder) is checked before anything is made in it: it may not be an everyday folder
+(`~/.codex`, `~/.devin`, `~/.claude`, `~/.pi`, `~/.config`, …) or lie in one, compared as real folders (device and
+inode, each existing folder above it included), so neither a link nor a spelling such as `~/.CODEX` on a
+case-insensitive disk passes.
 
 Keep the computer on power and on the network. Each run keeps it awake (`caffeinate -i -w <its pid>`); a check made too late after
 its priming is left out, so a sleeping computer loses checks, not truth.
@@ -174,7 +183,7 @@ Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each inv
 - [ ] `--go smoke` ended with "the smoke results pass the automatic checks".
 - [ ] Each file's first line shows `"confinement": "sandbox-exec: …"`.
 - [ ] `S2.jsonl`'s first line shows `model_provider="openai"` in both commands and no `"client_version"`; its check's
-      `"usage"` has `"model": "gpt-6-luna"` and `"model_evidence": "own-turn"`; its last `model-scan` line has
+      `"usage"` has `"model_matches": true` and `"model_evidence": "own-turn"`; its last `model-scan` line has
       `"final": true`, `"other_models": 0` and `"unreadable": false`.
 - [ ] `S3.jsonl`'s first line shows `"process_model": "in-process"` and `"keepalive_max_pings": 0` under `"devin"`.
 - [ ] `ls -A "$G"/home/*` shows what each client wrote in its throwaway home. Note anything there for the
@@ -212,8 +221,9 @@ Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each inv
    - put the runs in `observed/manifest.json`, with the runs that ended early, measured nothing or failed an audit
      item under `excluded` with the reason;
    - run `python3 scripts/build_observed.py`, then `python3 scripts/build_observed.py --check`. The builder refuses a
-     check that was not one explicit model request, or that names no model of its own turn, or another model than
-     the manifest's, or (Codex) whose model is not bound to its own turn (`model_evidence` `own-turn`), and a Codex
+     check that was not one explicit model request, or whose own turn did not name the requested model
+     (`model_matches` not true), or whose line still carries a model's text, or a run whose model is not the
+     manifest's, or (Codex) whose model is not bound to its own turn (`model_evidence` `own-turn`), and a Codex
      run whose session files named another model anywhere (`model-scan`); it publishes no client version for an own
      client, and nothing of a night without its `AUDIT.md`.
 
@@ -227,8 +237,13 @@ files and console logs stay where they are: nothing of them is copied into the r
 - [ ] Read every line of every file. Nothing in them but the harness's own fields: no client version, no folder or
       home path, no e-mail address, account, organisation or workspace name, no key or token, no client text in an
       error event (an error is only a kind: `timeout`, `exit-nonzero`, …).
-- [ ] Every `check`'s `usage.model` is the run's model (Devin: the model id, or it with its effort or date suffix);
-      every Codex `check` has `"model_evidence": "own-turn"`.
+- [ ] Every public line was written by one allowlist (`probe.Public`): numbers, booleans, and strings only of a fixed
+      set (event names, reasons, error kinds) or of the run's plan (its start line, its age labels). No model name a
+      client reported, no session id, no free text: a session is named by its number (`"session": 3`), a reported
+      model only by `model_matches`. Every `check`'s `usage` has `"model_matches": true` (the client reported the
+      run's model: Devin's model id, or it with its effort or date suffix; Codex's exactly) and no `"model"`; every
+      Codex `check` has `"model_evidence": "own-turn"`. What was left out is in the console log
+      (`detail: … kept private`).
 - [ ] Every Codex run ends with a `model-scan` line with `"final": true`, `"other_models": 0` and
       `"unreadable": false`, and no line of it is `stop` with `other-model` or `unreadable-session`. (A `model-scan`
       line carries no text from any session file: only `final`, the count `other_models` and `unreadable`. The names
@@ -237,7 +252,8 @@ files and console logs stay where they are: nothing of them is copied into the r
       invalid goes under `excluded` with the reason.
 
 **B. Codex's session files, for reroutes** (`$G/codex-cli/sessions/`, private: read here, never copied).
-- [ ] For each Codex run, take the session ids from its `prime` lines (`"handle"`) and its baseline, find each file
+- [ ] For each Codex run, take its session ids from its console log (`detail: session <n>: <id>`, one line per
+      session, the baseline's first; the public lines name them by `<n>` alone), find each file
       (`ls "$G"/codex-cli/sessions/*/*/*/rollout-*-<id>.jsonl`), and list every model it names:
       `grep -hoE '"(model|to_model|from_model)": ?"[^"]*"' <files> | sort | uniq -c`. Only the run's model may appear.
 - [ ] `grep -l model_reroute <files>` finds nothing. A run with any reroute, or any other model, is excluded whole.

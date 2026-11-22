@@ -299,7 +299,8 @@ class Point6Model(Owner):
         start = {"event": "start", "harness": "codex", "client_version": "f", "isolation": probe.ISOLATION,
                  "model": "gpt-6-luna", "at": "2026-11-23T20:00:00Z"}
         u = {"total": 50020, "cached": 43000, "calls": 1}
-        rows = [start, {"event": "check", "age": "control", "warm": True, "late": False, "usage": dict(u, model="gpt-6-luna")},
+        rows = [start, {"event": "check", "age": "control", "warm": True, "late": False,
+                        "usage": dict(u, model_matches=True)},
                 {"event": "check", "age": "2.5m", "warm": True, "late": False, "usage": u}, {"event": "done"}]
         with tempfile.TemporaryDirectory() as t:
             path = os.path.join(t, "CX6.jsonl")

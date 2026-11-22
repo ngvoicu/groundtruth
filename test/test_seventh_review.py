@@ -195,6 +195,8 @@ class Point3Gate(unittest.TestCase):
         for r in rows:
             if r["event"] == "check":
                 r["usage"]["model_evidence"] = "own-turn"
+                if isinstance(r.get("usage"), dict) and "model" in r["usage"]:  # the ninth review's public form
+                    r["usage"]["model_matches"] = r["usage"].pop("model") == MODEL
         rows.insert(-1, {"event": "model-scan", "final": True, "other_models": 0, "unreadable": False})
         rows[0]["at"] = at
         return rows
@@ -252,7 +254,8 @@ class Point3Gate(unittest.TestCase):
             clone = os.path.join(t, "clone")
             env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
             subprocess.run(["git", "clone", "-q", ROOT, clone], check=True, env=env)
-            for rel in ("scripts/pre-commit", "scripts/build_observed.py", "harness/scan_secrets.py"):
+            for rel in ("scripts/pre-commit", "scripts/build_observed.py", "harness/scan_secrets.py",
+                        "harness/clients.py"):
                 shutil.copyfile(os.path.join(ROOT, rel), os.path.join(clone, rel))
             nothing = os.path.join(t, "nothing")
             env.update(SCAN_CLIENT_KEYS=nothing, SCAN_KEYS_FILE=nothing, SCAN_CONFIG=nothing,

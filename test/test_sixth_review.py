@@ -193,6 +193,8 @@ class Point3NoVersion(R5.CodexNight):
         for r in rows:
             if r["event"] == "check":
                 r["usage"]["model_evidence"] = "own-turn"
+                if isinstance(r.get("usage"), dict) and "model" in r["usage"]:  # the ninth review's public form
+                    r["usage"]["model_matches"] = r["usage"].pop("model") == MODEL
         rows.insert(-1, {"event": "model-scan", "final": True, "other_models": 0, "unreadable": False})
         rows[0]["client_version"] = "0.171.0"
         self.assertNotIn("client_version", R5.build_in_night(rows))
@@ -248,6 +250,8 @@ class Point5Gate(unittest.TestCase):
         for r in rows:
             if r["event"] == "check":
                 r["usage"]["model_evidence"] = "own-turn"
+                if isinstance(r.get("usage"), dict) and "model" in r["usage"]:  # the ninth review's public form
+                    r["usage"]["model_matches"] = r["usage"].pop("model") == MODEL
         rows.insert(-1, {"event": "model-scan", "final": True, "other_models": 0, "unreadable": False})
         return rows
 

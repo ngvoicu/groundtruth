@@ -14,6 +14,8 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "harness"))
+from clients import same_model  # noqa: E402  (one rule for the probe's model_matches and for the manifest's model)
 MANIFEST = "observed/manifest.json"
 OUT = "observed.json"
 
@@ -182,11 +184,17 @@ def read_harness(path):
                              "it is not a check (the run goes in excluded, or its file is repaired from the probe)")
         if "calls" not in u and start["at"][:10] >= OWN_CLIENTS_SINCE and start.get("isolation"):
             raise SystemExit(f"{path}: a check at {r.get('age')} records no count of model requests: not published")
-        if not u.get("model") and start["at"][:10] >= OWN_CLIENTS_SINCE and start.get("isolation"):
-            # M-1: a check whose own turn named no model is not a measurement of the manifest's model.
-            raise SystemExit(f"{path}: a check at {r.get('age')} has no model evidence of its own turn: not published "
-                             "(the run goes in excluded, or its file is repaired from the probe)")
         own = start["at"][:10] >= OWN_CLIENTS_SINCE and start.get("isolation")
+        if own and "model" in u:
+            # From the own-client design on, a public line holds no model text a client reported (harness/probe.py,
+            # Public): only `model_matches`, whether it was the run's requested model.
+            raise SystemExit(f"{path}: a check at {r.get('age')} carries a client-reported model text: not published "
+                             "(the probe's public record holds only model_matches)")
+        if own and u.get("model_matches") is not True:
+            # M-1: a check whose own turn named no model, or another than the requested one, is not a measurement of
+            # the manifest's model.
+            raise SystemExit(f"{path}: a check at {r.get('age')} has no model evidence of its own turn naming the "
+                             "requested model (model_matches): not published (the run goes in excluded)")
         if u.get("model_issue"):
             raise SystemExit(f"{path}: a check at {r.get('age')} records {u['model_issue']!r}: its answering model is not "
                              "certain; not published")
@@ -195,10 +203,9 @@ def read_harness(path):
             # the requested one (harness/clients.py, codex_answer), says which model answered.
             raise SystemExit(f"{path}: a Codex check at {r.get('age')} has no model evidence bound to its own turn "
                              "(model_evidence own-turn): not published (the run goes in excluded)")
-        if own and start.get("harness") == "codex" and u.get("model") != start.get("model"):
-            raise SystemExit(f"{path}: a Codex check at {r.get('age')} was answered by {u.get('model')!r}, not the "
-                             f"requested {start.get('model')!r}: not published")
-        if u.get("model"):
+        if own:
+            answered.add(start["model"])  # model_matches: answered by the run's requested model
+        elif u.get("model"):
             answered.add(u["model"])
         if r.get("late"):
             # A late control is no control: a 30-second re-send made minutes later shows nothing about the cache.
@@ -296,21 +303,6 @@ def check_own_route(name, client, route):
     """An own client measures only its vendor's login."""
     if CLIENT_KINDS.get(client) == "own_client" and OWN_CLIENT_ROUTE.get(client) != route:
         raise SystemExit(f"{name}: {client} is the own client of {OWN_CLIENT_ROUTE.get(client)}, not of {route}")
-
-
-EFFORT_SUFFIX = re.compile(r"-(?:none|minimal|low|medium|high|xhigh|max)$")
-DATE_SUFFIX = re.compile(r"-\d{8}$")
-
-
-def same_model(answered, manifest):
-    """Whether the model a check's reply names is the manifest's: the same id, or it with the client's own additions
-    (Devin's effort suffix, a dated snapshot suffix)."""
-    a, m = answered.lower(), manifest.lower()
-    for _ in range(2):
-        if a == m:
-            return True
-        a = DATE_SUFFIX.sub("", EFFORT_SUFFIX.sub("", a))
-    return a == m
 
 
 def check_answered_model(run, data):

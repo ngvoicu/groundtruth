@@ -321,6 +321,7 @@ class Point2Hook(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
             subprocess.run(["git", "init", "-q", t], check=True, env=env)
+            write(os.path.join(t, "scripts", "pre-commit"), "#!/bin/bash\nexit 0\n", 0o755)  # the checkout's own hook
             for value, ok in ((None, False), (".git/hooks", False), ("/elsewhere/scripts", False), ("scripts", True)):
                 with self.subTest(value=value):
                     if value:

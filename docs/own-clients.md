@@ -15,7 +15,12 @@ its recorded start time and command line; never a process group. Since the eight
 and signals only the fast path: every run looks for the mark immediately before each client invocation and exits
 without calling the client once it is there, and waits (5 s at most) for its own pid in the lock before its first
 one; `stop` refuses, writing nothing, when the marks' folder resolves to an everyday folder. A night starts only from
-a checkout whose `git config core.hooksPath` is `scripts` (each worktree runs its own commit hook). A check without
+a checkout whose `git config core.hooksPath` is `scripts` (each worktree runs its own commit hook). Since the ninth
+review: that check reads the hook Git will really run (`git rev-parse --git-path hooks/pre-commit`: it must exist,
+be executable and be the checkout's own `scripts/pre-commit`); every public line is written by one allowlist
+(`probe.Public`: listed keys, numbers, booleans, strings of a fixed set or of the run's plan; a reported model is only
+`model_matches`, a session only its number; the rest goes to the console log); and the everyday-folder guard compares
+real folders (device and inode of the target and of each existing folder above it), not spellings. A check without
 model evidence of its own turn is `check-invalid` (`no-model`) in the probe and never published by the builder;
 Codex's model evidence is bound to the invocation's own new turn. A priming that is not one explicit model request is
 retried, never used.

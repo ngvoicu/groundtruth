@@ -63,10 +63,18 @@ class FakeClient:
 
 
 def go(client, clock, ages=("2.5m", "5m", "7.5m"), replicas=1):
-    events = []
+    events, names = [], {}
+
+    def detail(text):  # the console log: where the client's own id of each numbered session goes
+        if text.startswith("session "):
+            n, handle = text[len("session "):].split(": ", 1)
+            names[int(n)] = handle
     secs = [probe.parse_age(a) for a in ages]
     reason = probe.run_probe(client, ages=secs, labels=list(ages), replicas=replicas, words=10, salt="t",
-                             log=events.append, clock=clock)
+                             log=events.append, clock=clock, detail=detail)
+    for e in events:  # a public line names a session by its number; the tests look its id up in the console log
+        if "session" in e:
+            e["handle"] = names[e["session"]]
     return reason, events
 
 

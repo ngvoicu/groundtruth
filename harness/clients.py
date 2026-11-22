@@ -30,6 +30,7 @@ import os
 import re
 import subprocess
 import sys
+import unicodedata
 import uuid
 from dataclasses import dataclass
 
@@ -108,12 +109,24 @@ def error_kind(e):
     return kind if kind in ERROR_KINDS else "other"
 
 
-HANDLE_TEXT = re.compile(r"[A-Za-z0-9._:-]{1,100}")
+# A reported model that is the requested one with the client's own additions: Devin's effort suffix, a dated snapshot.
+EFFORT_SUFFIX = re.compile(r"-(?:none|minimal|low|medium|high|xhigh|max)$")
+DATE_SUFFIX = re.compile(r"-\d{8}$")
 
 
-def handle_text(handle):
-    """A session id as a public record may hold it."""
-    return handle if isinstance(handle, str) and HANDLE_TEXT.fullmatch(handle) else "<unrecognised>"
+def same_model(reported, requested, exact=False):
+    """Whether a reported model is `requested`: the same id (`exact`: Codex), or else, case aside, that id with the
+    client's own additions on the reported side (EFFORT_SUFFIX, DATE_SUFFIX). The one rule of harness/probe.py's public
+    `model_matches` (reported: the client's, requested: the run's) and of scripts/build_observed.py (the run's against
+    the manifest's)."""
+    if exact:
+        return reported == requested
+    a, m = reported.lower(), requested.lower()
+    for _ in range(2):
+        if a == m:
+            return True
+        a = DATE_SUFFIX.sub("", EFFORT_SUFFIX.sub("", a))
+    return a == m
 
 
 # The wording of a refusal, as far as the documentation and the source show it; the smoke runs correct this.
@@ -769,8 +782,7 @@ def in_cloud_sync(path, user_home):
     Box), and the older ~/Dropbox, ~/Google Drive, ~/OneDrive*; a path component with one of their names counts too."""
     real = os.path.realpath(path)
     for d in CLOUD_SYNC:
-        top = os.path.realpath(user_home + d[1:])
-        if inside(real, top) or inside(os.path.abspath(path), user_home + d[1:]):
+        if within(path, user_home + d[1:]):
             return d
     for part in real.split(os.sep) + os.path.abspath(path).split(os.sep):
         if CLOUD_PART.match(part) or part.startswith("OneDrive"):
@@ -778,17 +790,56 @@ def in_cloud_sync(path, user_home):
     return None
 
 
+def ancestors(path):
+    """`path` made real (links resolved, as far as it exists), then each folder above it, up to the root."""
+    p = os.path.realpath(path)
+    while True:
+        yield p
+        parent = os.path.dirname(p)
+        if parent == p:
+            return
+        p = parent
+
+
+def folded(path):
+    """A path as a case-insensitive, normalization-insensitive disk (APFS, HFS+) compares it."""
+    return unicodedata.normalize("NFC", path).casefold()
+
+
+def same_folder(a, b):
+    """Whether `a` and `b` are one folder: by filesystem identity (device and inode) when both exist, else by their
+    real paths compared as such a disk compares them (`.CODEX` names `.codex` there)."""
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return folded(os.path.realpath(a)) == folded(os.path.realpath(b))
+
+
+def within(path, folder):
+    """Whether `path` is `folder` or lies inside it: `path` and every folder above it compared with `folder`
+    (same_folder), so neither a link, nor a case or normalization spelling, nor a folder not made yet escapes."""
+    return any(same_folder(p, folder) for p in ancestors(path))
+
+
+def everyday_folder(path, user_home):
+    """The everyday folder (EVERYDAY) that `path` is or lies in, `~` when it is the home folder itself, else None."""
+    if same_folder(path, user_home):
+        return "~"
+    return next((d for d in EVERYDAY if within(path, user_home + d[1:])), None)
+
+
 def check_folder(what, path, root, user_home):
-    """A folder the run writes to: outside the repository, any Git checkout, every everyday folder and every folder a
-    sync service copies off the machine."""
+    """A folder the run writes to, checked before anything is made in it: outside every everyday folder (compared as
+    real folders, never as spellings: everyday_folder), every folder a sync service copies off the machine, the
+    repository and any Git checkout."""
     real = os.path.realpath(path)
-    if real == user_home or any(inside(real, os.path.realpath(user_home + d[1:])) for d in EVERYDAY):
+    if everyday_folder(path, user_home):
         raise SystemExit(f"{what} is an everyday folder of a client (or inside one)")
     sync = in_cloud_sync(path, user_home)
     if sync:
         raise SystemExit(f"{what} is inside a folder a sync service copies off this computer ({sync}): use a local "
                          "folder such as ~/groundtruth-clients")
-    if inside(real, os.path.realpath(root)):
+    if within(path, root):
         raise SystemExit(f"{what} is inside the repository")
     checkout = in_git_checkout(real)
     if checkout:
@@ -830,6 +881,7 @@ def prepare_home(what, state, base, root, user_home, allowed=None):
                 (os.path.lexists(folder) and not os.path.isdir(folder)):
             raise SystemExit(f"{what}: its {kind} {rel} is not under <client-home> (a link out of it, or not a folder): "
                              "refused")
+        check_folder(f"{what}: its {kind}", folder, root, user_home)  # before anything is made
         for d in (os.path.dirname(folder), folder):
             if not os.path.isdir(d):
                 os.mkdir(d, 0o700)
@@ -837,7 +889,7 @@ def prepare_home(what, state, base, root, user_home, allowed=None):
         real, real_base = os.path.realpath(folder), os.path.realpath(base)
         if not inside(real, real_base) or real == real_base:
             raise SystemExit(f"{what}: its {kind} {rel} is not under <client-home> (a link out of it): refused")
-        check_folder(f"{what}: its {kind}", folder, root, user_home)
+        check_folder(f"{what}: its {kind}", folder, root, user_home)  # and again, made: as it resolves now
         check_private(f"{what}: {os.path.dirname(rel)}", os.path.dirname(folder))
         check_private(f"{what}: its {kind} {rel}", folder)
         out = links_out(folder, allowed)

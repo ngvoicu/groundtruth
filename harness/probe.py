@@ -120,6 +120,83 @@ def written_ttl(usage):
 WAVES, WAVE_GAP = 3, 300.0
 
 
+# --- the public record: every line of results/<folder>/<id>.jsonl is written by Public.line, and only so ------------
+
+# What a public line may hold: these keys only, each a number, a boolean, or a string of a fixed set (an event name, a
+# reason, an error kind) or of the run's own plan (an age label). Anything else, and every string a client or vendor
+# reported, never reaches the public file: it goes to the run's console log (private, mode 600), for the audit.
+NUMBER, BOOL, AGE = "number", "bool", "age"
+EVENTS = ("start", "baseline", "prime", "check", "check-invalid", "check-failed", "retry", "prime-refused",
+          "prime-failed", "model-scan", "stop", "done")
+STOP_REASONS = ("baseline-failed", "control-failed", "control-late", "no-observable-cache", "quota", "tier-changed",
+                "other-model", "unreadable-session")
+REASONS = tuple(dict.fromkeys(STOP_REASONS + C.MODEL_ISSUES + ("not-one-call",)))
+# A reply's usage. The model a client or vendor reported is never kept as text: Public.line turns it into
+# `model_matches` (whether it is the run's requested model: clients.same_model).
+USAGE = {"total": NUMBER, "cached": NUMBER, "write": NUMBER, "calls": NUMBER, "write_5m": NUMBER, "write_1h": NUMBER,
+         "model_matches": BOOL, "model_issue": C.MODEL_ISSUES, "model_evidence": ("own-turn",),
+         "raw": {"total": NUMBER, "cached": NUMBER, "write": NUMBER}}
+FIELDS = {"event": EVENTS, "age": AGE, "ageSec": NUMBER, "realAgeSec": NUMBER, "rep": NUMBER, "wave": NUMBER,
+          "try": NUMBER, "unique": NUMBER, "session": NUMBER, "late": BOOL, "warm": BOOL, "final": BOOL,
+          "unreadable": BOOL, "other_models": NUMBER, "reason": REASONS, "kind": C.ERROR_KINDS,
+          "error_kind": C.ERROR_KINDS, "usage": USAGE, "prime": USAGE}
+
+
+class Public:
+    """The writer of a run's public record. `plan` is the run's start record, built from its arguments and the code
+    before any client is invoked; it is frozen here and is the only `start` line ever written (whatever the caller
+    passes with it). Every other event is passed through FIELDS: a key not listed, a value of another type, a string
+    outside its fixed set, and the client-reported model (made `model_matches`) are left out of the line and told to
+    `private` (the console log). `scrub` is a last redaction of the whole line."""
+
+    def __init__(self, path, plan, private=None, scrub=None, now=None):
+        self.path, self.plan = path, json.loads(json.dumps(plan))
+        self.ages = {"baseline", "control", *str(plan.get("ages", "")).split(",")}
+        self.private = private or (lambda text: None)
+        self.scrub = scrub or (lambda text: text)
+        self.now = now or (lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"))
+
+    def keep(self, spec, value):
+        if spec == NUMBER:
+            return type(value) in (int, float)
+        if spec == BOOL:
+            return type(value) is bool
+        if spec == AGE:
+            return type(value) is str and value in self.ages
+        return isinstance(spec, tuple) and type(value) is str and value in spec
+
+    def clean(self, ev, schema, where):
+        out = {}
+        for k, v in ev.items():
+            spec = schema.get(k)
+            if schema is USAGE and k == "model":
+                out["model_matches"] = type(v) is str and C.same_model(v, self.plan["model"],
+                                                                        exact=self.plan["harness"] == "codex")
+                if not out["model_matches"]:
+                    self.private(f"{where}: the model the client reported, kept private: {v!r}")
+            elif isinstance(spec, dict) and isinstance(v, dict):
+                out[k] = self.clean(v, spec, f"{where}.{k}")
+            elif spec is not None and self.keep(spec, v):
+                out[k] = v
+            else:
+                self.private(f"{where}: {k} kept private: {v!r}")
+        return out
+
+    def line(self, ev):
+        """Writes one public line (appended to `path`), and returns it."""
+        if ev.get("event") == "start":
+            rec = dict(self.plan)
+        else:
+            rec = self.clean(ev, FIELDS, str(ev.get("event")))
+            if "event" not in rec:
+                return None  # not an event of this record: told to `private`, nothing written
+        rec["at"] = self.now()
+        text = self.scrub(json.dumps(rec))
+        with open(self.path, "a") as f:
+            f.write(text + "\n")
+        return text
+
+
 def late_after(age):
     """A check made more than this many seconds after its priming started is `late`."""
     return age * 1.1 + 90
@@ -136,6 +213,14 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
     sessions = []  # every session the run started (baseline, control, samples): read whole by the model scans
     cumulative = getattr(h, "cumulative", False) if cumulative is None else cumulative
     seen_ttl = [None]
+
+    def number(handle):
+        """The session's number in this run (1: the baseline): what a public line names it by. The client's own id
+        for it goes to the console log (detail) only, once, for the audit."""
+        if handle not in sessions:
+            sessions.append(handle)
+            detail(f"session {len(sessions)}: {handle}")
+        return sessions.index(handle) + 1
 
     def failed(where, e):
         kind = C.error_kind(e)
@@ -169,8 +254,7 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
                 clock.sleep(RETRY_WAIT)
                 continue
             watch(usage)
-            if handle not in sessions:
-                sessions.append(handle)
+            number(handle)
             return handle, usage, t0
         log({"event": "prime-failed", "age": name})
         return None
@@ -208,7 +292,7 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
         """True / False for a counted check, None for one that is not (failed, invalid). Sent once."""
         started = clock.now()
         real = started - t0
-        base = {"age": name, "ageSec": age, "realAgeSec": round(real), "handle": C.handle_text(handle)}
+        base = {"age": name, "ageSec": age, "realAgeSec": round(real), "session": number(handle)}
         try:
             r = h.resume(handle, OK_PROMPT)
         except C.Refused as e:
@@ -254,7 +338,7 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
         if not c:
             raise Stop("control-failed")
         handle, primed, t0 = c
-        log({"event": "prime", "age": "control", "rep": 0, "handle": C.handle_text(handle), "usage": primed})
+        log({"event": "prime", "age": "control", "rep": 0, "session": number(handle), "usage": primed})
         clock.sleep(t0 + CONTROL_AGE - clock.now())
         if clock.now() - t0 > late_after(CONTROL_AGE):
             # Checked late (a slow priming): the check would show nothing; it is not sent.
@@ -295,7 +379,7 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
                     handle, primed, t0 = p
                     wave_start.setdefault(wave, t0)
                     age_primed[name] = t0
-                    log({"event": "prime", "age": name, "rep": rep, "wave": wave, "handle": C.handle_text(handle),
+                    log({"event": "prime", "age": name, "rep": rep, "wave": wave, "session": number(handle),
                          "usage": primed})
                     heapq.heappush(due, (t0 + age, n, name, age, handle, primed, t0))
                 else:
@@ -537,9 +621,12 @@ def _main(argv=None):
     start["waves"] = {"waves": max(1, min(a.waves, a.replicas or 1)), "gap_s": a.wave_gap}
     if client.run_info():
         start[a.harness] = client.run_info()
+    # The commands as the plan has them (no folder of this machine): the start record is complete before any client
+    # is invoked, and is the plan Public writes.
+    plan = C.Session(client, env=None, io="<io>", work="<work>", create=False)
+    start.update(command={"prime": plan.plan(), "check": plan.plan(resume="<session>")})
+    frozen = json.dumps(start)  # the plan, before any client is invoked
     if a.dry_run:
-        plan = C.Session(client, env=None, io="<io>", work="<work>", create=False)
-        start.update(command={"prime": plan.plan(), "check": plan.plan(resume="<session>")})
         env = client.environment("<client-home>/" + client.client_id, base={k: "<" + k + ">" for k in C.ALLOW})
         requests = 3 + 2 * a.replicas * len(ages)
         print(json.dumps(start))
@@ -572,19 +659,19 @@ def _main(argv=None):
     else:
         env = None
     # A new empty working folder outside every repository (a client reads CLAUDE.md / AGENTS.md from the folders above
-    # it), kept until the last check: a session is resumed from the folder it was started in.
+    # it), kept until the last check: a session is resumed from the folder it was started in. The folder it is made in
+    # is checked first (outside every checkout and every everyday folder, whatever TMPDIR says), then the folder itself.
+    user_home = os.path.realpath(os.path.expanduser("~"))
+    C.check_folder("the working folder (TMPDIR)", tempfile.gettempdir(), ROOT, user_home)
     tmp = tempfile.mkdtemp(prefix=f"groundtruth-{a.label}-")
     try:
-        # The working folder must be outside every checkout (a client reads CLAUDE.md / AGENTS.md above it), whatever
-        # TMPDIR says.
-        C.check_folder("the working folder (TMPDIR)", tmp, ROOT, os.path.realpath(os.path.expanduser("~")))
+        C.check_folder("the working folder (TMPDIR)", tmp, ROOT, user_home)
         writable = None
         if env is not None:
             # The client's TMPDIR is its own under <client-home> (clients.throwaway_tmp), never the shell's.
             writable = [home, env.get("HOME"), env.get("TMPDIR"), tmp]  # what the client may write (confine)
         session = C.Session(client, env=env, io=os.path.join(tmp, "io"), work=os.path.join(tmp, "work"),
                             home=home, keep=keep, writable=writable, run=run)
-        start.update(command={"prime": session.plan(), "check": session.plan(resume="<session>")})
         # The client's version is its own text: never in a public result. It goes to the console log (mode 600) and to
         # the run's private record under <client-home> (private_record), for the audit.
         version = client.version(env, run=run, writable=writable)
@@ -596,20 +683,21 @@ def _main(argv=None):
         os.makedirs(a.out, exist_ok=True)
         path = os.path.join(a.out, f"{a.label}.jsonl")
 
-        def log(ev):
-            ev["at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-            # The last guard of the public record: no value of the child's secret variables, in any field.
-            line = session.redact.scrub(json.dumps(ev))
-            with open(path, "a") as f:
-                f.write(line + "\n")
-            print(line, flush=True)
-
         def note(text):
             # A failure's detail: only on the console (the launched run's log, mode 600), redacted whole and only then
             # clipped; a public event carries its kind alone.
             print(f"detail: {session.redact(str(text))[-1500:]}", file=sys.stderr, flush=True)
 
-        log(start)
+        # The only writer of the public record; the last guard, the scrub, leaves no value of the child's secret
+        # variables in any field.
+        public = Public(path, json.loads(frozen), private=note, scrub=session.redact.scrub)
+
+        def log(ev):
+            line = public.line(ev)
+            if line:
+                print(line, flush=True)
+
+        log({"event": "start"})
         run_probe(Harness(session), ages=ages, labels=labels, replicas=a.replicas, words=a.words, salt=salt, log=log,
                   filler=a.filler, waves=a.waves, wave_gap=a.wave_gap, detail=note)
     finally:

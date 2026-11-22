@@ -195,8 +195,9 @@ class Case3Model(CodexNight):
 
     def test_a_bound_answer_of_the_requested_model_still_counts(self):
         path, text, events, row = self.run_case("matching-evidence")
-        self.assertEqual((row["event"], row["usage"]["model"], row["usage"]["model_evidence"]),
-                         ("check", MODEL, "own-turn"))
+        self.assertEqual((row["event"], row["usage"]["model_matches"], row["usage"]["model_evidence"]),
+                         ("check", True, "own-turn"))
+        self.assertNotIn("model", row["usage"])  # since the ninth review: no model text in a public line
         entry = build_in_night(events)
         self.assertEqual(entry["model"], MODEL)
         self.assertNotIn("client_version", entry)
@@ -205,7 +206,9 @@ class Case3Model(CodexNight):
     def test_the_review_s_published_artifacts_are_refused(self):
         # publication.log:2: the 7cc500c probe's output for the two cases, which its builder published as Luna.
         for variant in ("old-context-after-complete", "context-after-reroute"):
-            with self.subTest(variant=variant), self.assertRaisesRegex(SystemExit, "bound to its own turn"):
+            # Since the ninth review they are refused first for the model text they carry.
+            with self.subTest(variant=variant), \
+                    self.assertRaisesRegex(SystemExit, "bound to its own turn|client-reported model text"):
                 build(os.path.join(SAVED, f"CX6-{variant}.jsonl"))
 
     def test_the_builder_refuses_an_uncertain_or_other_model(self):
@@ -214,11 +217,14 @@ class Case3Model(CodexNight):
         for r in rows:
             if r["event"] == "check":
                 r["usage"]["model_evidence"] = "own-turn"
+            if isinstance(r.get("usage"), dict) and "model" in r["usage"]:  # the ninth review's public form
+                r["usage"]["model_matches"] = r["usage"].pop("model") == MODEL
         last = max(i for i, r in enumerate(rows) if r["event"] == "check")
         rows.insert(-1, {"event": "model-scan", "final": True, "other_models": 0, "unreadable": False})
         self.assertEqual(build_in_night(rows)["model"], MODEL)  # bound evidence of the requested model: published
         for change, message in (({"model_issue": "ambiguous-model"}, "not certain"),
-                                ({"model": "gpt-6-astra"}, "answered by"),
+                                ({"model_matches": False}, "model_matches"),
+                                ({"model": "gpt-6-astra"}, "client-reported model text"),
                                 ({"model_evidence": None}, "bound to its own turn")):
             with self.subTest(change=change):
                 changed = [dict(r, usage=dict(r["usage"], **change)) if i == last else r for i, r in enumerate(rows)]
