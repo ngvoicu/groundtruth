@@ -20,6 +20,8 @@ jobs:
       - run: node dist/cli.js --base-url http://localhost/v1 --model m --dry-run
       - run: python3 -m unittest discover -s test -p "test_*.py"
       - run: python3 scripts/build_observed.py --check
+      # Nothing of an own-client night is merged before its audit (results/own-clients-<date>/AUDIT.md).
+      - run: python3 scripts/build_observed.py --audit-gate .
       # The pre-commit scan, for a pull request whose author did not install it: credentials, e-mail addresses,
       # home-folder paths, session files. The tree as committed, as the hook checks it.
       - run: git checkout-index -a --prefix="$RUNNER_TEMP/tree/" && python3 harness/scan_secrets.py "$RUNNER_TEMP/tree"

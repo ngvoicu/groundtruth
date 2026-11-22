@@ -1,5 +1,6 @@
 #!/bin/bash
-# Blocks a commit when the files about to be committed hold a credential, a home-folder path, a client's state or
+# Blocks a commit when a file of an own-client night is in the tree before its audit (results/own-clients-<date>/
+# AUDIT.md), or when the files about to be committed hold a credential, a home-folder path, a client's state or
 # session file, or when observed.json doesn't match the raw results. Install once per clone:
 #     ln -sf ../../scripts/pre-commit .git/hooks/pre-commit
 # It checks the whole staged tree (exported from the index), and every other file a commit could take (changed or
@@ -8,6 +9,8 @@ set -euo pipefail
 root=$(git rev-parse --show-toplevel)
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 git checkout-index -a --prefix="$tmp/"
+# Nothing of an own-client night is committed before its audit: AUDIT.md, with its fixed first line, in the tree.
+python3 "$root/scripts/build_observed.py" --audit-gate "$tmp"
 python3 "$root/harness/scan_secrets.py" "$tmp"
 python3 "$root/harness/scan_secrets.py" --git "$root"
 (cd "$tmp" && python3 scripts/build_observed.py --check)

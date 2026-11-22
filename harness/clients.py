@@ -232,8 +232,9 @@ class Client:
         return None
 
     def other_models(self, state, handle):
-        """The models other than the requested one that the session's whole record names (Codex), or None where the
-        client keeps no such record (the run-level check does not apply)."""
+        """(names, unreadable): the models other than the requested one that the session's whole record names, and
+        whether it could not all be read (Codex); None where the client keeps no such record (the run-level check
+        does not apply). The names are the record's own text: harness/probe.py never writes them to a public file."""
         return None
 
     def version_command(self):
@@ -442,10 +443,10 @@ CODEX_MODEL_KEYS = ("model", "to_model", "from_model")
 
 
 def codex_models(path):
-    """Every model name any record of a Codex session file carries, read whole from its first byte (any `model`,
-    `to_model` or `from_model` string, at any depth of any record). A line that is not JSON, or a file that cannot be
-    read, gives `<unreadable>`: it cannot be shown to name only one model."""
-    found = set()
+    """(names, unreadable) of a Codex session file read whole from its first byte: every `model`, `to_model` or
+    `from_model` string at any depth of any record, and whether any line was not JSON or the file could not be read
+    (then it cannot be shown to name only one model). The names are the file's own text: never public as they are."""
+    found, unreadable = set(), False
 
     def walk(x):
         if isinstance(x, dict):
@@ -465,10 +466,10 @@ def codex_models(path):
                 try:
                     walk(json.loads(raw))
                 except ValueError:
-                    found.add("<unreadable>")
+                    unreadable = True
     except OSError:
-        found.add("<unreadable>")
-    return found
+        unreadable = True
+    return found, unreadable
 
 
 # The item types of a Codex turn that are not a tool call: a turn with any other item made more than one request.
@@ -546,13 +547,13 @@ class Codex(Client):
         return codex_answer(self.rollout(state, handle), after, self.model)
 
     def other_models(self, state, handle):
-        """Every model but the requested one that the thread's session file names anywhere, read whole (codex_models);
-        `<no session file>` when there is none to read. Names a public record cannot hold become `<unrecognised>`."""
+        """Every model but the requested one that the thread's session file names anywhere, read whole (codex_models),
+        and whether it was unreadable (no file at all counts as unreadable)."""
         path = self.rollout(state, handle)
         if not path:
-            return {"<no session file>"}
-        return {m if m.startswith("<") else (model_text(m) or "<unrecognised>")
-                for m in codex_models(path) if m != self.model}
+            return set(), True
+        names, unreadable = codex_models(path)
+        return {m for m in names if m != self.model}, unreadable
 
     def command(self, prompt_file, resume=None, session=None, files=None):
         base = ["--json", "--skip-git-repo-check", "-m", self.model, *self._config()]
@@ -870,33 +871,36 @@ def login_ok(client, code, out, err):
             return "the status does not say 'Logged in using ChatGPT'"
         return None
     if client.harness == "devin":
-        # A positive login only, read with the terminal's styling removed: a line that says it is logged in, nothing
-        # that says otherwise, and no mention at all of an API, a token or a key (whatever the wording, any such status
-        # may be another login than the subscription's). The exit code alone is never a login.
-        plain = strip_ansi(text)
-        if re.search(r"api|token|key", plain, re.I):
-            return "the status mentions an API, a token or a key: not the subscription login"
-        if DEVIN_NOT_LOGGED_IN.search(plain):
-            return "the status does not show a login (it says it is not, or no longer, logged in)"
-        if not any(DEVIN_LOGGED_IN.fullmatch(line.strip()) for line in plain.splitlines()):
-            return "the status does not say 'Logged in'"
+        # Only a status that is wholly one of the accepted lines, read with every control character removed (C0, C1
+        # and the escape sequences of both): no mention of an API, a token, a key, a PAT or a personal access; no
+        # other line. Anything else is refused and shown to the owner as it reads once cleaned. The exit code alone is
+        # never a login.
+        plain = strip_controls(text)
+        lines = [line.strip() for line in plain.splitlines() if line.strip()]
+        shown = json.dumps(plain.strip()[:300])
+        if DEVIN_REFUSED.search(plain) or DEVIN_REFUSED.search(CONTROLS.sub("", text)):
+            return f"the status mentions an API, a token, a key, a PAT or a personal access: {shown}"
+        if not lines or not all(DEVIN_LOGGED_IN.fullmatch(line) for line in lines):
+            return ("the status is not one of `Logged in`, `Logged in.`, `Logged in as <one word>`, `Logged in (via "
+                    f"browser|web|oauth)`: {shown}")
         return None
     if re.search(r"api[ _-]?key", text, re.I):
         return "the status names an API key"
     return None
 
 
-# The Devin CLI's status: a whole line `Logged in`, `Logged in.`, `Logged in as <who>` or `Logged in (via <how>)` (the
-# wording in its 3000.14 binary), and none of its negative wordings.
-DEVIN_LOGGED_IN = re.compile(r"logged in(?:\.|\s+as\s+\S.*|\s+\(via\s+[^)]+\)\.?)?", re.I)
-DEVIN_NOT_LOGGED_IN = re.compile(r"not\s+(?:logged|signed)\s+in|(?:logged|signed)\s+out|no\s+longer|log\s*in\s+first"
-                                 r"|re-?authenticat|expired|not\s+authori[sz]ed|no\s+credentials", re.I)
-# Terminal styling and control sequences (CSI, OSC, single escapes) and any other control character but a newline.
-ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)?|\x1b[@-Z\\-_]|[\x00-\x09\x0b-\x1f\x7f]")
+# The Devin CLI's status, the only lines accepted (whole lines, after strip_controls).
+DEVIN_LOGGED_IN = re.compile(r"Logged in(?:\.| as \S+| \(via (?:browser|web|oauth)\))?")
+DEVIN_REFUSED = re.compile(r"api|token|key|\bpat\b|personal\s*access", re.I)
+# Escape sequences (7-bit: ESC [ ... final, ESC ] ... BEL/ST, ESC + one; 8-bit: CSI 0x9b, OSC 0x9d ... ST 0x9c), then
+# every remaining control character but the newline: C0 (0x00-0x1f), DEL and C1 (0x80-0x9f).
+ESCAPES = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x9b[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b\x9c]*(?:\x07|\x1b\\|\x9c)?"
+                     r"|\x9d[^\x07\x1b\x9c]*(?:\x07|\x1b\\|\x9c)?|\x1b[@-Z\\-_]")
+CONTROLS = re.compile(r"[\x00-\x09\x0b-\x1f\x7f-\x9f]")
 
 
-def strip_ansi(text):
-    return ANSI.sub("", text or "")
+def strip_controls(text):
+    return CONTROLS.sub("", ESCAPES.sub("", text or ""))
 
 
 def state_folder(client, base, root, user_home=None, env=None, run=None, check_login=True):
@@ -951,6 +955,8 @@ def login_status(client, state, env=None, run=None):
                                     stdin=None, timeout=120)
     except subprocess.TimeoutExpired:
         return f"the status command did not answer within 120 s ({' '.join(cmd[:4])})"
+    except ValueError:  # bytes that are not text (UnicodeDecodeError): no status can be read from them
+        return f"the status command printed bytes that are not text ({' '.join(cmd[:4])})"
     why = login_ok(client, code, o, er)
     return f"{why} ({' '.join(cmd[:4])})" if why else None
 

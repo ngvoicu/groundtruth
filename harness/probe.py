@@ -25,7 +25,7 @@ Usage:
   harness/probe.py --harness claude|codex|devin|muse --model ID [--schedule std|long | --ages 30m,1h] --replicas 3 \
       --label H1 --out DIR [--filler random|list] [--dry-run]
 """
-import argparse, heapq, json, os, random, shutil, sys, tempfile, time
+import argparse, heapq, json, os, random, re, shutil, sys, tempfile, time
 sys.dont_write_bytecode = True  # a dry run writes nothing, not even the interpreter's cache
 from datetime import datetime, timezone
 
@@ -118,6 +118,8 @@ def written_ttl(usage):
 
 
 WAVES, WAVE_GAP = 3, 300.0
+# A model name as a public model-scan event may carry it; any other text is written `?`.
+PUBLIC_MODEL = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 
 
 def late_after(age):
@@ -177,20 +179,29 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
 
     def scan(handles, final=False):
         """The run-level model check (Codex): each session's whole record, after every check and at the run's end. A
-        model other than the requested one anywhere excludes the whole run (scripts/build_observed.py), and a check
-        that finds one stops it (`stop`, `other-model`). Nothing for a client that keeps no such record."""
+        model other than the requested one anywhere, or a record that cannot all be read, excludes the whole run
+        (scripts/build_observed.py), and a check that finds either stops it (`stop`, `other-model` or
+        `unreadable-session`). Nothing for a client that keeps no such record. The public event carries only `final`,
+        the other models' names where they have a model id's form (any other text written `?`) and `unreadable`; the
+        names as the files have them go to the console log (detail) only."""
         read = getattr(h, "other_models", None)
         if read is None:
             return
-        other = set()
+        other, unreadable = set(), False
         for x in handles:
             found = read(x)
             if found is None:
                 return
-            other |= set(found)
-        log({"event": "model-scan", "final": final, "sessions": len(handles), "other_models": sorted(other)})
-        if other and not final:
-            raise Stop("other-model")
+            names, bad = found
+            other |= set(names)
+            unreadable = unreadable or bool(bad)
+        if other:
+            detail(f"model-scan: other models named in the session files: {sorted(other)!r}")
+        log({"event": "model-scan", "final": bool(final),
+             "other_models": sorted({n if PUBLIC_MODEL.fullmatch(n) else "?" for n in other}),
+             "unreadable": unreadable})
+        if not final and (other or unreadable):
+            raise Stop("other-model" if other else "unreadable-session")
 
     def check(name, age, handle, primed, t0, baseline):
         warm = check_once(name, age, handle, primed, t0, baseline)
@@ -321,7 +332,7 @@ class Harness:
 
     def other_models(s, handle):
         if handle is None:
-            return {"<no session>"}
+            return set(), True
         return s.session.client.other_models(s.session.home, handle)
 
 
@@ -434,6 +445,26 @@ def main(argv=None):
         raise SystemExit(redact.scrub(f"probe: {type(e).__name__}: {e}")) from None
 
 
+def stay_awake_and_stoppable(launched):
+    """A launched run (harness/night.py) is its own process: `stop` signals its pid alone. SIGTERM, SIGINT and SIGHUP
+    are taken out of any inherited blocked set and end the probe through an exception, so that the client invocation
+    under way is killed with it (subprocess.run kills its child on any exception) and the temporary folder removed.
+    On macOS it keeps the computer awake for as long as this pid lives (`caffeinate -i -w <pid>`, which ends with it)."""
+    if not launched:
+        return  # a run in the foreground (smoke, a test): Ctrl-C interrupts it as usual
+    import signal
+
+    def end(signum, frame):
+        raise SystemExit(128 + signum)
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        signal.signal(sig, end)
+    signal.pthread_sigmask(signal.SIG_UNBLOCK, {signal.SIGTERM, signal.SIGINT, signal.SIGHUP})
+    if sys.platform == "darwin" and shutil.which("caffeinate"):
+        import subprocess
+        subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())], stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+
+
 def _main(argv=None):
     a = parser().parse_args(argv)
     ages, labels = ages_of(a.schedule, a.ages)
@@ -476,6 +507,7 @@ def _main(argv=None):
         else:
             print(f"{a.label}: the caller's environment (a proxy client). Dry run: nothing run, nothing sent.")
         return
+    stay_awake_and_stoppable(bool(a.launch_id))
     if a.delay > 0:
         # A staggered start (harness/night.py): waits first, so that the checks below are made just before the run.
         time.sleep(a.delay)

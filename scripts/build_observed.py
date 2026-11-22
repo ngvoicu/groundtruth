@@ -79,31 +79,81 @@ def age_label(seconds):
     return f"{seconds}s"
 
 
-# The publication gate of an own-client night (docs/own-clients-RUN.md, "The morning"): no run of the night is built
-# until a person has audited its raw results, the Codex session files and the console logs, and written
-# results/own-clients-<date>/AUDIT.md with exactly this first line.
+# The publication gate of an own-client night (docs/own-clients-RUN.md, "The morning"): nothing of a night (no run,
+# no `excluded` entry, no raw file in a commit) is published until a person has audited its raw results, the Codex
+# session files and the console logs, and written results/own-clients-<date>/AUDIT.md with exactly this first line.
+# No symbolic link is accepted anywhere under results/own-clients-*: a file is the night's only where it lies.
 AUDIT_FIRST_LINE = "# Own-client night audit: passed"
-NIGHT_FOLDER = re.compile(r"^results/own-clients-(\d{4}-\d{2}-\d{2})/")
+NIGHT_FOLDER = re.compile(r"^results/own-clients-(\d{4}-\d{2}-\d{2})(?:/|$)")
+NIGHT_NAME = re.compile(r"own-clients-(\d{4}-\d{2}-\d{2})")
 
 
-def check_audit(name, path):
-    """An own-client run of the new design is built only from results/own-clients-<date>/ and only when that night's
-    AUDIT.md exists with AUDIT_FIRST_LINE as its first line."""
-    rel = os.path.relpath(os.path.join(ROOT, path), ROOT).replace(os.sep, "/")
-    m = NIGHT_FOLDER.match(rel)
-    if not m:
-        raise SystemExit(f"{name}: an own-client run is published only from results/own-clients-<date>/ (its audited "
-                         f"night); {path} is not there")
-    audit = os.path.join(ROOT, "results", f"own-clients-{m.group(1)}", "AUDIT.md")
-    try:
-        with open(audit) as f:
-            first = f.readline().rstrip("\n")
-    except OSError:
-        raise SystemExit(f"{name}: the night own-clients-{m.group(1)} has no AUDIT.md: nothing of it is built before its "
-                         "audit (docs/own-clients-RUN.md, \"The morning\")") from None
+def night_links(root):
+    """Every symbolic link under results/own-clients-* of `root` (the night folders themselves included), relative."""
+    results, found = os.path.join(root, "results"), []
+    if not os.path.isdir(results):
+        return found
+    for name in sorted(os.listdir(results)):
+        top = os.path.join(results, name)
+        if not name.startswith("own-clients-"):
+            continue
+        if os.path.islink(top):
+            found.append(os.path.relpath(top, root))
+            continue
+        for d, dirs, files in os.walk(top, followlinks=False):
+            found += [os.path.relpath(os.path.join(d, n), root) for n in dirs + files if os.path.islink(os.path.join(d, n))]
+    return found
+
+
+def audit_problem(root, date):
+    """None when results/own-clients-<date>/AUDIT.md of `root` is a regular file whose first line is
+    AUDIT_FIRST_LINE; else why not."""
+    audit = os.path.join(root, "results", f"own-clients-{date}", "AUDIT.md")
+    if os.path.islink(audit) or not os.path.isfile(audit):
+        return f"the night own-clients-{date} has no AUDIT.md: nothing of it is published before its audit " \
+               "(docs/own-clients-RUN.md, \"The morning\")"
+    with open(audit, errors="replace") as f:
+        first = f.readline().rstrip("\n")
     if first != AUDIT_FIRST_LINE:
-        raise SystemExit(f"{name}: results/own-clients-{m.group(1)}/AUDIT.md does not begin with {AUDIT_FIRST_LINE!r}: "
-                         "the night's audit is not passed")
+        return f"results/own-clients-{date}/AUDIT.md does not begin with {AUDIT_FIRST_LINE!r}: the night's audit is " \
+               "not passed"
+    return None
+
+
+def night_of(name, path):
+    """The night (its date) a raw file belongs to, read both from the path the manifest gives and from the file it
+    resolves to; None when neither is under results/own-clients-*. Refused when the two disagree."""
+    lexical = os.path.normpath(path).replace(os.sep, "/")
+    resolved = os.path.relpath(os.path.realpath(os.path.join(ROOT, path)), os.path.realpath(ROOT)).replace(os.sep, "/")
+    nights = {m.group(1) for m in (NIGHT_FOLDER.match(lexical), NIGHT_FOLDER.match(resolved)) if m}
+    if len(nights) > 1 or (nights and lexical != resolved):
+        raise SystemExit(f"{name}: {path} resolves to {resolved}: a raw file of an own-client night is published only "
+                         "from where it lies")
+    return nights.pop() if nights else None
+
+
+def check_audit(name, date):
+    why = audit_problem(ROOT, date)
+    if why:
+        raise SystemExit(f"{name}: {why}")
+
+
+def audit_gate(root):
+    """The commit hook's gate (and CI's), over a tree: no link under results/own-clients-*, and every night folder
+    that holds any file has its AUDIT.md with AUDIT_FIRST_LINE. Returns the problems (empty: the tree may be
+    committed)."""
+    problems = [f"{link}: a symbolic link under results/own-clients-*: refused" for link in night_links(root)]
+    results = os.path.join(root, "results")
+    for name in sorted(os.listdir(results)) if os.path.isdir(results) else []:
+        m = NIGHT_FOLDER.match(f"results/{name}")
+        top = os.path.join(results, name)
+        if not m or os.path.islink(top) or not os.path.isdir(top):
+            continue
+        if any(files for _, _, files in os.walk(top)):
+            why = audit_problem(root, m.group(1))
+            if why:
+                problems.append(f"results/{name}: {why}")
+    return problems
 
 
 def read_harness(path):
@@ -278,19 +328,19 @@ def check_answered_model(run, data):
 
 def check_model_scan(run, data):
     """Codex, at the run's level: the probe read every session file of the run whole, at each check and at the end
-    (model-scan events). A run whose files name any model but the requested one anywhere, or that ended on it, or
-    whose end scan is missing, is not published."""
+    (model-scan events: final, other_models, unreadable). A run whose files name any model but the requested one
+    anywhere, or could not all be read, or that ended on either, or whose end scan is missing, is not published."""
     if data.get("harness") != "codex":
         return
-    if data.get("stop") == "other-model":
-        raise SystemExit(f"{run['id']}: the run stopped on another model in its session files: not published")
+    if data.get("stop") in ("other-model", "unreadable-session"):
+        raise SystemExit(f"{run['id']}: the run stopped on its session files ({data['stop']}): not published")
     scans = data.get("model_scans") or []
-    if not any(s.get("final") for s in scans):
+    if not any(s.get("final") is True for s in scans):
         raise SystemExit(f"{run['id']}: no end-of-run scan of its Codex session files (model-scan): not published")
-    other = sorted({m for s in scans for m in (s.get("other_models") or [])})
-    if other or any(s.get("other_models") is None for s in scans):
-        raise SystemExit(f"{run['id']}: its Codex session files name {', '.join(map(str, other)) or 'an unreadable model'}"
-                         f", not only {run['model']}: the whole run is excluded")
+    other = sorted({str(m) for s in scans for m in (s.get("other_models") or [])})
+    if other or any(s.get("other_models") != [] or s.get("unreadable") is not False for s in scans):
+        raise SystemExit(f"{run['id']}: its Codex session files name another model than {run['model']} ("
+                         f"{', '.join(other) or 'or could not all be read'}): the whole run is excluded")
 
 
 def check_own_run(run, client, data, options):
@@ -316,9 +366,13 @@ def check_own_run(run, client, data, options):
 
 
 def build_cache(manifest):
+    links = night_links(ROOT)
+    if links:
+        raise SystemExit(f"{links[0]}: a symbolic link under results/own-clients-*: nothing is built while one is there")
     entries = []
     for run in manifest["runs"]:
         path = run["file"]
+        night_of(run["id"], path)  # before the file is read: a link out of a night or into one is refused
         data = read_harness(path) if path.endswith(".jsonl") else read_plain(path)
         client = run.get("client") or data["client"]
         # The client is the raw file's: the manifest may name it again, never another one.
@@ -337,8 +391,13 @@ def build_cache(manifest):
         options = dict(run.get("options") or {})
         written = check_own_run(run, client, data, options)
         check_answered_model(run, data)
+        night = night_of(run["id"], path)
+        if night:
+            check_audit(run["id"], night)  # whatever the run's date or client: its night is audited first
+        elif CLIENT_KINDS.get(client) == "own_client" and data.get("own_since"):
+            raise SystemExit(f"{run['id']}: an own-client run is published only from results/own-clients-<date>/ (its "
+                             f"audited night); {path} is not there")
         if CLIENT_KINDS.get(client) == "own_client" and data.get("own_since"):
-            check_audit(run["id"], path)
             check_model_scan(run, data)
         # A run file that records its extra body fields: each must be in the manifest's options, as sent, or in
         # removed_by_proxy: a field the client sent that is shown not to reach the provider on this route and build
@@ -631,11 +690,32 @@ def build():
         "cache": build_cache(manifest),
         "limits": build_limits(manifest),
         "known": build_known(manifest),
-        "excluded": manifest["excluded"],
+        "excluded": build_excluded(manifest),
     }
 
 
+def build_excluded(manifest):
+    """The manifest's excluded runs; an entry of an own-client night (its id or file names own-clients-<date>) only
+    once that night is audited: nothing of an unaudited night is published, not even why a run was left out."""
+    for e in manifest["excluded"]:
+        for value in (e.get("id"), e.get("file")):
+            m = NIGHT_NAME.search(value) if isinstance(value, str) else None
+            if m:
+                check_audit(f"excluded {e.get('id')}", m.group(1))
+    return manifest["excluded"]
+
+
 def main():
+    if "--audit-gate" in sys.argv:
+        tree = sys.argv[sys.argv.index("--audit-gate") + 1]
+        problems = audit_gate(tree)
+        for p in problems:
+            print(p, file=sys.stderr)
+        if problems:
+            raise SystemExit("audit gate: refused: nothing under results/own-clients-* is committed before its night's "
+                             "audit (docs/own-clients-RUN.md, \"The morning\")")
+        print("audit gate: every own-client night in the tree is audited (or there is none)")
+        return
     text = json.dumps(build(), indent=1, ensure_ascii=False) + "\n"
     target = os.path.join(ROOT, OUT)
     if "--check" in sys.argv:

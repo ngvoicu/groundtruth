@@ -72,9 +72,10 @@ class Point1Stop(Owner):
         w = self.spawn([sys.executable, "-B", self.worker, "--label", "CX1", "--launch-id", lid])
         with mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": base}):
             os.makedirs(os.path.join(night.night_dir(DATE), "launch"), mode=0o700)
-            write(night.lock_path(DATE, "codex"), json.dumps({"client": "codex", "date": DATE, "launch_id": lid,
-                                                              "launcher_pid": 1234567, "launcher_started": "never",
-                                                              "runs": {"CX1": {"pid": w.pid, "delay_s": 0}}}))
+            write(night.lock_path(DATE, "codex"), json.dumps({
+                "client": "codex", "date": DATE, "launch_id": lid, "launcher_pid": 1234567, "launcher_started": "never",
+                "launcher_command": "never",
+                "runs": {"CX1": {"pid": w.pid, "started": night.process_started(w.pid), "delay_s": 0}}}))
         return base, w
 
     def test_the_review_s_case(self):
@@ -86,15 +87,13 @@ class Point1Stop(Owner):
         other_date = self.spawn([sys.executable, "-B", midnight, "--date", "2099-06-20", "--go", "codex"])
         sent = []
 
-        def only_a(pgid, sig):
-            sent.append(pgid)
-            self.assertEqual(pgid, a.pid, "a signal to something campaign A did not start")
-            os.killpg(pgid, sig)
-
-        def no_kill(pid, sig):
-            raise AssertionError(f"signal to pid {pid}: no launcher of campaign A is alive")
-        with mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": base_a}):
-            signalled = night.stop("all", DATE, killpg=only_a, kill=no_kill, out=lambda *_: None, wait=0.5)
+        def only_a(pid, sig):
+            sent.append(pid)
+            self.assertEqual(pid, a.pid, "a signal to something campaign A did not start")
+            os.kill(pid, sig)
+        with mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": base_a}), \
+                mock.patch.object(night.os, "killpg", side_effect=AssertionError("a process group signalled")):
+            signalled = night.stop("all", DATE, kill=only_a, out=lambda *_: None, wait=0.5)
         self.assertEqual((signalled, sent), ([a.pid], [a.pid]))
         self.assertEqual(a.wait(timeout=10), -signal.SIGTERM)
         time.sleep(0.2)
@@ -109,13 +108,14 @@ class Point1Stop(Owner):
         launcher = self.spawn([sys.executable, "-B", self.worker, "night.py", "--date", DATE, "--go", "codex"])
         with mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": base}):
             os.makedirs(os.path.join(night.night_dir(DATE), "launch"), mode=0o700)
-            lock = {"launch_id": f"{DATE}-codex-000000000001", "launcher_pid": launcher.pid, "runs": {}}
+            lock = {"launch_id": f"{DATE}-codex-000000000001", "launcher_pid": launcher.pid, "runs": {},
+                    "launcher_command": night.process_command(launcher.pid)}
             for recorded, expected in (("Mon Jan  1 00:00:00 2001", []), (None, []),
                                        (night.process_started(launcher.pid), [launcher.pid])):
                 with self.subTest(recorded=recorded):
                     write(night.lock_path(DATE, "codex"), json.dumps(dict(lock, launcher_started=recorded)))
                     killed = []
-                    night.stop("codex", DATE, kill=lambda pid, sig: killed.append(pid), killpg=lambda *a: None,
+                    night.stop("codex", DATE, kill=lambda pid, sig: killed.append(pid),
                                out=lambda *_: None, wait=0.2, sleep=lambda s: None)
                     self.assertEqual(killed, expected)
         self.assertIsNone(launcher.poll())  # only recorded, never really signalled here
@@ -130,12 +130,12 @@ class Point1Stop(Owner):
             with self.subTest(lock=lock):
                 if lock is not None:
                     write(night.lock_path(DATE, "codex"), lock)
-                self.assertEqual(night.stop("codex", DATE, killpg=lambda *a: self.fail("signalled"),
-                                            kill=lambda *a: self.fail("signalled"), out=lambda *_: None, wait=0.2), [])
+                self.assertEqual(night.stop("codex", DATE, kill=lambda *a: self.fail("signalled"), out=lambda *_: None,
+                                            wait=0.2), [])
         self.assertIsNone(w.poll())
 
     def test_no_search_by_program_name_or_date_is_left(self):
-        for gone in ("launchers", "parent_table", "launch_mark"):
+        for gone in ("launchers", "parent_table", "launch_mark", "workers", "process_table", "groups_of"):
             self.assertFalse(hasattr(night, gone), gone)
 
 
@@ -162,7 +162,7 @@ class Point2DevinStatus(unittest.TestCase):
         devin = C.Devin("m")
         run = lambda argv, **kw: (0, "Logged in (via API token)", "")  # noqa: E731
         with tempfile.TemporaryDirectory() as t, mock.patch.object(C, "CONFINED", False):
-            self.assertIn("API, a token or a key", C.login_status(devin, t, env={"HOME": t, "TMPDIR": t}, run=run))
+            self.assertIn("an API, a token, a key", C.login_status(devin, t, env={"HOME": t, "TMPDIR": t}, run=run))
 
 
 class Point3NoVersion(R5.CodexNight):
@@ -193,7 +193,7 @@ class Point3NoVersion(R5.CodexNight):
         for r in rows:
             if r["event"] == "check":
                 r["usage"]["model_evidence"] = "own-turn"
-        rows.insert(-1, {"event": "model-scan", "final": True, "sessions": 3, "other_models": []})
+        rows.insert(-1, {"event": "model-scan", "final": True, "other_models": [], "unreadable": False})
         rows[0]["client_version"] = "0.171.0"
         self.assertNotIn("client_version", R5.build_in_night(rows))
         self.assertFalse(hasattr(B, "VERSION_TOKEN") or hasattr(C, "VERSION_TOKEN"))
@@ -212,7 +212,7 @@ class Point4CodexRunLevel(R5.CodexNight):
                 self.assertIn("gpt-6-astra", scans[-1]["other_models"])
                 if variant != "astra-in-the-baseline":  # found at the check: the run stops there
                     self.assertEqual(events[-1], dict(events[-1], event="stop", reason="other-model"))
-                with self.assertRaisesRegex(SystemExit, "gpt-6-astra|another model"):
+                with self.assertRaisesRegex(SystemExit, "gpt-6-astra|another model|other-model"):
                     R5.build_in_night(events)
 
     def test_a_clean_run_is_scanned_and_published(self):
@@ -220,7 +220,7 @@ class Point4CodexRunLevel(R5.CodexNight):
         scans = [e for e in events if e["event"] == "model-scan"]
         self.assertEqual([s["final"] for s in scans], [False] * 4 + [True])  # control, 2.5m, 5m, 7.5m, the end
         self.assertTrue(all(s["other_models"] == [] for s in scans))
-        self.assertEqual(scans[-1]["sessions"], 5)  # baseline, control, three samples
+        self.assertEqual(set(scans[-1]), {"event", "final", "other_models", "unreadable", "at"})
         self.assertEqual(R5.build_in_night(events)["model"], MODEL)
 
     def test_the_builder_wants_the_end_scan(self):
@@ -235,8 +235,8 @@ class Point4CodexRunLevel(R5.CodexNight):
             write(path, json.dumps({"type": "turn_context", "payload": {"model": MODEL}}) + "\n"
                   + json.dumps({"type": "x", "payload": {"deep": [{"to_model": "a"}, {"from_model": "b"}]}}) + "\n"
                   + "not json\n")
-            self.assertEqual(C.codex_models(path), {MODEL, "a", "b", "<unreadable>"})
-            self.assertEqual(C.codex_models(os.path.join(t, "none.jsonl")), {"<unreadable>"})
+            self.assertEqual(C.codex_models(path), ({MODEL, "a", "b"}, True))
+            self.assertEqual(C.codex_models(os.path.join(t, "none.jsonl")), (set(), True))
 
 
 class Point5Gate(unittest.TestCase):
@@ -248,7 +248,7 @@ class Point5Gate(unittest.TestCase):
         for r in rows:
             if r["event"] == "check":
                 r["usage"]["model_evidence"] = "own-turn"
-        rows.insert(-1, {"event": "model-scan", "final": True, "sessions": 3, "other_models": []})
+        rows.insert(-1, {"event": "model-scan", "final": True, "other_models": [], "unreadable": False})
         return rows
 
     def test_the_gate(self):

@@ -38,6 +38,18 @@ MODEL = "gpt-6-luna"
 NIGHT = "results/own-clients-2099-06-19"
 
 
+def ps_table():
+    """(pid, process group, command line) of every process: the tests' own view, to find and clean up their workers
+    (harness/night.py looks up no process table)."""
+    p = subprocess.run(["ps", "-ax", "-o", "pid=,pgid=,command="], capture_output=True, text=True)
+    rows = []
+    for line in p.stdout.splitlines():
+        parts = line.split(None, 2)
+        if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
+            rows.append((int(parts[0]), int(parts[1]), parts[2]))
+    return rows
+
+
 def build(path, model=MODEL):
     return B.build_cache({"runs": [{"id": "CX6", "route": "codex-subscription", "file": path, "model": model}]})[0]
 
@@ -59,6 +71,8 @@ class CodexNight(Owner):
     VERSION is what its `--version` prints; `console` keeps what the probe printed to the console log."""
 
     VERSION = "codex-cli 0.171.0"
+    PRIVATE = ("19.28.3746", "<model unavailable in fixture workspace>", "sk-" + "t345syntheticCanary1234567890",
+               "/Volumes/FixtureData/test-campaign/" + "codex" + "-cli", "<unavailable in ~/.codex/" + "auth" + ".json>", "Gpt-Upper")
 
     def run_case(self, variant):
         base = self.client_home()
@@ -132,6 +146,10 @@ class CodexNight(Owner):
                     f.write(json.dumps(ev("model_reroute", None, from_model=MODEL, to_model=astra)) + "\n" + old)
             if new and s["n"] == 0 and variant == "astra-in-the-baseline":
                 roll = [ev("task_started", turn), ctx(turn, astra), ev("task_complete", turn)]
+            if new and s["n"] == 0 and variant == "private-strings":
+                # The seventh review's fixtures (calendar-fixtures.log:2, path-test.log): model fields holding a
+                # version, a diagnostic, a key-shaped value and paths, in a record of the never-checked baseline.
+                roll = roll + [{"type": "diagnostic", "payload": {"m": [{"model": m} for m in self.PRIVATE]}}]
             append(sid, roll)
             total = (18000 if s["n"] == 0 else 25000) if new else 50020
             cached = 0 if new and s["n"] == 0 else (18000 if new else 43000)
@@ -197,7 +215,7 @@ class Case3Model(CodexNight):
             if r["event"] == "check":
                 r["usage"]["model_evidence"] = "own-turn"
         last = max(i for i, r in enumerate(rows) if r["event"] == "check")
-        rows.insert(-1, {"event": "model-scan", "final": True, "sessions": 3, "other_models": []})
+        rows.insert(-1, {"event": "model-scan", "final": True, "other_models": [], "unreadable": False})
         self.assertEqual(build_in_night(rows)["model"], MODEL)  # bound evidence of the requested model: published
         for change, message in (({"model_issue": "ambiguous-model"}, "not certain"),
                                 ({"model": "gpt-6-astra"}, "answered by"),
@@ -257,7 +275,7 @@ class Case2Stop(Owner):
                 except (ProcessLookupError, PermissionError):
                     p.kill()
             p.wait(timeout=10)
-        for pid, _, cmd in night.process_table():
+        for pid, _, cmd in ps_table():
             if self.worker in cmd:
                 try:
                     os.killpg(pid, signal.SIGKILL)
@@ -266,7 +284,7 @@ class Case2Stop(Owner):
 
     def ours(self):
         """The pids of the stand-in workers of this night still alive."""
-        return [pid for pid, _, cmd in night.process_table() if self.worker in cmd and f"--launch-id {DATE}-" in cmd]
+        return [pid for pid, _, cmd in ps_table() if self.worker in cmd and f"--launch-id {DATE}-" in cmd]
 
     def settle(self):
         for _ in range(200):
@@ -331,8 +349,7 @@ night.go_clients(["codex"], {DATE!r}, out=progress)
             seen.append(all(os.path.lexists(night.stop_path(DATE, c)) for c in night.CLIENT_PARTS))
             return None if a else []
         with mock.patch.object(night, "read_lock_any", side_effect=looked), \
-                mock.patch.object(night, "read_lock", side_effect=looked), \
-                mock.patch.object(night, "process_table", side_effect=looked):
+                mock.patch.object(night, "read_lock", side_effect=looked):
             night.stop("all", DATE, out=lambda *_: None, wait=0.2)
         self.assertTrue(seen)
         self.assertTrue(all(seen), seen)
@@ -345,7 +362,7 @@ night.go_clients(["codex"], {DATE!r}, out=progress)
             started.append(argv)
             C.write_private(night.stop_path(DATE, "codex"), "now\n")
             return mock.Mock(pid=987654)
-        with mock.patch.object(night.os, "killpg", side_effect=lambda pgid, sig: sent.append((pgid, sig))), \
+        with mock.patch.object(night.os, "kill", side_effect=lambda pid, sig: sent.append((pid, sig))), \
                 self.assertRaisesRegex(SystemExit, "stopped"):
             night.go_clients(["codex"], DATE, popen=popen, out=lambda *_: None)
         self.assertEqual(len(started), 1)

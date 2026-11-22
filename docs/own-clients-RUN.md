@@ -78,7 +78,10 @@ Codex is told to keep its login in a file (`$G/codex-cli/auth.json`) and to use 
 (`model_provider="openai"`); every Codex run says the same on its command line, and a `$G/codex-cli/config.toml`
 that selects another provider, a profile or another base URL is refused. Before every run the night checks each
 login's status, with the same folders, and refuses an API key; a status that does not positively say it is logged in
-(Codex: `Logged in using ChatGPT`; Devin: `Logged in`, `Logged in as …`) is refused too, whatever its exit code. Never
+(Codex: `Logged in using ChatGPT`; Devin: only the whole lines `Logged in`, `Logged in.`, `Logged in as <one word>`,
+`Logged in (via browser)`, `(via web)` or `(via oauth)`, and no mention of an API, a token, a key, a PAT or a personal
+access) is refused too, whatever its exit code, and the reply is shown: bring it to whoever maintains
+`harness/clients.py`. Never
 run `devin auth logout`, and never copy an everyday login file. Neither login asks you to put anything in the Keychain,
 and Codex is told to keep its login in a file.
 
@@ -108,7 +111,7 @@ Anyone can do this, from the repository's root, with these set in the shell:
 export GROUNDTRUTH_CLIENT_HOME="$HOME/groundtruth-clients" N=<YYYY-MM-DD>
 ```
 
-Keep the computer on power and on the network. Each run keeps it awake (`caffeinate -i`); a check made too late after
+Keep the computer on power and on the network. Each run keeps it awake (`caffeinate -i -w <its pid>`); a check made too late after
 its priming is left out, so a sleeping computer loses checks, not truth.
 
 | # | Command | Time |
@@ -128,13 +131,14 @@ its priming is left out, so a sleeping computer loses checks, not truth.
   (`results/own-clients-$N/<id>.jsonl`), and its console output in `results/own-clients-$N/logs/<id>.log`.
 - **Stopping**: `python3 harness/night.py --date $N stop <client>` (or `stop all`) first writes the client's stop mark
   (`$G/night-$N/launch/<client>.stop`): a launcher starts no run after it, and stops at once a run it was just
-  starting. Then it reads that client's launch file and acts only on what it records: the launcher (its pid, checked
-  against the start time the launcher wrote there), given a few seconds to end by itself and signalled if it does
-  not; then each recorded run that is alive and is that run (its command line carries its label and the launch file's
-  exact launch id), and any process carrying that exact launch id. It never looks for processes by name or date, so
-  nothing of another night, another `$G` or another program is touched. It needs `GROUNDTRUTH_CLIENT_HOME` set as for
-  the night (it refuses without it). Nothing more of that client starts that night. `--dry-run stop all` names them and does nothing. A
-  run also stops by itself on a quota refusal or a missed or late control.
+  starting. Then it reads that client's launch file and signals only the pids recorded there, each checked first: the
+  launcher (its start time and command line as it recorded them), given a few seconds to end by itself and signalled
+  if it does not; then each recorded run that is alive and is that run (its recorded start time, its command line
+  with its label and the launch file's launch id). Only those pids, never a process group, and never a process the
+  launch file does not record, so nothing of another night, another `$G` or another program is touched. A run ends
+  the client invocation it has under way when it is signalled. It needs `GROUNDTRUTH_CLIENT_HOME` set as for
+  the night (it refuses without it). Nothing more of that client starts that night. `--dry-run stop all` names them and does
+  nothing. A run also stops by itself on a quota refusal or a missed or late control.
 
 ### The smoke review (step 3)
 
@@ -160,7 +164,7 @@ Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each inv
 - [ ] Each file's first line shows `"confinement": "sandbox-exec: …"`.
 - [ ] `S2.jsonl`'s first line shows `model_provider="openai"` in both commands and no `"client_version"`; its check's
       `"usage"` has `"model": "gpt-6-luna"` and `"model_evidence": "own-turn"`; its last `model-scan` line has
-      `"final": true` and `"other_models": []`.
+      `"final": true`, `"other_models": []` and `"unreadable": false`.
 - [ ] `S3.jsonl`'s first line shows `"process_model": "in-process"` and `"keepalive_max_pings": 0` under `"devin"`.
 - [ ] `ls -A "$G"/home/*` shows what each client wrote in its throwaway home. Note anything there for the
       maintainer; it needs no action.
@@ -187,8 +191,11 @@ Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each inv
 3. **The audit, before anything is built.** Nothing of the night enters `observed.json` until a person has audited
    its raw results by hand. The code's checks are a first filter; the audit is what decides publication. The builder
    refuses every run of the night until `results/own-clients-$N/AUDIT.md` exists and its first line is exactly
-   `# Own-client night audit: passed`. Write that line only when every item below is checked; otherwise write no
-   `AUDIT.md`, and put the runs that fail an item under `excluded` with the reason (or publish nothing of the night).
+   `# Own-client night audit: passed`; nothing of the night's folder can be committed before it either (the commit
+   hook and CI refuse any file under `results/own-clients-*` without it, and any symbolic link there), and not even
+   an `excluded` entry of the night is published without it. Write that line only when every item below is checked
+   for every run; list in it the runs that fail an item, and put them under `excluded` with the reason. If anything
+   private reached a `*.jsonl` file, write no `AUDIT.md`: nothing of the night is committed.
 4. The build (whoever maintains the results), after the audit:
    - give the new folder under `results/` its README;
    - put the runs in `observed/manifest.json`, with the runs that ended early, measured nothing or failed an audit
@@ -211,8 +218,10 @@ files and console logs stay where they are: nothing of them is copied into the r
       error event (an error is only a kind: `timeout`, `exit-nonzero`, …).
 - [ ] Every `check`'s `usage.model` is the run's model (Devin: the model id, or it with its effort or date suffix);
       every Codex `check` has `"model_evidence": "own-turn"`.
-- [ ] Every Codex run ends with a `model-scan` line with `"final": true` and `"other_models": []`, and no line of it
-      is `stop` with `other-model`.
+- [ ] Every Codex run ends with a `model-scan` line with `"final": true`, `"other_models": []` and
+      `"unreadable": false`, and no line of it is `stop` with `other-model` or `unreadable-session`. (A `model-scan`
+      line carries only those three fields; a name that is not a model id's shape is written `?`, and the names as the
+      session files hold them are in the console log only.)
 - [ ] The `check-invalid`, `check-failed`, `retry` and `stop` lines are understood; a run whose checks are mostly
       invalid goes under `excluded` with the reason.
 

@@ -282,8 +282,8 @@ class Point4ZeroCalls(unittest.TestCase):
 
 
 class Point5Launcher(Owner):
-    """5: each worker's pid in the lock as soon as it starts; `stop all` finds a worker by its launch id too; the
-    review's interrupted launch."""
+    """5: each worker's pid in the lock as soon as it starts; the review's interrupted launch (since the seventh review
+    `stop` signals only the pids the lock records: a process it does not record is never signalled)."""
 
     def setUp(self):
         super().setUp()
@@ -308,7 +308,7 @@ class Point5Launcher(Owner):
 
     def wait_alive(self, pid, rid, lid):
         for _ in range(100):
-            if night.alive(rid, {"pid": pid}, lid):
+            if night.alive(rid, {"pid": pid, "started": night.process_started(pid)}, lid):
                 return True
             time.sleep(0.02)
         return False
@@ -349,39 +349,37 @@ night.go_clients(["codex"], {DATE!r}, out=out)
         lock = night.read_lock(DATE, "codex")
         self.assertEqual(lock["runs"], {})  # the review's state: nothing recorded
         self.assertTrue(self.wait_alive(orphan, "CX1", lock["launch_id"]))
-        counts = night.status(DATE, out=lambda *_: None)
-        self.assertEqual(counts, {"alive, not in the lock": 1})
+        # Only an abrupt death (os._exit, SIGKILL) can leave this: the launcher holds SIGTERM, SIGINT and SIGHUP back
+        # between a start and its record. `stop` acts on recorded pids only, so this orphan is not signalled; the
+        # morning's `status` and the audit see its results file.
+        self.assertEqual(night.status(DATE, out=lambda *_: None), {})
         self.assertEqual(night.stop("all", DATE, dry=True, out=lambda *_: None), [])
-        self.assertEqual(night.stop("all", DATE, out=lambda *_: None), [orphan])
-        for _ in range(100):
-            if not night.process_command(orphan):
-                break
-            time.sleep(0.02)
-        self.assertEqual(night.process_command(orphan), "")
+        self.assertEqual(night.stop("all", DATE, out=lambda *_: None, wait=0.2), [])
+        self.assertTrue(night.process_command(orphan))
 
-    def test_a_lock_left_empty_and_a_group_that_ended_meanwhile(self):
-        # A launch interrupted before it recorded any run; and a group that ends between lookup and signal. (Since the
-        # sixth review a lock without a launch id names nothing to signal: an empty lock is test_sixth_review's.)
+    def test_a_recorded_run_that_ended_meanwhile(self):
+        # Two recorded runs; the first ends between the lookup and the signal: passed over, the other still signalled.
         lid = f"{DATE}-devin-0123456789ab"
+        ps = [subprocess.Popen([sys.executable, "-B", self.worker, "--label", rid, "--launch-id", lid],
+                               start_new_session=True) for rid in ("DV1", "DV2")]
+        self.pids += [p.pid for p in ps]
+        for p, rid in zip(ps, ("DV1", "DV2")):
+            self.assertTrue(self.wait_alive(p.pid, rid, lid))
+        runs = {rid: {"pid": p.pid, "started": night.process_started(p.pid)} for p, rid in zip(ps, ("DV1", "DV2"))}
         os.makedirs(os.path.dirname(night.lock_path(DATE, "devin")), exist_ok=True)
-        write(night.lock_path(DATE, "devin"), json.dumps({"launch_id": lid, "runs": {}}))
-        p = subprocess.Popen([sys.executable, "-B", self.worker, "--label", "DV1", "--launch-id", lid],
-                             start_new_session=True)
-        self.pids.append(p.pid)
-        self.assertTrue(self.wait_alive(p.pid, "DV1", lid))
+        write(night.lock_path(DATE, "devin"), json.dumps({"launch_id": lid, "runs": runs}))
         sent = []
 
-        def killpg(pgid, sig):
+        def kill(pid, sig):
             if not sent:
                 sent.append("gone")
                 raise ProcessLookupError
-            sent.append(pgid)
-        table = lambda: [(424242, 424242, f"python3 x --label DV2 --launch-id {lid}"),  # noqa: E731
-                         (p.pid, p.pid, f"python3 x --label DV1 --launch-id {lid}")]
-        night.stop("devin", DATE, killpg=killpg, table=table, out=lambda *_: None)
-        self.assertEqual(sent, ["gone", p.pid])
-        self.assertEqual(night.stop("devin", DATE, out=lambda *_: None), [p.pid])
-        p.wait(timeout=10)
+            sent.append(pid)
+        self.assertEqual(night.stop("devin", DATE, kill=kill, out=lambda *_: None), [ps[1].pid])
+        self.assertEqual(sent, ["gone", ps[1].pid])
+        self.assertEqual(night.stop("devin", DATE, out=lambda *_: None), [p.pid for p in ps])
+        for p in ps:
+            self.assertEqual(p.wait(timeout=10), -signal.SIGTERM)
 
 
 class Point6Model(unittest.TestCase):

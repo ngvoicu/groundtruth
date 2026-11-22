@@ -10,7 +10,8 @@ two logins where differences were seen). Claude Code and Muse Code wait for a la
 command (their drivers stay in `harness/clients.py`, tested). A public result carries no client error text at all,
 only a kind from `clients.ERROR_KINDS`; the detail goes to the run's console log (mode 600), redacted whole before any
 clipping. The launcher records its own pid before any run and looks for the client's stop mark before each start;
-`stop` writes the mark, signals the launcher, then the runs. A check without model evidence of its own turn is
+`stop` writes the mark, then signals only the pids the lock records (the launcher, then the runs), each checked by
+its recorded start time and command line; never a process group. A check without model evidence of its own turn is
 `check-invalid` (`no-model`) in the probe and never published by the builder; Codex's model evidence is bound to the
 invocation's own new turn. A priming that is not one explicit model request is retried, never used.
 
@@ -35,8 +36,8 @@ It supersedes what the list below says of pi, Provimux, OpenRouter and the super
   stays as it is, shared and reached by no night command.
 - **A launcher, not a supervisor**: `night.py --go <client>` (or `--go all`) starts each of that client's runs as its
   own background process, staggered by `--delay`, and returns; one lock file per client and night, created
-  exclusively, refuses a second start. `status` reads each run's process (its pid, and its command line carrying the
-  run's label and the launch's id); `stop <client>|all` signals exactly those processes. Every command honours
+  exclusively, refuses a second start. `status` reads each recorded run's process (its pid, its recorded start time,
+  and its command line carrying the run's label and the launch's id); `stop <client>|all` signals exactly those pids. Every command honours
   `--dry-run` with no side effect. CC5 – CC8 begin 2 h 30 min after the go, when CC1 – CC4 are over.
 - **The night's folders**: local (none under iCloud Drive, `~/Library/CloudStorage`, Dropbox, Google Drive or
   OneDrive), private (folders 700, login files 600), Codex's own two helper links allowed by their exact pattern;
@@ -50,11 +51,15 @@ It supersedes what the list below says of pi, Provimux, OpenRouter and the super
   `model_reroute`, a context of another or an older turn); otherwise it is `check-invalid` (`no-model`,
   `ambiguous-model` or `other-model`), and the builder refuses a Codex check without `model_evidence` `own-turn`.
   At the run's level, every session file of the run is read whole after each check and at its end (`model-scan`):
-  any model but the requested one anywhere stops and excludes the whole run.
+  any model but the requested one anywhere stops and excludes the whole run. The public `model-scan` line carries only
+  `final`, `other_models` (model-id-shaped names, anything else `?`) and `unreadable`; the files' own strings go to the
+  console log only.
 - **Publication** of a night waits for its audit: `scripts/build_observed.py` refuses every own-client run of the
   new design until `results/own-clients-<date>/AUDIT.md` begins with `# Own-client night audit: passed`, which a
   person writes after reading the raw results, the Codex session files and the console logs
-  (`own-clients-RUN.md`, the audit checklist).
+  (`own-clients-RUN.md`, the audit checklist). The commit hook and CI refuse any file under `results/own-clients-*`
+  before that night's `AUDIT.md`, and the builder any symbolic link there and any `excluded` entry of an unaudited
+  night.
 - **The smoke review** is checked by `night.py` itself: S3b's cold control (`stop`/`no-observable-cache`) is an
   expected answer; a late control is refused, and a probe whose control can only be checked late stops
   (`control-late`).

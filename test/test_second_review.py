@@ -333,19 +333,19 @@ class Finding4DryRun(Owner):
         # A smoke that passes the checks, a launched client with a live run: what a dry run could wrongly act on.
         Finding9Launcher.smoke_files(self.repo)
         os.makedirs(os.path.join(night.night_dir(DATE), "launch"), mode=0o700)
-        write(night.lock_path(DATE, "codex"), json.dumps({"launch_id": "L", "runs": {"CX1": {"pid": 4242}}}))
+        write(night.lock_path(DATE, "codex"), json.dumps({"launch_id": "L", "runs": {"CX1": {"pid": 4242, "started": "T"}}}))
         write(night.everyday_path(DATE), json.dumps({"files": {}, "keychain": []}))
         os.chmod(night.night_dir(DATE), 0o700)
         before = self.tree()
         forbidden = mock.Mock(side_effect=AssertionError("a dry run acted"))
-        live = "caffeinate -i python3 harness/probe.py --label CX1 --out x --launch-id L"
+        live = "python3 harness/probe.py --label CX1 --out x --launch-id L"
         commands = [["stop", "all"], ["stop", "codex"], ["smoke-reviewed"], ["untouched", "--save"],
                     ["untouched", "--report"], ["login", "devin"], ["login", "codex"], ["status"], ["codex"], ["all"],
                     ["smoke"]]
         with mock.patch.object(night.os, "killpg", forbidden), mock.patch.object(night.os, "kill", forbidden), \
                 mock.patch.object(night.subprocess, "Popen", forbidden), \
                 mock.patch.object(night, "process_command", lambda pid: live), \
-                mock.patch.object(night, "process_table", lambda: [(4242, 4242, live)]), \
+                mock.patch.object(night, "process_started", lambda pid: "T"), \
                 mock.patch.object(night, "dry_run", lambda *a, **k: None), \
                 mock.patch.object(night, "keychain_items", forbidden), redirect_stdout(io.StringIO()) as said:
             for cmd in commands:
@@ -354,7 +354,7 @@ class Finding4DryRun(Owner):
         self.assertEqual(self.tree(), before)
         forbidden.assert_not_called()
         self.assertFalse(os.path.exists(night.reviewed_path(DATE)))
-        self.assertIn("would signal process group 4242", said.getvalue())
+        self.assertIn("would signal pid 4242", said.getvalue())
         self.assertTrue(base)
 
 
@@ -398,6 +398,10 @@ class Finding9Launcher(Owner):
 
     def ready(self):
         base = self.client_home()
+        # Stand-in pids: every process "started" at the same recorded time (stop and status check it).
+        p = mock.patch.object(night, "process_started", lambda pid: "T")
+        p.start()
+        self.addCleanup(p.stop)
         night.make_night_dir(DATE)
         write(night.everyday_path(DATE), json.dumps({"files": {}, "keychain": []}))
         self.smoke_files(self.repo)
@@ -414,7 +418,7 @@ class Finding9Launcher(Owner):
         return popen
 
     def ps_of(self, lock):
-        lines = {info["pid"]: f"caffeinate -i python3 harness/probe.py --label {rid} --out x --launch-id {lock['launch_id']}"
+        lines = {info["pid"]: f"python3 harness/probe.py --label {rid} --out x --launch-id {lock['launch_id']}"
                  for rid, info in lock["runs"].items()}
         return lambda pid: lines.get(pid, "")
 
@@ -424,7 +428,7 @@ class Finding9Launcher(Owner):
         lock = night.go_clients(["codex"], DATE, popen=popen, out=lambda *_: None)[0]
         self.assertEqual(sorted(lock["runs"]), sorted(s["id"] for s in night.PARTS["codex"]))
         argv, kw = self.started[0]
-        self.assertEqual(argv[:2], ["caffeinate", "-i"])
+        self.assertTrue(argv[1].endswith("harness/probe.py"))  # the probe itself: its pid is the run's (caffeinate -w)
         self.assertTrue(kw["start_new_session"])
         self.assertIn(lock["launch_id"], argv)
         self.assertEqual(mode(night.lock_path(DATE, "codex")), 0o600)
@@ -458,14 +462,12 @@ class Finding9Launcher(Owner):
         dv1 = lock["runs"]["DV1"]["pid"]
         alive_only = lambda pid: ps(pid) if pid == dv1 else ""  # noqa: E731
         lines = []
-        counts = night.status(DATE, ps=alive_only, out=lines.append, table=lambda: [])
+        counts = night.status(DATE, ps=alive_only, out=lines.append)
         self.assertEqual(counts, {"alive": 1, "ended": len(night.PARTS["devin"]) - 1})
         sent = []
-        night.stop("codex", DATE, ps=alive_only, killpg=lambda p, s: sent.append(p), out=lambda *_: None,
-                   table=lambda: [])
+        night.stop("codex", DATE, ps=alive_only, kill=lambda p, s: sent.append(p), out=lambda *_: None)
         self.assertEqual(sent, [])
-        night.stop("devin", DATE, ps=alive_only, killpg=lambda p, s: sent.append(p), out=lambda *_: None,
-                   table=lambda: [])
+        night.stop("devin", DATE, ps=alive_only, kill=lambda p, s: sent.append(p), out=lambda *_: None)
         self.assertEqual(sent, [dv1])
 
     def test_a_reused_pid_or_another_night_s_run_is_never_signalled(self):
@@ -476,9 +478,9 @@ class Finding9Launcher(Owner):
         other = lambda pid: ("python3 harness/probe.py --label CX1 --out results/own-clients-2099-06-20 "  # noqa: E731
                              "--launch-id 2099-06-20-codex-000000000000") if pid == cc1 else "/usr/bin/vim"
         sent = []
-        night.stop("all", DATE, ps=other, killpg=lambda p, s: sent.append(p), out=lambda *_: None, table=lambda: [])
+        night.stop("all", DATE, ps=other, kill=lambda p, s: sent.append(p), out=lambda *_: None)
         self.assertEqual(sent, [])
-        self.assertEqual(night.status(DATE, ps=other, out=lambda *_: None, table=lambda: []),
+        self.assertEqual(night.status(DATE, ps=other, out=lambda *_: None),
                          {"ended": len(night.PARTS["codex"])})
 
     def test_the_go_waits_for_the_snapshot_and_the_smoke_review(self):
