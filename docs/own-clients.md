@@ -4,6 +4,16 @@ A design, written on 2026-11-22. Nothing in it has been run: no request was sent
 It says how groundtruth measures each login through the client its vendor ships, how OpenRouter's proxy-only
 entries are measured again directly, what changes in `observed.json`, which runs are owed and what has to be built.
 
+**Since the final check (2026-11-22): the first night is Codex CLI and Devin CLI only** (the owner's decision: the
+two logins where differences were seen). Claude Code and Muse Code wait for a later night: their smoke and cache runs,
+`login claude`, the Muse Keychain item and its fingerprint, and the Claude overage logic are out of every night
+command (their drivers stay in `harness/clients.py`, tested). A public result carries no client error text at all,
+only a kind from `clients.ERROR_KINDS`; the detail goes to the run's console log (mode 600), redacted whole before any
+clipping. The launcher records its own pid before any run and looks for the client's stop mark before each start;
+`stop` writes the mark, signals the launcher, then the runs. A check without model evidence of its own turn is
+`check-invalid` (`no-model`) in the probe and never published by the builder; Codex's model evidence is bound to the
+invocation's own new turn. A priming that is not one explicit model request is retried, never used.
+
 **Since the third review (2026-11-22): the last round before the night.** A login is done only when the client's
 login file is in its state folder (non-empty, then 600) and its own status shows the subscription; a Claude run is
 refused without that file. Each client's TMPDIR is its own, `<client-home>/tmp/<client>`, never the shell's, and no

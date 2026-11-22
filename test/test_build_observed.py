@@ -182,7 +182,7 @@ def own_file(harness="claude", date="2026-11-23", cached=18000, w1=0, w5=0, clie
         start["isolation"] = {"home": "dedicated", "HOME": "throwaway", "work": "temporary"}
     if client_env:
         start["client_env"] = client_env
-    usage = {"total": 29000, "cached": cached, "write": 11000, "calls": 1, "write_1h": w1, "write_5m": w5}
+    usage = {"total": 29000, "cached": cached, "write": 11000, "calls": 1, "write_1h": w1, "write_5m": w5, "model": "m"}
     rows = [start, {"event": "baseline", "usage": usage}, {"event": "prime", "age": "control", "usage": usage},
             {"event": "check", "age": "control", "warm": bool(cached), "usage": usage},
             {"event": "check-invalid", "age": "2.5m", "usage": usage},
@@ -299,7 +299,7 @@ class Review(unittest.TestCase):
     def rows(self, control_late=False, stop=None):
         start = {"event": "start", "harness": "claude", "at": "2026-11-23T10:00:00Z", "effort": "low",
                  "client_version": "2.1.330", "isolation": {"home": "dedicated", "HOME": "throwaway", "work": "temporary"}}
-        u = {"total": 29000, "cached": 28000, "write": 100, "calls": 1, "write_1h": 100}
+        u = {"total": 29000, "cached": 28000, "write": 100, "calls": 1, "write_1h": 100, "model": "m"}
         rows = [start, {"event": "baseline", "usage": u},
                 {"event": "check", "age": "control", "ageSec": 30, "realAgeSec": 600 if control_late else 31,
                  "late": control_late, "warm": True, "usage": u},

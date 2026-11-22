@@ -126,38 +126,45 @@ def late_after(age):
 
 
 def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler="random", cumulative=None,
-              waves=WAVES, wave_gap=WAVE_GAP, expect_ttl=None):
+              waves=WAVES, wave_gap=WAVE_GAP, detail=None):
     """The loop. `h` has start(prompt) -> (handle, usage dict) and resume(handle, prompt) -> usage dict and raises
-    clients.Refused / another exception; `log` takes one event; `clock` has now() and sleep(). Returns the stop reason
-    or None. `expect_ttl` ("1h": Claude Code's default inside a plan's usage): a first cache write of another lifetime
-    ends the run (`stop`, `overage`): in paid overage Claude Code writes the 5-minute cache, and the run would use paid
-    usage."""
+    clients.Refused / another exception; `log` takes one event (public); `detail` takes a failure's text (the console
+    log only: a public event carries only its kind, one of clients.ERROR_KINDS); `clock` has now() and sleep(). Returns
+    the stop reason or None."""
     clock = clock or Clock()
+    detail = detail or (lambda text: None)
     cumulative = getattr(h, "cumulative", False) if cumulative is None else cumulative
     seen_ttl = [None]
 
+    def failed(where, e):
+        kind = C.error_kind(e)
+        detail(f"{where}: {kind}: {type(e).__name__}: {e}")
+        return kind
+
     def watch(usage):
         t = written_ttl(usage)
-        if expect_ttl and t and t != expect_ttl and not seen_ttl[0]:
-            raise Stop("overage", f"the first cache write is {t}, not {expect_ttl}: the account is in paid overage "
-                                  "(harness/night.py --allow-overage runs anyway)")
         if t == "mixed" or (t and seen_ttl[0] and t != seen_ttl[0]):
             raise Stop("tier-changed", f"a reply wrote {t} after {seen_ttl[0]}")
         seen_ttl[0] = seen_ttl[0] or t
 
     def prime(prompt, name, rep):
-        """(handle, usage, start time) or None. Tried again on an error, never on a refusal."""
+        """(handle, usage, start time) or None. Tried again on an error, never on a refusal. A priming that was not
+        one explicit model request (Muse's `calls: 0`, or no count) is no priming: tried again too."""
         for i in range(PRIME_TRIES):
             t0 = clock.now()
             try:
                 handle, usage = h.start(prompt)
+                if usage.get("calls") != 1:
+                    raise C.ClientError(f"the priming made {usage.get('calls')!r} model requests, not 1",
+                                        kind="not-one-call")
             except C.Refused as e:
+                kind = failed(f"priming {name}", e)
                 if e.kind == "quota":
-                    raise Stop("quota", e.text[:300])
-                log({"event": "prime-refused", "age": name, "kind": e.kind, "error": e.text[:300]})
+                    raise Stop("quota")
+                log({"event": "prime-refused", "age": name, "kind": kind})
                 return None
             except Exception as e:  # noqa: BLE001 - any client failure: try the priming again
-                log({"event": "retry", "age": name, "error": str(e)[:300], "try": i + 1})
+                log({"event": "retry", "age": name, "error_kind": failed(f"priming {name}", e), "try": i + 1})
                 clock.sleep(RETRY_WAIT)
                 continue
             watch(usage)
@@ -169,23 +176,28 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
         """True / False for a counted check, None for one that is not (failed, invalid). Sent once."""
         started = clock.now()
         real = started - t0
-        base = {"age": name, "ageSec": age, "realAgeSec": round(real), "handle": handle}
+        base = {"age": name, "ageSec": age, "realAgeSec": round(real), "handle": C.handle_text(handle)}
         try:
             r = h.resume(handle, OK_PROMPT)
         except C.Refused as e:
+            kind = failed(f"check {name}", e)
             if e.kind == "quota":
-                raise Stop("quota", e.text[:300])
-            log({"event": "check-failed", **base, "kind": e.kind, "error": e.text[:300]})
+                raise Stop("quota")
+            log({"event": "check-failed", **base, "kind": kind})
             return None
         except Exception as e:  # noqa: BLE001 - a failed check is never sent again
-            log({"event": "check-failed", **base, "error": str(e)[:300]})
+            log({"event": "check-failed", **base, "error_kind": failed(f"check {name}", e)})
             return None
         if cumulative:
             r = dict(r, raw={k: r.get(k) for k in ("total", "cached", "write")},
                      **{k: (r.get(k) or 0) - (primed.get(k) or 0) for k in ("total", "cached", "write")})
         if r.get("calls") != 1:
-            log({"event": "check-invalid", **base, "reason": f"the turn made {r.get('calls')} model requests, not 1",
-                 "usage": r, "prime": primed})
+            log({"event": "check-invalid", **base, "reason": "not-one-call", "usage": r, "prime": primed})
+            watch(r)
+            return None
+        if not r.get("model"):
+            # No model evidence of this turn's own: not a measurement (it could have been answered by another model).
+            log({"event": "check-invalid", **base, "reason": "no-model", "usage": r, "prime": primed})
             watch(r)
             return None
         watch(r)
@@ -207,7 +219,7 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
         if not c:
             raise Stop("control-failed")
         handle, primed, t0 = c
-        log({"event": "prime", "age": "control", "rep": 0, "handle": handle, "usage": primed})
+        log({"event": "prime", "age": "control", "rep": 0, "handle": C.handle_text(handle), "usage": primed})
         clock.sleep(t0 + CONTROL_AGE - clock.now())
         if clock.now() - t0 > late_after(CONTROL_AGE):
             # Checked late (a slow priming): the check would show nothing; it is not sent.
@@ -248,14 +260,17 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
                     handle, primed, t0 = p
                     wave_start.setdefault(wave, t0)
                     age_primed[name] = t0
-                    log({"event": "prime", "age": name, "rep": rep, "wave": wave, "handle": handle, "usage": primed})
+                    log({"event": "prime", "age": name, "rep": rep, "wave": wave, "handle": C.handle_text(handle),
+                         "usage": primed})
                     heapq.heappush(due, (t0 + age, n, name, age, handle, primed, t0))
                 else:
                     wave_start.setdefault(wave, clock.now())
             else:
                 clock.sleep(due[0][0] - now)
     except Stop as s:
-        log({"event": "stop", "reason": s.reason, **({"error": s.text} if s.text else {})})
+        if s.text:
+            detail(f"stop {s.reason}: {s.text}")
+        log({"event": "stop", "reason": s.reason})
         return s.reason
     log({"event": "done"})
     return None
@@ -307,11 +322,6 @@ def parser():
     ap.add_argument("--delay", type=float, default=0.0,
                     help="seconds to wait before the run's checks and first request (harness/night.py staggers starts)")
     ap.add_argument("--launch-id", help="harness/night.py's mark of the launch this run belongs to (process identity)")
-    ap.add_argument("--allow-overage", action="store_true",
-                    help="Claude Code: run even when its first cache write shows the 5-minute tier (paid overage)")
-    ap.add_argument("--stop-if-overage-in", metavar="LABELS",
-                    help="Claude Code, 5-minute runs: do not start when one of these runs (in --out) stopped for overage "
-                         "or a tier change (a 5-minute run cannot tell overage from its own writes)")
     ap.add_argument("--dry-run", action="store_true", help="print the run's start event and plan; run nothing, send nothing")
     return ap
 
@@ -362,22 +372,6 @@ def private_capture_folder(keep, client_home, root, user_home=None):
             os.chmod(p, 0o700)
     C.check_private("--keep-raw: the raw folder", keep)
     return keep
-
-
-OVERAGE_STOPS = ("overage", "tier-changed")
-
-
-def overage_in(out, labels):
-    """The first of `labels` whose run file in `out` ended for overage or a tier change, or None."""
-    for label in [x.strip() for x in (labels or "").split(",") if x.strip()]:
-        try:
-            with open(os.path.join(out, label + ".jsonl")) as f:
-                rows = [json.loads(x) for x in f if x.strip()]
-        except (OSError, ValueError):
-            continue
-        if any(r.get("event") == "stop" and r.get("reason") in OVERAGE_STOPS for r in rows):
-            return label
-    return None
 
 
 def main(argv=None):
@@ -439,15 +433,6 @@ def _main(argv=None):
     if a.delay > 0:
         # A staggered start (harness/night.py): waits first, so that the checks below are made just before the run.
         time.sleep(a.delay)
-    expect_ttl = None
-    if a.harness == "claude" and not a.allow_overage:
-        if settings.get("CLAUDE_CODE_PROMPT_CACHE_TTL") == "5m":
-            found = overage_in(a.out, a.stop_if_overage_in)
-            if found:
-                raise SystemExit(f"{a.label}: not started: {found} stopped for paid overage (or a tier change); "
-                                 "--allow-overage runs anyway")
-        else:
-            expect_ttl = "1h"
     keep = private_capture_folder(a.keep_raw, a.client_home, ROOT) if a.keep_raw else None
     home = None
     if client.isolated:
@@ -484,9 +469,14 @@ def _main(argv=None):
                 f.write(line + "\n")
             print(line, flush=True)
 
+        def note(text):
+            # A failure's detail: only on the console (the launched run's log, mode 600), redacted whole and only then
+            # clipped; a public event carries its kind alone.
+            print(f"detail: {session.redact(str(text))[-1500:]}", file=sys.stderr, flush=True)
+
         log(start)
         run_probe(Harness(session), ages=ages, labels=labels, replicas=a.replicas, words=a.words, salt=salt, log=log,
-                  filler=a.filler, waves=a.waves, wave_gap=a.wave_gap, expect_ttl=expect_ttl)
+                  filler=a.filler, waves=a.waves, wave_gap=a.wave_gap, detail=note)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

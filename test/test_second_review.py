@@ -70,8 +70,7 @@ class Owner(unittest.TestCase):
         mask = os.umask(0o022)
         self.addCleanup(os.umask, mask)
         for p in (mock.patch.object(C, "CONFINED", False, create=True), mock.patch.object(night, "ROOT", self.repo),
-                  mock.patch.object(probe, "ROOT", self.repo), mock.patch.object(ss, "remember"),
-                  mock.patch.object(night, "keychain", side_effect=AssertionError("no Keychain read in a test"))):
+                  mock.patch.object(probe, "ROOT", self.repo), mock.patch.object(ss, "remember")):
             p.start()
             self.addCleanup(p.stop)
 
@@ -79,7 +78,8 @@ class Owner(unittest.TestCase):
         base = base or os.path.join(self.user, "groundtruth-clients")
         os.makedirs(base, exist_ok=True)
         os.chmod(base, folder_mode)
-        for name in night.STATE_FOLDERS:
+        # Every driver's folder (Claude's and Muse's drivers stay in the tree, tested, though no night reaches them).
+        for name in sorted({c.client_id for c in C.CLIENTS.values()}):
             os.makedirs(os.path.join(base, name), exist_ok=True)
             os.chmod(os.path.join(base, name), folder_mode)
         p = mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": base, "HOME": self.user})
@@ -315,7 +315,6 @@ class Finding3Publication(Owner):
             public = f.read()
         self.assertNotIn(marker, public)
         self.assertNotIn(marker, printed.getvalue())
-        self.assertIn("<secret>", public)
         kept = os.path.join(base, f"night-{DATE}", "raw", "S4")
         for name in os.listdir(kept):
             with open(os.path.join(kept, name)) as f:
@@ -334,14 +333,14 @@ class Finding4DryRun(Owner):
         # A smoke that passes the checks, a launched client with a live run: what a dry run could wrongly act on.
         Finding9Launcher.smoke_files(self.repo)
         os.makedirs(os.path.join(night.night_dir(DATE), "launch"), mode=0o700)
-        write(night.lock_path(DATE, "claude"), json.dumps({"launch_id": "L", "runs": {"CC1": {"pid": 4242}}}))
+        write(night.lock_path(DATE, "codex"), json.dumps({"launch_id": "L", "runs": {"CX1": {"pid": 4242}}}))
         write(night.everyday_path(DATE), json.dumps({"files": {}, "keychain": []}))
         os.chmod(night.night_dir(DATE), 0o700)
         before = self.tree()
         forbidden = mock.Mock(side_effect=AssertionError("a dry run acted"))
-        live = "caffeinate -i python3 harness/probe.py --label CC1 --out x --launch-id L"
-        commands = [["stop", "all"], ["stop", "claude"], ["smoke-reviewed"], ["untouched", "--save"],
-                    ["untouched", "--report"], ["login", "claude"], ["login", "codex"], ["status"], ["claude"], ["all"],
+        live = "caffeinate -i python3 harness/probe.py --label CX1 --out x --launch-id L"
+        commands = [["stop", "all"], ["stop", "codex"], ["smoke-reviewed"], ["untouched", "--save"],
+                    ["untouched", "--report"], ["login", "devin"], ["login", "codex"], ["status"], ["codex"], ["all"],
                     ["smoke"]]
         with mock.patch.object(night.os, "killpg", forbidden), mock.patch.object(night.os, "kill", forbidden), \
                 mock.patch.object(night.subprocess, "Popen", forbidden), \
@@ -422,18 +421,18 @@ class Finding9Launcher(Owner):
     def test_a_client_s_runs_start_in_the_background_under_one_lock_and_a_second_start_is_refused(self):
         self.ready()
         popen = self.popen()
-        lock = night.go_clients(["claude"], DATE, popen=popen, out=lambda *_: None, key=lambda n: "k")[0]
-        self.assertEqual(sorted(lock["runs"]), sorted(s["id"] for s in night.PARTS["claude"]))
+        lock = night.go_clients(["codex"], DATE, popen=popen, out=lambda *_: None)[0]
+        self.assertEqual(sorted(lock["runs"]), sorted(s["id"] for s in night.PARTS["codex"]))
         argv, kw = self.started[0]
         self.assertEqual(argv[:2], ["caffeinate", "-i"])
         self.assertTrue(kw["start_new_session"])
         self.assertIn(lock["launch_id"], argv)
-        self.assertEqual(mode(night.lock_path(DATE, "claude")), 0o600)
+        self.assertEqual(mode(night.lock_path(DATE, "codex")), 0o600)
         with self.assertRaisesRegex(SystemExit, "a second start is refused"):
-            night.go_clients(["claude"], DATE, popen=popen, out=lambda *_: None, key=lambda n: "k")
-        with self.assertRaisesRegex(SystemExit, "claude launched already"):
-            night.go_clients(["all"], DATE, popen=popen, out=lambda *_: None, key=lambda n: "k")
-        self.assertEqual(len(self.started), len(night.PARTS["claude"]))  # `all` started nothing: claude's lock held
+            night.go_clients(["codex"], DATE, popen=popen, out=lambda *_: None)
+        with self.assertRaisesRegex(SystemExit, "codex launched already"):
+            night.go_clients(["all"], DATE, popen=popen, out=lambda *_: None)
+        self.assertEqual(len(self.started), len(night.PARTS["codex"]))  # `all` started nothing: codex's lock held
 
     def test_two_overlapping_starts_launch_once(self):
         # The review's case: a second go while the first is still starting its runs.
@@ -444,51 +443,54 @@ class Finding9Launcher(Owner):
         def popen(argv, **kw):
             if not inner:
                 try:
-                    night.launch("codex", DATE, popen=base_popen, out=lambda *_: None, key=lambda n: "k")
+                    night.launch("codex", DATE, popen=base_popen, out=lambda *_: None)
                 except SystemExit as e:
                     inner.append(str(e))
             return base_popen(argv, **kw)
-        night.launch("codex", DATE, popen=popen, out=lambda *_: None, key=lambda n: "k")
+        night.launch("codex", DATE, popen=popen, out=lambda *_: None)
         self.assertIn("a second start is refused", inner[0])
         self.assertEqual(len(self.started), len(night.PARTS["codex"]))
 
     def test_status_is_process_liveness_and_stop_signals_exactly_those(self):
         self.ready()
-        lock = night.go_clients(["devin"], DATE, popen=self.popen(), out=lambda *_: None, key=lambda n: "k")[0]
+        lock = night.go_clients(["devin"], DATE, popen=self.popen(), out=lambda *_: None)[0]
         ps = self.ps_of(lock)
         dv1 = lock["runs"]["DV1"]["pid"]
         alive_only = lambda pid: ps(pid) if pid == dv1 else ""  # noqa: E731
         lines = []
-        counts = night.status(DATE, ps=alive_only, out=lines.append)
+        counts = night.status(DATE, ps=alive_only, out=lines.append, table=lambda: [])
         self.assertEqual(counts, {"alive": 1, "ended": len(night.PARTS["devin"]) - 1})
         sent = []
-        night.stop("muse", DATE, ps=alive_only, killpg=lambda p, s: sent.append(p), out=lambda *_: None)
+        night.stop("codex", DATE, ps=alive_only, killpg=lambda p, s: sent.append(p), out=lambda *_: None,
+                   table=lambda: [])
         self.assertEqual(sent, [])
-        night.stop("devin", DATE, ps=alive_only, killpg=lambda p, s: sent.append(p), out=lambda *_: None)
+        night.stop("devin", DATE, ps=alive_only, killpg=lambda p, s: sent.append(p), out=lambda *_: None,
+                   table=lambda: [])
         self.assertEqual(sent, [dv1])
 
     def test_a_reused_pid_or_another_night_s_run_is_never_signalled(self):
-        # The review's case: the pid now belongs to the following night's CC1 (same label, other launch).
+        # The review's case: the pid now belongs to the following night's run (same label, other launch).
         self.ready()
-        lock = night.go_clients(["claude"], DATE, popen=self.popen(), out=lambda *_: None, key=lambda n: "k")[0]
-        cc1 = lock["runs"]["CC1"]["pid"]
-        other = lambda pid: ("python3 harness/probe.py --label CC1 --out results/own-clients-2099-06-20 "  # noqa: E731
-                             "--launch-id 2099-06-20-claude-000000000000") if pid == cc1 else "/usr/bin/vim"
+        lock = night.go_clients(["codex"], DATE, popen=self.popen(), out=lambda *_: None)[0]
+        cc1 = lock["runs"]["CX1"]["pid"]
+        other = lambda pid: ("python3 harness/probe.py --label CX1 --out results/own-clients-2099-06-20 "  # noqa: E731
+                             "--launch-id 2099-06-20-codex-000000000000") if pid == cc1 else "/usr/bin/vim"
         sent = []
-        night.stop("all", DATE, ps=other, killpg=lambda p, s: sent.append(p), out=lambda *_: None)
+        night.stop("all", DATE, ps=other, killpg=lambda p, s: sent.append(p), out=lambda *_: None, table=lambda: [])
         self.assertEqual(sent, [])
-        self.assertEqual(night.status(DATE, ps=other, out=lambda *_: None), {"ended": len(night.PARTS["claude"])})
+        self.assertEqual(night.status(DATE, ps=other, out=lambda *_: None, table=lambda: []),
+                         {"ended": len(night.PARTS["codex"])})
 
     def test_the_go_waits_for_the_snapshot_and_the_smoke_review(self):
         self.client_home()
         with self.assertRaisesRegex(SystemExit, "snapshot"):
-            night.go_clients(["muse"], DATE, popen=self.popen(), out=lambda *_: None, key=lambda n: "k")
+            night.go_clients(["devin"], DATE, popen=self.popen(), out=lambda *_: None)
         night.make_night_dir(DATE)
         write(night.everyday_path(DATE), "{}")
         with self.assertRaisesRegex(SystemExit, "smoke-reviewed"):
-            night.go_clients(["muse"], DATE, popen=self.popen(), out=lambda *_: None, key=lambda n: "k")
+            night.go_clients(["devin"], DATE, popen=self.popen(), out=lambda *_: None)
         with self.assertRaisesRegex(SystemExit, "--go: smoke, or one of"):
-            night.go_clients(["smoke", "claude"], DATE, popen=self.popen(), out=lambda *_: None, key=lambda n: "k")
+            night.go_clients(["smoke", "codex"], DATE, popen=self.popen(), out=lambda *_: None)
 
     def test_the_smoke_checks_take_s3b_cold_as_expected_and_refuse_a_late_control(self):
         self.client_home()
@@ -567,16 +569,21 @@ class FindingM1CodexModel(unittest.TestCase):
         tid = f["expect"]["handle"]
         with tempfile.TemporaryDirectory() as t:
             rollout = os.path.join(t, "state", "sessions", "2026", "11", "23", f"rollout-2026-11-23T01-00-00-{tid}.jsonl")
-            write(rollout, "".join(json.dumps(x) + "\n" for x in (
-                {"type": "session" + "_meta", "payload": {"id": tid}},
-                {"type": "turn_context", "payload": {"model": "gpt-6-luna", "cwd": "/w"}},
-                {"type": "event_msg", "payload": {"type": "token_count"}})))
+            write(rollout, json.dumps({"type": "session" + "_meta", "payload": {"id": tid}}) + "\n")
+            turn = []  # what the client's invocation appends to its session file
+
+            def run(*a, **k):
+                with open(rollout, "a") as out:
+                    out.write("".join(json.dumps(x) + "\n" for x in turn))
+                return 0, f["stdout"], ""
             s = C.Session(C.Codex("gpt-6-luna"), env={}, io=t + "/io", work=t + "/work", home=os.path.join(t, "state"),
-                          run=lambda *a, **k: (0, f["stdout"], ""))
+                          run=run)
+            turn[:] = [{"type": "turn_context", "payload": {"model": "gpt-6-luna", "cwd": "/w"}},
+                       {"type": "event_msg", "payload": {"type": "token_count"}}]
             self.assertEqual(s.resume(tid, "p").model, "gpt-6-luna")
-            with open(rollout, "a") as out:
-                out.write(json.dumps({"type": "event_msg", "payload": {"type": "model_reroute", "from_model": "gpt-6-luna",
-                                                                       "to_model": "gpt-6-astra"}}) + "\n")
+            turn[:] = [{"type": "turn_context", "payload": {"model": "gpt-6-luna", "cwd": "/w"}},
+                       {"type": "event_msg", "payload": {"type": "model_reroute", "from_model": "gpt-6-luna",
+                                                         "to_model": "gpt-6-astra"}}]
             self.assertEqual(s.resume(tid, "p").model, "gpt-6-astra")
 
 

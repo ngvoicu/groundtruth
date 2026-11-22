@@ -105,6 +105,10 @@ def read_harness(path):
                              "it is not a check (the run goes in excluded, or its file is repaired from the probe)")
         if "calls" not in u and start["at"][:10] >= OWN_CLIENTS_SINCE and start.get("isolation"):
             raise SystemExit(f"{path}: a check at {r.get('age')} records no count of model requests: not published")
+        if not u.get("model") and start["at"][:10] >= OWN_CLIENTS_SINCE and start.get("isolation"):
+            # M-1: a check whose own turn named no model is not a measurement of the manifest's model.
+            raise SystemExit(f"{path}: a check at {r.get('age')} has no model evidence of its own turn: not published "
+                             "(the run goes in excluded, or its file is repaired from the probe)")
         if u.get("model"):
             answered.add(u["model"])
         if r.get("late"):

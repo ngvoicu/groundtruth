@@ -23,7 +23,7 @@ def ids(prefix, n, start=1):
 
 class Plan(unittest.TestCase):
     def test_every_run_of_the_first_night_is_in_the_plan_and_nothing_else(self):
-        want = (["S1", "S2", "S3", "S3b", "S4"] + ids("CC", 8) + ids("CX", 6) + ids("DV", 17) + ["DV9d"] + ids("MC", 3))
+        want = (["S2", "S3", "S3b"] + ids("CX", 6) + ids("DV", 17) + ["DV9d"])
         self.assertEqual(sorted(night.ALL_STEPS), sorted(want))
 
     def test_no_pi_no_provimux_no_openrouter_no_window_no_supervisor(self):
@@ -32,9 +32,10 @@ class Plan(unittest.TestCase):
             argv = " ".join(night.command(step, "2026-11-23"))
             for gone in ("client_limits", "agy", "--harness pi", "provimux", "src/cli.ts", "openrouter", "8317"):
                 self.assertNotIn(gone, argv)
-        for gone in ("CL1", "DL1", "ML1", "S5", "AG1", "SP", "OR1", "OW1", "CXS-a", "P-CC3", "P-DV5"):
+        for gone in ("CL1", "DL1", "ML1", "S5", "AG1", "SP", "OR1", "OW1", "CXS-a", "P-CC3", "P-DV5", "S1", "S4", "CC1",
+                     "CC5", "MC1"):
             self.assertNotIn(gone, night.ALL_STEPS)
-        for gone in ("openrouter", "windows", "codex-plain", "devin-terra-pi", "claude-5m"):
+        for gone in ("openrouter", "windows", "codex-plain", "devin-terra-pi", "claude-5m", "claude", "muse"):
             self.assertNotIn(gone, night.PARTS)
         for gone in ("supervise", "launch_night", "pi_setup", "window", "budget", "estimate", "openrouter_post",
                      "PROVIMUX_CONFIG", "MONEY_STOP"):
@@ -43,34 +44,34 @@ class Plan(unittest.TestCase):
         for gone in ("Pi", "payload_section", "payload_record", "PROVIMUX_CONFIG"):
             self.assertFalse(hasattr(clients, gone), gone)
         self.assertNotIn("pi", probe.HARNESSES)
-        self.assertEqual(set(night.KEYCHAIN), {"META_API_KEY"})
 
     def test_dv9d_is_devin_with_its_own_process_model(self):
         self.assertIn("--devin-daemon", night.ALL_STEPS["DV9d"]["args"])  # pair DV-5: both runs are Devin's
         self.assertEqual(night.ALL_STEPS["DV9"]["args"][night.ALL_STEPS["DV9"]["args"].index("--schedule") + 1], "std")
 
-    def test_claude_short_runs_set_the_5_minute_lifetime_and_start_when_cc1_to_cc4_are_over(self):
-        steps = night.PARTS["claude"]
-        for i, step in enumerate(steps):
-            delay = night.delay_of(step, i)
-            if step["id"] in ids("CC", 8, 5):
-                argv = night.command(step, "2026-11-23")
-                self.assertIn("CLAUDE_CODE_PROMPT_CACHE_TTL=5m", argv)
-                self.assertEqual(argv[argv.index("--ages") + 1], "10m,15m")
-                self.assertGreaterEqual(delay, night.LATER_S)
-            else:
-                self.assertLess(delay, 120)
-        # CC1 - CC4's last check: 120 min, two wave gaps, the control and the primings
-        self.assertGreater(night.LATER_S, 120 * 60 + 2 * probe.WAVE_GAP + 600)
+    def test_claude_and_muse_are_refused_by_every_night_command(self):
+        # The owner's decision of 2026-11-22: the first night is Codex CLI and Devin CLI only.
+        for argv in (["--go", "claude"], ["--go", "muse"], ["--dry-run", "claude"], ["login", "claude"],
+                     ["login", "muse"], ["stop", "claude"], ["--go", "CC1"], ["--go", "S1"]):
+            with self.subTest(argv=argv), self.assertRaises(SystemExit) as e:
+                night.main(["--date", "2099-01-01", *argv])
+            self.assertTrue(any(w in str(e.exception) for w in ("not in the first night", "not a part",
+                                                                 "one of codex, devin")), str(e.exception))
+        for gone in ("KEYCHAIN", "keychain", "key_reader", "step_env", "claude_overage", "overage_args"):
+            self.assertFalse(hasattr(night, gone), gone)
+        for gone in ("overage_in", "OVERAGE_STOPS"):
+            self.assertFalse(hasattr(probe, gone), gone)
+        self.assertNotIn("--allow-overage", probe.parser().format_help())
+        self.assertEqual(night.CLIENT_PARTS, ("codex", "devin"))
+        self.assertEqual(sorted(night.LOGINS), ["codex", "devin"])
 
     def test_the_starts_of_a_client_are_staggered(self):
         self.assertEqual([night.delay_of(s, i) for i, s in enumerate(night.PARTS["devin"])][:3], [0, 20, 40])
         self.assertEqual([night.delay_of(s, i) for i, s in enumerate(night.PARTS["codex"])][:3], [0, 15, 30])
 
-    def test_s1_uses_the_filler_haiku_accepts(self):
-        argv = night.command(night.ALL_STEPS["S1"], "2026-11-23")
-        self.assertEqual(argv[argv.index("--filler") + 1], "list")
-        self.assertIn("--keep-raw", argv)
+    def test_the_smoke_runs_keep_their_raw_output(self):
+        for sid in ("S2", "S3", "S3b"):
+            self.assertIn("--keep-raw", night.command(night.ALL_STEPS[sid], "2026-11-23"))
 
     def test_dv11_and_dv17_record_the_effort_they_ask(self):
         for i, effort in (("DV11", "none"), ("DV17", "medium"), ("DV1", "low")):
@@ -80,14 +81,14 @@ class Plan(unittest.TestCase):
 
     def test_results_folders(self):
         self.assertIn("results/own-clients-2026-11-23", night.command(night.ALL_STEPS["CX1"], "2026-11-23"))
-        self.assertIn("results/own-clients-2026-11-23/smoke", night.command(night.ALL_STEPS["S1"], "2026-11-23"))
+        self.assertIn("results/own-clients-2026-11-23/smoke", night.command(night.ALL_STEPS["S2"], "2026-11-23"))
 
     def test_the_dry_run_sends_nothing(self):
         lines = []
-        night.dry_run(night.select(["S1", "CC5", "MC1"]), "2099-01-01", out=lines.append)
+        night.dry_run(night.select(["S2", "CX1", "DV9d"]), "2099-01-01", out=lines.append)
         text = "\n".join(lines)
         self.assertIn("at most 3 requests", text)
-        self.assertIn("CLAUDE_CODE_PROMPT_CACHE_TTL", text)
+        self.assertIn('model_provider=\\"openai\\"', text)
         self.assertIn("nothing sent", text)
         self.assertFalse(os.path.exists(os.path.join(night.ROOT, "results", "own-clients-2099-01-01")))
 
@@ -175,10 +176,10 @@ class Everyday(unittest.TestCase):
 
     def test_the_snapshot_makes_and_checks_each_client_s_throwaway_home(self):
         self.save()
-        for name in ("claude-code", "codex-cli", "devin-cli", "muse-code"):
+        for name in ("codex-cli", "devin-cli"):
             self.assertTrue(os.path.isdir(os.path.join(self.base, "home", name)))
             self.assertEqual(os.stat(os.path.join(self.base, "home", name)).st_mode & 0o777, 0o700)
-        os.symlink(os.path.join(self.user, ".pi"), os.path.join(self.base, "home", "muse-code", "agent"))
+        os.symlink(os.path.join(self.user, ".pi"), os.path.join(self.base, "home", "devin-cli", "agent"))
         with self.assertRaisesRegex(SystemExit, "HOME holds links that leave it"):
             self.save("2099-03-02")
 

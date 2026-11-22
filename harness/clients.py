@@ -48,6 +48,15 @@ def throwaway_home(state):
     return os.path.join(os.path.dirname(state.rstrip(os.sep)), "home", os.path.basename(state.rstrip(os.sep)))
 
 
+VERSION_TEXT = re.compile(r"[A-Za-z0-9 ._()+-]{1,80}")
+
+
+def version_text(line):
+    """A client's version line as a public record may hold it: letters, digits, spaces and ._()+- only."""
+    line = (line or "").strip()
+    return line if VERSION_TEXT.fullmatch(line) else "unrecognised"
+
+
 def throwaway_tmp(state):
     """The TMPDIR of every process of a client: <client-home>/tmp/<the state folder's name> (mode 700)."""
     return os.path.join(os.path.dirname(state.rstrip(os.sep)), "tmp", os.path.basename(state.rstrip(os.sep)))
@@ -81,7 +90,32 @@ class Refused(Exception):
 
 
 class ClientError(Exception):
-    """Anything else: no reading, a crash, an output this module does not know."""
+    """Anything else: no reading, a crash, an output this module does not know. `kind` is one of ERROR_KINDS (None:
+    decided by the Session from the exit code)."""
+
+    def __init__(self, text="", kind=None):
+        super().__init__(text)
+        self.kind = kind
+
+
+# The only error text a public result carries: one of these kinds. The client's own words (which can hold a key, a
+# path, anything) go only to the run's console log, redacted, never into a public file.
+ERROR_KINDS = ("timeout", "spawn", "exit-nonzero", "quota", "input", "client-cap", "parse", "no-usage", "wrong-turn",
+               "not-one-call", "no-model", "login", "other")
+
+
+def error_kind(e):
+    """The public kind of a client failure: always one of ERROR_KINDS."""
+    kind = getattr(e, "kind", None) if isinstance(e, (Refused, ClientError)) else None
+    return kind if kind in ERROR_KINDS else "other"
+
+
+HANDLE_TEXT = re.compile(r"[A-Za-z0-9._:-]{1,100}")
+
+
+def handle_text(handle):
+    """A session id as a public record may hold it."""
+    return handle if isinstance(handle, str) and HANDLE_TEXT.fullmatch(handle) else "<unrecognised>"
 
 
 # The wording of a refusal, as far as the documentation and the source show it; the smoke runs correct this.
@@ -94,12 +128,12 @@ QUOTA = re.compile(r"usage limit|rate[ _]limit|quota|too many requests|\b429\b|o
 
 def classify(text):
     """The exception for a client's failure text: an input refusal, a quota refusal, or another error."""
-    text = (text or "").strip()
+    text = (text or "").strip()  # never clipped here: redaction comes first, then any clipping (Session)
     if INPUT_TOO_LONG.search(text):
-        return Refused("input", text[-2000:])
+        return Refused("input", text)
     if QUOTA.search(text):
-        return Refused("quota", text[-2000:])
-    return ClientError(text[-600:] or "no output")
+        return Refused("quota", text)
+    return ClientError(text or "no output")
 
 
 def json_lines(text):
@@ -190,8 +224,13 @@ class Client:
     def allowed_link_for(self, env=None):
         return lambda rel, target: self.allowed_link(rel, target, env)
 
-    def answered_model(self, state, handle):
-        """The model that answered, where the client's output leaves it out but its state folder has it (Codex)."""
+    def answered_model(self, state, handle, after=None):
+        """The model that answered, where the client's output leaves it out but its state folder has it (Codex): only
+        a turn newer than `after` (turn_mark before the invocation) counts, never an earlier turn's model."""
+        return None
+
+    def turn_mark(self, state, handle):
+        """How many turns the session's record holds before an invocation (Codex), or None."""
         return None
 
     def version_command(self):
@@ -204,14 +243,15 @@ class Client:
         try:
             code, out, err = run(argv, env=env, cwd=None, stdin=None, timeout=60)
         except subprocess.TimeoutExpired:
-            raise ClientError(f"{self.binary} --version did not answer within 60 s") from None
+            raise ClientError(f"{self.binary} --version did not answer within 60 s", kind="timeout") from None
         except OSError as e:
-            raise ClientError(f"{self.binary} --version could not be run ({type(e).__name__})") from None
+            raise ClientError(f"{self.binary} --version could not be run ({type(e).__name__})", kind="spawn") from None
         line = (out or err).strip().splitlines()
         if code or not line:
-            # What the client printed is redacted: a diagnostic may hold a value of its environment (a key).
-            raise ClientError(redact(f"{self.binary} --version failed: {(err or out)[-300:]}"))
-        return redact(line[-1].strip())
+            # What the client printed is redacted whole, then clipped (never clipped first: a clipped key escapes its
+            # redaction); it reaches only the console log.
+            raise ClientError(f"{self.binary} --version failed: {redact(err or out)[-300:]}", kind="exit-nonzero")
+        return version_text(redact(line[-1].strip()))
 
     # --- one invocation -----------------------------------------------------------------------------------------
     def new_session(self):
@@ -286,7 +326,7 @@ class Claude(Client):
             raise classify(f"{result.get('subtype') or ''}: {result.get('result') or ''}\n{stderr or ''}")
         u = result.get("usage") or {}
         if not u:
-            raise ClientError("no usage in the result")
+            raise ClientError("no usage in the result", kind="no-usage")
         read, created = u.get("cache_read_input_tokens") or 0, u.get("cache_creation_input_tokens") or 0
         made = u.get("cache_creation") or {}
         models = list((result.get("modelUsage") or {}).keys())
@@ -298,23 +338,30 @@ class Claude(Client):
                      handle=result.get("session_id"))
 
 
-def codex_turn_model(path):
-    """The model evidence of the last turn of a Codex session file (see Codex.answered_model), or None."""
+def codex_turns(path):
+    """(number of turns, model evidence of the last turn) of a Codex session file (see Codex.answered_model). A record
+    with a turn id other than the current turn's starts a new turn (a `task_complete` of a turn never announced
+    included), so a turn without its own `turn_context` or `model_reroute` has no model; records without ids are
+    grouped by their kind (a second `turn_context` or `task_started` is a new turn)."""
     turns = []  # each: {"id", "started", "ctx", "model"}
 
-    def turn(tid, flag):
+    def turn(tid, flag=None):
         cur = turns[-1] if turns else None
-        if cur is not None and ((tid and cur["id"] == tid) or (not tid or not cur["id"]) and not cur[flag]):
-            if tid:
-                cur["id"] = cur["id"] or tid
-            return cur
+        if cur is not None:
+            if tid and cur["id"] == tid:
+                return cur
+            if tid and not cur["id"] and (flag is None or not cur[flag]):
+                cur["id"] = tid
+                return cur
+            if not tid and (flag is None or not cur[flag]):
+                return cur
         new = {"id": tid, "started": False, "ctx": False, "model": None}
         turns.append(new)
         return new
     try:
         with open(path, errors="replace") as f:
             for line in f:
-                if not any(k in line for k in ('"turn_context"', '"model_reroute"', '"task_started"')):
+                if not any(k in line for k in ('"turn_context"', '"turn_id"', '"model_reroute"', '"task_started"')):
                     continue
                 try:
                     d = json.loads(line)
@@ -328,12 +375,20 @@ def codex_turn_model(path):
                     t["model"] = p["model"] if isinstance(p.get("model"), str) else None
                 elif d.get("type") == "event_msg" and p.get("type") == "task_started":
                     turn(tid, "started")["started"] = True
-                elif d.get("type") == "event_msg" and p.get("type") == "model_reroute" and turns \
-                        and isinstance(p.get("to_model"), str):
-                    turns[-1]["model"] = p["to_model"]
+                elif d.get("type") == "event_msg" and p.get("type") == "model_reroute":
+                    t = turn(tid) if tid else (turns[-1] if turns else None)
+                    if t is not None and isinstance(p.get("to_model"), str):
+                        t["model"] = p["to_model"]
+                elif tid:
+                    turn(tid)  # any other record of a turn: a new id is a new turn, with no model evidence yet
     except OSError:
-        return None
-    return turns[-1]["model"] if turns else None
+        return 0, None
+    return len(turns), (turns[-1]["model"] if turns else None)
+
+
+def codex_turn_model(path):
+    """The model evidence of the last turn of a Codex session file, or None."""
+    return codex_turns(path)[1]
 
 
 # The item types of a Codex turn that are not a tool call: a turn with any other item made more than one request.
@@ -393,18 +448,29 @@ class Codex(Client):
         exe = shutil.which("codex", path=(env or os.environ).get("PATH"))
         return bool(self.HELPER_LINK.match(rel)) and bool(exe) and target == os.path.realpath(exe)
 
-    def answered_model(self, state, handle):
-        """From the thread's session file in CODEX_HOME/sessions: the model of the thread's last turn, the one just
-        measured: its `turn_context` model, or the model the server rerouted it to (`model_reroute`, to_model). The
-        evidence is bound to that turn: a turn (a `task_started`, or a new `turn_context`) without its own model
-        evidence is unknown (None), never the previous turn's. `codex exec --json` prints neither. Only that one string
-        is read out; the file stays in the state folder."""
+    def rollout(self, state, handle):
         if not state or not handle or not re.fullmatch(r"[0-9A-Za-z-]{8,64}", str(handle)):
             return None
         found = sorted(glob.glob(os.path.join(state, "sessions", "*", "*", "*", f"rollout-*-{handle}.jsonl")))
-        if not found:
+        return found[-1] if found else None
+
+    def turn_mark(self, state, handle):
+        path = self.rollout(state, handle)
+        return codex_turns(path)[0] if path else 0
+
+    def answered_model(self, state, handle, after=None):
+        """From the thread's session file in CODEX_HOME/sessions: the model of the thread's last turn, the one just
+        measured: its `turn_context` model, or the model the server rerouted it to (`model_reroute`, to_model). The
+        evidence is bound to that turn: the last turn must be newer than `after` (the count before the invocation),
+        and a turn without its own model evidence is unknown (None), never the previous turn's. `codex exec --json`
+        prints neither. Only that one string is read out; the file stays in the state folder."""
+        path = self.rollout(state, handle)
+        if not path:
             return None
-        return codex_turn_model(found[-1])
+        count, model = codex_turns(path)
+        if after is not None and count <= after:
+            return None
+        return model
 
     def command(self, prompt_file, resume=None, session=None, files=None):
         base = ["--json", "--skip-git-repo-check", "-m", self.model, *self._config()]
@@ -432,10 +498,10 @@ class Codex(Client):
         # A failure is a failure, whatever usage came with it: a non-zero exit, an error or a failed turn.
         if usage is None or code or failure:
             if CODEX_CAP.search(text):
-                raise Refused("client-cap", text.strip()[-2000:])
+                raise Refused("client-cap", text.strip())
             raise classify(text if text.strip() else (stdout or f"exit {code}"))
         if expect and expect.get("session") and tid and tid != expect["session"]:
-            raise ClientError(f"the output is of thread {tid}, not of the resumed one")
+            raise ClientError(f"the output is of thread {tid}, not of the resumed one", kind="wrong-turn")
         # One model request: one completed turn and no tool item in it.
         return Usage(total=usage.get("input_tokens", 0), cached=usage.get("cached_input_tokens", 0),
                      write=usage.get("cache_write_input_tokens", 0), calls=turns + len(tools), handle=tid)
@@ -495,11 +561,12 @@ class Devin(Client):
         if expect:
             # The turn must be this invocation's: the session resumed, and the last user step the prompt just sent.
             if expect.get("session") and d.get("session_id") != expect["session"]:
-                raise ClientError(f"the export is of session {d.get('session_id')}, not of the resumed one")
+                raise ClientError(f"the export is of session {d.get('session_id')}, not of the resumed one",
+                                  kind="wrong-turn")
             said = steps[last_user].get("message") if last_user >= 0 else None
             said = said if isinstance(said, str) else json.dumps(said)
             if (expect.get("prompt") or "").strip()[:200] not in (said or ""):
-                raise ClientError("the export's last user step is not the prompt just sent: no new turn")
+                raise ClientError("the export's last user step is not the prompt just sent: no new turn", kind="wrong-turn")
         turn = [s for s in steps[last_user + 1:] if s.get("metrics")]
         if not turn:
             raise classify(f"no step with metrics in the export (exit {code}): {stderr or ''}\n{stdout or ''}")
@@ -549,7 +616,8 @@ class Muse(Client):
         if u is None:
             # No run.usage line is no reading, never zero (Muse leaves it out when it cannot count a run). An event
             # that looks like usage is kept (redacted by the Session) so that the fixture can be corrected.
-            raise ClientError("no run.usage line" + (f"; usage-like events: {' | '.join(other[:2])}" if other else ""))
+            raise ClientError("no run.usage line" + (f"; usage-like events: {' | '.join(other[:2])}" if other else ""),
+                              kind="no-usage")
         # Every run in the output counts: two runs (two run.started, or two run.usage) are at least two calls, never
         # the last run's figures alone.
         # A count is what Muse said: an explicit 0 is no call, an absent or non-integer count is unknown (None), and
@@ -853,6 +921,15 @@ class Redactor:
         return HOME_PATH.sub("<home>", text)
 
 
+MODEL_TEXT = re.compile(r"[A-Za-z0-9._:/@+-]{1,100}")
+
+
+def model_text(name):
+    """A model id as a public record may hold it, or None (no model evidence): a reply naming anything else names no
+    model."""
+    return name if isinstance(name, str) and MODEL_TEXT.fullmatch(name) else None
+
+
 def write_private(path, text):
     """A new file, mode 600, never through a link (O_NOFOLLOW) and never over an existing one (O_EXCL)."""
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
@@ -907,6 +984,8 @@ class Session:
         with open(pf, "w") as f:
             f.write(prompt)
         argv = self.client.command(pf, resume=resume, session=session, files=files)
+        # The session's turns before this invocation: a model read from its record afterwards must be a newer turn's.
+        mark = self.client.turn_mark(self.home, resume) if resume else 0
         if self.client.prompt_mode == "arg":
             argv = [prompt if a == pf else a for a in argv]
         if self.writable is not None:
@@ -919,9 +998,9 @@ class Session:
                                               timeout=self.timeout)
                 except subprocess.TimeoutExpired:
                     # Never the exception's text: it holds the command line, the sandbox profile and its folders.
-                    raise ClientError(f"the client did not answer within {self.timeout} s") from None
+                    raise ClientError(f"the client did not answer within {self.timeout} s", kind="timeout") from None
                 except OSError as e:
-                    raise ClientError(f"the client could not be run ({type(e).__name__})") from None
+                    raise ClientError(f"the client could not be run ({type(e).__name__})", kind="spawn") from None
             contents = {}
             for name, (path, keep) in files.items():
                 found = sorted(glob.glob(path)) if any(c in path for c in "*?[") else [path]
@@ -944,24 +1023,25 @@ class Session:
         try:
             u = self.client.parse(out, err, code, contents, expect=expect)
         except Refused as e:
-            r = Refused(e.kind, self.redact(e.text))
+            # Redacted whole, then clipped: a clipped key would escape its redaction. Its text is for the console log
+            # and the limits walk; a public result records only the kind.
+            r = Refused(e.kind, self.redact(e.text)[-2000:])
             r.code = code  # the client's exit code, kept with a refusal row
             raise r from None
         except ClientError as e:
-            r = ClientError(self.redact(str(e)))
+            r = ClientError(self.redact(str(e))[-1500:], kind=e.kind or ("exit-nonzero" if code else "parse"))
             r.code = code
             raise r from None
         except (ValueError, KeyError, TypeError) as e:
-            r = ClientError(self.redact(f"unreadable output ({type(e).__name__}): {e}"))
+            r = ClientError(self.redact(f"unreadable output ({type(e).__name__}): {e}")[-1500:], kind="parse")
             r.code = code
             raise r from None
         if u.handle is None:
             u.handle = resume or session
         if u.model is None:
-            u.model = self.client.answered_model(self.home, u.handle)
-        if u.model is not None:
-            # A client's text that reaches the public record: no secret value, token, address or path in it.
-            u.model = self.redact(str(u.model))
+            # Only this invocation's own turn: never a model carried over from an earlier one.
+            u.model = self.client.answered_model(self.home, u.handle, after=mark)
+        u.model = model_text(self.redact(str(u.model))) if u.model is not None else None
         return u
 
     def start(self, prompt):

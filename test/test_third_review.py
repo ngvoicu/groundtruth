@@ -71,7 +71,9 @@ class Point1Logins(Owner):
     def test_a_login_that_wrote_nothing_or_an_empty_file_is_not_done(self):
         self.client_home()
         self.snapshot()
-        files = {"claude": ".credentials.json", "codex": "auth.json", "devin": "config/devin/credentials.toml"}
+        files = {"codex": "auth.json", "devin": "config/devin/credentials.toml"}
+        with self.assertRaisesRegex(SystemExit, "not in the first night"):
+            self.login("claude", creates=".credentials.json")
         for name in files:
             with self.subTest(client=name, case="nothing"), self.assertRaisesRegex(SystemExit, "no login file"):
                 self.login(name)
@@ -90,14 +92,14 @@ class Point1Logins(Owner):
         self.client_home()
         self.snapshot()
         with self.assertRaisesRegex(SystemExit, "status refuses"):
-            self.login("claude", creates=".credentials.json", status=(0, '{"loggedIn": true, "authMethod": "console"}', ""))
+            self.login("devin", creates="config/devin/credentials.toml", status=(0, "Logged in with an API key", ""))
         with self.assertRaisesRegex(SystemExit, "status refuses"):
             self.login("codex", creates="auth.json", status=(0, "Logged in using an API key", ""))
 
     def test_a_login_waits_for_the_snapshot(self):
         self.client_home()
         with self.assertRaisesRegex(SystemExit, "no snapshot"):
-            self.login("claude", creates=".credentials.json")
+            self.login("codex", creates="auth.json")
 
     def test_claude_s_preflight_refuses_an_empty_state_folder(self):
         # The review's case: an affirmative subscription status, the dedicated folder empty.
@@ -146,12 +148,15 @@ class Point2Logs(Owner):
     """2: console logs mode 600 and scrubbed of the child's secrets; no error path puts a folder in the public JSONL."""
 
     def test_the_review_s_version_diagnostic_case(self):
-        # A Muse stand-in prints the child-only key in a failing version diagnostic; the launcher's console log.
-        value = "synthetic.review.only.04212026"
+        # A stand-in client prints its home folder in a failing version diagnostic: the launcher's console log is 600,
+        # holds no traceback and no home folder. (The review's case was Muse's; the first night runs no Muse Code.)
         base = self.client_home()
+        value = self.user
         bin_ = os.path.join(self.tmp, "bin")
-        write(os.path.join(bin_, "muse"), "#!" + sys.executable + "\nimport os,sys\nif sys.argv[1:] == ['--version']:\n"
-              "    print('fixture diagnostic: '+os.environ['META_API_KEY'],file=sys.stderr)\nsys.exit(1)\n", 0o700)
+        write(os.path.join(bin_, "codex"), "#!" + sys.executable + "\nimport os,sys\n"
+              "if sys.argv[1:3] == ['login', 'status']:\n    print('Logged in using ChatGPT'); sys.exit(0)\n"
+              "print('fixture diagnostic: ' + os.environ['HOME'] + ' ' + " + repr(self.user) + ", file=sys.stderr)\n"
+              "sys.exit(1)\n", 0o700)
         repo = os.path.join(self.tmp, "tree")
         shutil.copytree(os.path.join(ROOT, "harness"), os.path.join(repo, "harness"),
                         ignore=shutil.ignore_patterns("__pycache__"))
@@ -168,14 +173,14 @@ class Point2Logs(Owner):
                "SCAN_FINGERPRINTS": os.path.join(self.tmp, "fp.json"), "GROUNDTRUTH_CLIENT_HOME": base}
         try:
             with mock.patch.dict(os.environ, env), mock.patch.object(night, "ROOT", repo), \
-                    mock.patch.dict(night.PARTS, {"muse": [night.PARTS["muse"][0]]}):
-                night.go_clients(["muse"], DATE, popen=popen, out=lambda *_: None, key=lambda _: value)
+                    mock.patch.dict(night.PARTS, {"codex": [night.PARTS["codex"][0]]}):
+                night.go_clients(["codex"], DATE, popen=popen, out=lambda *_: None)
             self.assertNotEqual(children[0].wait(timeout=60), 0)
         finally:
             for p in children:
                 if p.poll() is None:
                     os.killpg(p.pid, signal.SIGTERM)
-        log = os.path.join(repo, night.folders(DATE)["own"], "logs", "MC1.log")
+        log = os.path.join(repo, night.folders(DATE)["own"], "logs", "CX1.log")
         with open(log) as f:
             text = f.read()
         self.assertIn("--version failed", text)
@@ -194,12 +199,13 @@ class Point2Logs(Owner):
             raise subprocess.TimeoutExpired(argv, 900)
         with mock.patch.object(C, "_run", side_effect=timeout_or_status), \
                 mock.patch.dict(os.environ, {"META_API_KEY": "fixture-muse-key-000"}), \
-                mock.patch.object(probe.Clock, "sleep", lambda self, n: None), redirect_stdout(io.StringIO()):
+                mock.patch.object(probe.Clock, "sleep", lambda self, n: None), redirect_stdout(io.StringIO()), \
+                redirect_stderr(io.StringIO()):
             probe.main(["--harness", "muse", "--model", "muse-wonder-1.0", "--label", "S4", "--out", out,
                         "--replicas", "0"])
         with open(os.path.join(out, "S4.jsonl")) as f:
             public = f.read()
-        self.assertIn("did not answer within", public)
+        self.assertIn('"error_kind": "timeout"', public)
         for folder in (self.user, os.path.realpath(self.user), base, "sandbox-exec", "subpath"):
             self.assertNotIn(folder, public)
         r = subprocess.run([sys.executable, SCAN, "--own-clients", out], capture_output=True, text=True,
@@ -227,7 +233,7 @@ class Point3Bytecode(unittest.TestCase):
             shutil.copytree(os.path.join(ROOT, "harness"), os.path.join(t, "harness"),
                             ignore=shutil.ignore_patterns("__pycache__"))
             env = no_sources(t, GROUNDTRUTH_CLIENT_HOME=os.path.join(t, "absent-home"))
-            r = subprocess.run([sys.executable, "harness/night.py", "--date", DATE, "--dry-run", "muse"], cwd=t, env=env,
+            r = subprocess.run([sys.executable, "harness/night.py", "--date", DATE, "--dry-run", "devin"], cwd=t, env=env,
                                capture_output=True, text=True, timeout=120)
             self.assertEqual(r.returncode, 0, r.stderr)
             made = [os.path.join(d, n) for d, dirs, files in os.walk(t) for n in dirs + files
@@ -265,9 +271,9 @@ class Point4ZeroCalls(unittest.TestCase):
             start = {"event": "start", "harness": "muse", "client_version": "f", "isolation": probe.ISOLATION,
                      "model": "muse-wonder-1.0", "at": "2026-11-23T20:00:00Z"}
             bad = {"event": "check", "age": "2.5m", "ageSec": 150, "late": False, "warm": False,
-                   "usage": {"total": 0, "cached": 0, "calls": 0}}
+                   "usage": {"total": 0, "cached": 0, "calls": 0, "model": "muse-wonder-1.0"}}
             control = {"event": "check", "age": "control", "late": False, "warm": True,
-                       "usage": {"total": 9, "cached": 9, "calls": 1}}
+                       "usage": {"total": 9, "cached": 9, "calls": 1, "model": "muse-wonder-1.0"}}
             path = os.path.join(t, "MC1.jsonl")
             write(path, "".join(json.dumps(x) + "\n" for x in (start, control, bad, {"event": "done"})))
             with self.assertRaisesRegex(SystemExit, "model requests, not 1"):
@@ -314,7 +320,7 @@ class Point5Launcher(Owner):
             lock = night.read_lock(DATE, "codex")
             seen.append(sorted(lock["runs"]))
             return mock.Mock(pid=7000 + len(seen))
-        night.go_clients(["codex"], DATE, popen=popen, out=lambda *_: None, key=lambda _: "k")
+        night.go_clients(["codex"], DATE, popen=popen, out=lambda *_: None)
         self.assertEqual(seen[1], ["CX1"])
         self.assertEqual(seen[2], ["CX1", "CX2"])
 
@@ -332,7 +338,7 @@ def out(line):
     if line.startswith("CX1 pid "):
         open({os.path.join(self.tmp, 'pid')!r}, "w").write(line.split()[2].rstrip(","))
         os._exit(73)
-night.go_clients(["codex"], {DATE!r}, out=out, key=lambda _: "k")
+night.go_clients(["codex"], {DATE!r}, out=out)
 """)
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
         r = subprocess.run([sys.executable, script], env=env, capture_output=True, text=True, timeout=30)
@@ -394,14 +400,21 @@ class Point6Model(unittest.TestCase):
                                                         "to_model": "gpt-6-astra"}}
             done = {"type": "event_msg", "payload": {"type": "task_complete", "turn_id": "fixture-prime"}}
             started = {"type": "event_msg", "payload": {"type": "task_started", "turn_id": "fixture-resume"}}
+            records, turn = [], []
+
+            def run(*a, **k):  # each invocation appends its own turn to the session file
+                records.extend(turn)
+                self.rollout(t, tid, records)
+                return 0, f["stdout"], ""
             s = C.Session(C.Codex("gpt-6-luna"), env={}, io=t + "/io", work=t + "/work", home=os.path.join(t, "state"),
-                          run=lambda *a, **k: (0, f["stdout"], ""))
-            self.rollout(t, tid, [ctx])
+                          run=run)
+            turn[:] = [ctx]
             luna = s.resume(tid, "p").record()
-            self.rollout(t, tid, [ctx, reroute])
+            turn[:] = [done, dict(ctx, payload=dict(ctx["payload"], turn_id="t2")), dict(reroute, payload=dict(
+                reroute["payload"], turn_id="t2"))]
             astra = s.resume(tid, "p").record()
             self.assertEqual((luna["model"], astra["model"]), ("gpt-6-luna", "gpt-6-astra"))
-            self.rollout(t, tid, [ctx, reroute, done, started])
+            turn[:] = [started]
             self.assertIsNone(s.resume(tid, "p").model)
             # The builder: warm checks answered by Astra under the scheduled Luna entry.
             start = {"event": "start", "harness": "codex", "client_version": "f", "isolation": probe.ISOLATION,
@@ -460,8 +473,8 @@ class Point7Scan(unittest.TestCase):
 
 
 class Point8Owner(Owner):
-    """8: a Keychain that cannot be listed is said so, never "nothing changed"; Claude runs refuse paid overage unless
-    --allow-overage."""
+    """8: a Keychain that cannot be listed is said so, never "nothing changed". (The overage part left with Claude: the
+    first night runs no Claude Code.)"""
 
     def test_an_unlisted_keychain_is_reported_as_not_compared(self):
         self.client_home()
@@ -474,55 +487,6 @@ class Point8Owner(Owner):
         self.assertFalse(any("nothing changed" in x for x in lines), lines)
         with open(night.report_path(DATE, "t")) as f:
             self.assertIn("Keychain not compared", f.read())
-
-    def test_a_run_whose_first_write_is_the_five_minute_tier_stops(self):
-        # The review's case: every write of CC1 at 5 minutes, the run went on to 93 requests.
-        clock = FakeClock()
-        fake = FakeClient(clock, ttl=360)
-        for i in range(20):
-            fake.write_ttl[i] = "5m"
-        events = []
-        reason = probe.run_probe(fake, ages=[150.0], labels=["2.5m"], replicas=1, words=10, salt="t",
-                                 log=events.append, clock=clock, expect_ttl="1h")
-        self.assertEqual(reason, "overage")
-        self.assertEqual(fake.requests, 1)
-
-    def test_the_night_refuses_claude_in_overage_unless_allowed(self):
-        self.client_home()
-        night.make_night_dir(DATE)
-        write(night.everyday_path(DATE), "{}")
-        R2.Finding9Launcher.smoke_files(self.repo)
-        s1 = os.path.join(self.repo, night.folders(DATE)["smoke"], "S1.jsonl")
-        write(s1, json.dumps({"event": "start", "client_version": "1", "isolation": probe.ISOLATION}) + "\n"
-              + json.dumps({"event": "stop", "reason": "overage"}) + "\n")
-        problems, notes = night.smoke_verdict(DATE)
-        self.assertEqual(problems, [])
-        self.assertTrue(any("paid overage" in n for n in notes))
-        night.smoke_reviewed(DATE, out=lambda *_: None)
-        started = []
-        popen = lambda argv, **kw: started.append(argv) or mock.Mock(pid=9000 + len(started))  # noqa: E731
-        with self.assertRaisesRegex(SystemExit, "paid overage"):
-            night.go_clients(["all"], DATE, popen=popen, out=lambda *_: None, key=lambda _: "k")
-        self.assertEqual(started, [])
-        night.go_clients(["claude"], DATE, popen=popen, out=lambda *_: None, key=lambda _: "k", allow_overage=True)
-        self.assertTrue(all("--allow-overage" in a for a in started))
-
-    def test_a_five_minute_run_does_not_start_after_an_overage_stop(self):
-        self.client_home()
-        out = os.path.join(self.repo, "results")
-        write(os.path.join(out, "CC2.jsonl"), json.dumps({"event": "stop", "reason": "overage"}) + "\n")
-        argv = night.command(night.ALL_STEPS["CC5"], DATE) + night.overage_args(night.ALL_STEPS["CC5"], False)
-        self.assertIn("--stop-if-overage-in", argv)
-        a = argv[argv.index("harness/probe.py") + 1:]
-        a[a.index("--out") + 1] = out
-        with mock.patch.object(C, "state_folder", side_effect=AssertionError("started")), \
-                self.assertRaisesRegex(SystemExit, "CC2 stopped for paid overage"):
-            probe.main(a)
-
-    def test_the_run_document_says_overage_is_paid(self):
-        with open(os.path.join(ROOT, "docs", "own-clients-RUN.md")) as f:
-            text = f.read()
-        self.assertTrue("--allow-overage" in text and "paid usage" in text)
 
 
 if __name__ == "__main__":

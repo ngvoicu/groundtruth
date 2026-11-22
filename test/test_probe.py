@@ -34,6 +34,7 @@ class FakeClient:
         self.clock, self.ttl, self.took, self.cumulative = clock, ttl, took, cumulative
         self.primed, self.requests, self.resumes = {}, 0, []
         self.fail, self.refuse_prime, self.calls, self.write_ttl, self.prime_took = set(), {}, {}, {}, {}
+        self.models = {}  # handle -> the model a check's reply names (None: no model evidence)
 
     def start(self, prompt):
         n = self.requests
@@ -44,7 +45,7 @@ class FakeClient:
         self.primed[handle] = self.clock.now()
         self.clock.t += self.prime_took.get(n, self.took)
         total = SHARED + (0 if "<doc>" not in prompt else BLOCK)
-        u = {"total": total, "cached": SHARED if n else 0, "write": total - SHARED, "calls": 1}
+        u = {"total": total, "cached": SHARED if n else 0, "write": total - SHARED, "calls": 1, "model": "m"}
         if n in self.write_ttl:
             u["write_" + self.write_ttl[n]] = BLOCK
         return handle, u
@@ -57,7 +58,7 @@ class FakeClient:
         warm = self.clock.now() - self.primed[handle] < self.ttl
         self.clock.t += self.took
         u = {"total": SHARED + BLOCK + 20, "cached": SHARED + (BLOCK if warm else 0), "write": 20 if warm else BLOCK + 20,
-             "calls": self.calls.get(handle, 1)}
+             "calls": self.calls.get(handle, 1), "model": self.models.get(handle, "m")}
         return u
 
 

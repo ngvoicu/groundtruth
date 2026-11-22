@@ -1,35 +1,38 @@
 #!/usr/bin/env python3
-"""The first night of docs/own-clients.md, section 4, cut down to the own clients' cache runs (the chief's decision of
-2026-11-22): Claude Code, Codex CLI, Devin CLI and Muse Code, each through its own subscription login. The owner's
-steps are docs/own-clients-RUN.md.
+"""The first night of docs/own-clients.md, section 4, cut down to the own clients' cache runs of Codex CLI and Devin
+CLI, each through its own subscription login (the owner's decision of 2026-11-22: the two logins where differences
+were seen; Claude Code and Muse Code wait for a later night, and every night command refuses them). The owner's steps
+are docs/own-clients-RUN.md.
 
     python3 harness/night.py --date 2026-11-23 untouched --save|--report   # the everyday state: snapshot, report
-    python3 harness/night.py --date 2026-11-23 login claude|codex|devin    # a login, in the client's own folders
+    python3 harness/night.py --date 2026-11-23 login codex|devin           # a login, in the client's own folders
     python3 harness/night.py --date 2026-11-23 --dry-run all               # every command, each run's own dry run
     python3 harness/night.py --date 2026-11-23 --go smoke                  # in the foreground, about 10 minutes
     python3 harness/night.py --date 2026-11-23 smoke-reviewed              # checks the smoke results, then marks them
-    python3 harness/night.py --date 2026-11-23 --go claude|codex|devin|muse|all   # a client's runs, in the background
+    python3 harness/night.py --date 2026-11-23 --go codex|devin|all        # a client's runs, in the background
     python3 harness/night.py --date 2026-11-23 status                      # which runs are alive (by their process)
-    python3 harness/night.py --date 2026-11-23 stop claude|codex|devin|muse|all   # signals exactly those processes
+    python3 harness/night.py --date 2026-11-23 stop codex|devin|all        # the launcher, then exactly its runs
 
-Parts: smoke (S1 - S4, S3b), claude (CC1 - CC8; CC5 - CC8 start 2 h 30 min after the go, when CC1 - CC4 are over),
-codex (CX1 - CX6), devin (DV1 - DV17, DV9d), muse (MC1 - MC3). `all`, for --go and stop: the four clients.
+Parts: smoke (S2, S3, S3b), codex (CX1 - CX6), devin (DV1 - DV17, DV9d). `all`, for --go and stop: the two clients.
 
-Not in the first night: no pi run and no Provimux (the parity pairs come in a later night), no OpenRouter run and no
+Not in the first night: no Claude Code or Muse Code run, login or key (and so no overage logic and no key read from the
+Keychain),
+no pi run and no Provimux (the parity pairs come in a later night), no OpenRouter run and no
 window request (and so no money stop), no supervisor, no input-limit walk, no Antigravity run.
 
 `--go <client>` starts each of the client's runs as its own background process (`caffeinate -i`, a session of its
 own: closing the terminal ends none), each told when to begin (--delay: the starts are staggered), and returns. A
 client's launch is written once, in a lock file created exclusively (<client-home>/night-<date>/launch/<client>.json:
-the launch's id, and each run's pid); a second go of that client for that night is refused. `status` and `stop` read
-that file: a run is alive when its pid is alive and that process's command line carries the run's label and the
-launch's id (a reused pid is never taken for the run), and `stop` signals the process group of exactly those runs.
+the launch's id, the launcher's own pid, written before any run starts, and each run's pid as it starts); a second go
+of that client for that night is refused. Before each start the launcher looks for the client's stop mark
+(launch/<client>.stop) and starts nothing more once it is there. `stop` writes that mark, signals the launcher if it
+still runs, then the process group of exactly the client's runs: those the lock records (pid alive, and its command
+line carrying the run's label and the launch's id), and any process carrying the launch's id.
 
 Every command honours --dry-run: it prints what it would do and does nothing else (no folder, no marker, no lock, no
 signal, no client run). Nothing is sent without --go. The owner's everyday state is protected by isolation (each
 client's state folder and throwaway HOME, and sandbox-exec: harness/clients.py) and reported in the morning
-(`untouched --report`), never a reason to stop. Muse Code's key comes from the Keychain only at --go, straight into
-the runs that need it, and is never printed or written (its fingerprint is left for the commit scan).
+(`untouched --report`), never a reason to stop. No key is read: Codex and Devin use their logins in their state folders.
 """
 import sys
 sys.dont_write_bytecode = True  # a dry run writes nothing, not even the interpreter's cache
@@ -46,10 +49,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import clients as C  # noqa: E402
-import scan_secrets  # noqa: E402
 
-# The owner's Keychain item for this night (a generic password, account = the user name). Read only, at --go.
-KEYCHAIN = {"META_API_KEY": "groundtruth META_API_KEY"}
 STD65 = "10m,15m,20m,25m,30m,40m,50m,60m,65m,75m,90m,120m"
 PROXY_VARS = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy",
               "NODE_USE_ENV_PROXY", "GLOBAL_AGENT_HTTP_PROXY", "GLOBAL_AGENT_HTTPS_PROXY")
@@ -75,14 +75,6 @@ def smoke(id_, harness, model, filler=None):
                      "--schedule", "std", *(["--filler", filler] if filler else [])]}
 
 
-# CC5 - CC8 start when CC1 - CC4 are over: their last check falls about 2 h 12 min after the go (120 min, two wave
-# gaps of 5 min, the primings); a fixed start time, not a supervisor.
-LATER_S = 9000
-CC = [probe(f"CC{i}", "claude", m, ages=STD65, filler="list") for i, m in enumerate(
-    ["claude-fable-5-2", "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"], 1)]
-CC5 = [probe(f"CC{i}", "claude", m, ages="10m,15m", filler="list", env={"CLAUDE_CODE_PROMPT_CACHE_TTL": "5m"},
-             after=LATER_S) for i, m in enumerate(["claude-fable-5-2", "claude-opus-5-5", "claude-sonnet-5-5",
-                                                    "claude-haiku-5-5"], 5)]
 CX = [probe(f"CX{i}", "codex", m, schedule="long") for i, m in enumerate(
     ["gpt-6.2-sol", "gpt-6.2-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-astra", "gpt-6-luna"], 1)]
 DEVIN = [("DV1", "claude-opus-5-5-low", "std"), ("DV2", "claude-sonnet-5-5-low", "std"), ("DV3", "claude-haiku-5-5-low", "std"),
@@ -95,18 +87,15 @@ DEVIN = [("DV1", "claude-opus-5-5-low", "std"), ("DV2", "claude-sonnet-5-5-low",
 # DV9d: DV9 again with Devin's own process model and keepalive (pair DV-5 compares the two; both are Devin runs).
 DV = [probe(i, "devin", m, schedule=s) for i, m, s in DEVIN] + [
     probe("DV9d", "devin", "glm-5-3-low", schedule="std", extra=["--devin-daemon"], pair="DV-5")]
-MC = [probe(f"MC{i}", "muse", m) for i, m in enumerate(["muse-wonder-1.0", "muse-ember-1.0", "muse-spark-1.3"], 1)]
-
 PARTS = {
-    "smoke": [smoke("S1", "claude", "claude-haiku-5-5", filler="list"), smoke("S2", "codex", "gpt-6-luna"),
-              smoke("S3", "devin", "claude-haiku-5-5-low"), smoke("S3b", "devin", "gpt-6-1-terra-low"),
-              smoke("S4", "muse", "muse-spark-1.3")],
-    "claude": CC + CC5,
+    "smoke": [smoke("S2", "codex", "gpt-6-luna"), smoke("S3", "devin", "claude-haiku-5-5-low"),
+              smoke("S3b", "devin", "gpt-6-1-terra-low")],
     "codex": CX,
     "devin": DV,
-    "muse": MC,
 }
-CLIENT_PARTS = ("claude", "codex", "devin", "muse")
+CLIENT_PARTS = ("codex", "devin")
+# Clients whose drivers stay in harness/clients.py (and their tests) but that no night command reaches.
+NOT_THIS_NIGHT = {"claude": "Claude Code", "muse": "Muse Code"}
 ORDER = ["smoke", *CLIENT_PARTS]
 ALL_STEPS = {s["id"]: s for part in ORDER for s in PARTS[part]}
 PART_OF = {s["id"]: part for part in ORDER for s in PARTS[part]}
@@ -114,8 +103,7 @@ PART_OF = {s["id"]: part for part in ORDER for s in PARTS[part]}
 SPACING = {"devin": 20}
 SPACING_DEFAULT = 15
 STATE_FOLDERS = tuple(C.CLIENTS[h].client_id for h in CLIENT_PARTS)
-LOGINS = {"claude": ["claude", "auth", "login", "--claudeai"],
-          "codex": ["codex", "login", "-c", 'cli_auth_credentials_store="file"', "-c", 'model_provider="openai"'],
+LOGINS = {"codex": ["codex", "login", "-c", 'cli_auth_credentials_store="file"', "-c", 'model_provider="openai"'],
           "devin": ["devin", "auth", "--process-model", "in-process", "login"]}
 
 
@@ -203,10 +191,10 @@ def clean_env(extra=None):
     return env
 
 
-def dry_run(steps, date, out=print, allow_overage=False):
+def dry_run(steps, date, out=print):
     for i, step in enumerate(steps):
         argv = command(step, date, launch_id="<launch-id>" if step["kind"] == "probe" else None,
-                       delay=delay_of(step, i) if step["kind"] == "probe" else None) + overage_args(step, allow_overage)
+                       delay=delay_of(step, i) if step["kind"] == "probe" else None)
         out(f"== {step['id']}: {shown(argv)}")
         p = subprocess.run([*argv, "--dry-run"], cwd=ROOT, capture_output=True, text=True, timeout=120,
                            env=clean_env({"PYTHONDONTWRITEBYTECODE": "1"}))
@@ -432,13 +420,15 @@ def untouched(date, mode, user_home=None, lister=None, out=print, at=None, dry=F
 # --- the logins: each client's own command, in its own folders and under its sandbox ---------------------------------
 
 def login(name, date, run=None, dry=False, out=print, user_home=None, status_run=None):
-    """`login claude|codex|devin`: the client's login command with exactly the environment every run of the night
+    """`login codex|devin`: the client's login command with exactly the environment every run of the night
     has (its state folder's variables, its throwaway HOME and TMPDIR, the short allow-list) and under sandbox-exec (no
     write under the home folder but its own folders). Only after step 1's snapshot. Success is said only when the
     client's login file is in its state folder (a regular, non-empty file, then set to mode 600) and the client's own
     status command, in the same folders and sandbox, shows the subscription login."""
+    if name in NOT_THIS_NIGHT:
+        raise SystemExit(f"login {name}: {NOT_THIS_NIGHT[name]} is not in the first night (Codex and Devin only)")
     if name not in LOGINS:
-        raise SystemExit(f"login: one of {', '.join(LOGINS)} (Muse Code's key goes in the Keychain, step 3)")
+        raise SystemExit(f"login: one of {', '.join(LOGINS)}")
     client = C.CLIENTS[name]("m")
     if dry:
         out(f"login {name}: {' '.join(LOGINS[name])}" + (" under sandbox-exec" if C.CONFINED else "")
@@ -478,29 +468,6 @@ def login(name, date, run=None, dry=False, out=print, user_home=None, status_run
 
 # --- the smoke runs (in the foreground) and their review ----------------------------------------------------------
 
-def keychain(item):
-    return subprocess.run(["security", "find-generic-password", "-a", os.environ["USER"], "-s", item, "-w"],
-                          check=True, capture_output=True, text=True).stdout.strip()
-
-
-def key_reader():
-    keys = {}
-
-    def key(name):
-        if name not in keys:
-            keys[name] = keychain(KEYCHAIN[name])
-            scan_secrets.remember(keys[name], name)
-        return keys[name]
-    return key
-
-
-def step_env(step, key):
-    extra = {}
-    if step.get("harness") == "muse":
-        extra["META_API_KEY"] = key("META_API_KEY")
-    return clean_env(extra)
-
-
 def read_events(path):
     try:
         with open(path) as f:
@@ -529,10 +496,6 @@ def smoke_verdict(date):
             problems.append(f"{sid}: no results")
             continue
         start, last = ev[0], ev[-1]
-        if sid == "S1" and last.get("event") == "stop" and last.get("reason") == "overage":
-            notes.append("S1: the Claude account is in paid overage (its first cache write was the 5-minute tier): the "
-                         "Claude runs are refused unless `--go claude --allow-overage` (they would use paid usage)")
-            continue
         if start.get("event") != "start" or not start.get("client_version"):
             problems.append(f"{sid}: its first line is not a start with the client's version")
         if start.get("isolation") != ISOLATION:
@@ -564,9 +527,9 @@ def smoke_verdict(date):
     return problems, notes
 
 
-def go_smoke(date, run=None, out=print, key=None, allow_overage=False):
+def go_smoke(date, run=None, out=print):
     """The smoke runs, one after the other, in the foreground; then the verdict."""
-    run, key = run or subprocess.run, key or key_reader()
+    run = run or subprocess.run
     need_client_home("--go smoke")
     if not os.path.exists(everyday_path(date)):
         raise SystemExit("--go smoke: no snapshot of the everyday state (`untouched --save`, step 1): nothing started")
@@ -575,9 +538,9 @@ def go_smoke(date, run=None, out=print, key=None, allow_overage=False):
         if os.path.exists(os.path.join(ROOT, folder_of(step, date), step["id"] + ".jsonl")):
             out(f"{step['id']}: its results exist already: skipped")
             continue
-        argv = command(step, date) + overage_args(step, allow_overage)
+        argv = command(step, date)
         out(f"== {step['id']}: {shown(argv)}")
-        code = run(["caffeinate", "-i", *argv], cwd=ROOT, env=step_env(step, key)).returncode
+        code = run(["caffeinate", "-i", *argv], cwd=ROOT, env=clean_env()).returncode
         if code:
             out(f"{step['id']}: exited {code}")
     problems, notes = smoke_verdict(date)
@@ -626,25 +589,25 @@ def read_lock(date, client):
         return None
 
 
-def claude_overage(date):
-    """Whether the smoke run S1 stopped because Claude Code's first cache write showed the 5-minute tier (paid
-    overage)."""
-    ev = read_events(os.path.join(ROOT, folders(date)["smoke"], "S1.jsonl")) or []
-    return any(e.get("event") == "stop" and e.get("reason") == "overage" for e in ev)
+def refuse_other_clients(what, names):
+    other = [NOT_THIS_NIGHT[n] for n in names if n in NOT_THIS_NIGHT]
+    if other:
+        raise SystemExit(f"{what}: {' and '.join(other)} not in the first night (Codex and Devin only)")
 
 
-def guard(names, date, allow_overage=False):
+def guard(names, date):
+    refuse_other_clients("--go", names)
     if not names or any(n not in CLIENT_PARTS for n in names):
-        raise SystemExit(f"--go: smoke, or one of {', '.join(CLIENT_PARTS)}, or all (the four)")
+        raise SystemExit(f"--go: smoke, or one of {', '.join(CLIENT_PARTS)}, or all (the two)")
     need_client_home("--go")
     if not os.path.exists(everyday_path(date)):
         raise SystemExit("--go: no snapshot of the everyday state (`untouched --save`, step 1): the morning report "
                          "needs it; nothing started")
     if not os.path.exists(reviewed_path(date)):
         raise SystemExit("--go: the clients' runs wait until the smoke results were checked and read (`smoke-reviewed`)")
-    if "claude" in names and claude_overage(date) and not allow_overage:
-        raise SystemExit("--go: the Claude account is in paid overage (S1's first cache write was the 5-minute tier): "
-                         "its runs would use paid usage. Nothing started; --allow-overage starts them anyway")
+    stopped = [n for n in names if os.path.lexists(stop_path(date, n))]
+    if stopped:
+        raise SystemExit(f"--go: {', '.join(stopped)} stopped for {date} (`stop`): nothing more starts that night")
     taken = [n for n in names if os.path.lexists(lock_path(date, n))]
     if taken:
         raise SystemExit(f"--go: {', '.join(taken)} launched already for {date} (`status`, `stop`); a second start is "
@@ -666,22 +629,14 @@ def private_log(path):
     return os.fdopen(fd, "a")
 
 
-def overage_args(step, allow_overage):
-    """Claude runs: --allow-overage when the owner gave it; the 5-minute runs (CC5 - CC8) are told which runs to read
-    for an overage stop, since their own writes cannot show it."""
-    if step.get("harness") != "claude":
-        return []
-    if allow_overage:
-        return ["--allow-overage"]
-    if "CLAUDE_CODE_PROMPT_CACHE_TTL=5m" in step["args"]:
-        return ["--stop-if-overage-in", ",".join(s["id"] for s in PARTS["claude"]
-                                                 if "CLAUDE_CODE_PROMPT_CACHE_TTL=5m" not in s["args"])]
-    return []
+def stop_path(date, client):
+    return os.path.join(night_dir(date), "launch", client + ".stop")
 
 
-def launch(name, date, popen=None, out=print, key=None, allow_overage=False):
-    """One client's runs, each its own background process; the lock file is created exclusively before the first,
-    and rewritten with each run's pid as soon as that run is started."""
+def launch(name, date, popen=None, out=print):
+    """One client's runs, each its own background process. The lock file is created exclusively, with the launcher's
+    own pid, before the first run starts, and rewritten with each run's pid as soon as that run is started. Before each
+    start the client's stop mark is looked for: once `stop` wrote it, nothing more starts."""
     popen = popen or subprocess.Popen
     d = make_night_dir(date)
     launch_dir = os.path.join(d, "launch")
@@ -693,18 +648,20 @@ def launch(name, date, popen=None, out=print, key=None, allow_overage=False):
         fd = os.open(lock_path(date, name), os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
     except FileExistsError:
         raise SystemExit(f"--go {name}: launched already for {date}: a second start is refused") from None
-    lock = {"client": name, "date": date, "launch_id": launch_id,
+    lock = {"client": name, "date": date, "launch_id": launch_id, "launcher_pid": os.getpid(),
             "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "runs": {}}
     with os.fdopen(fd, "w") as f:
         json.dump(lock, f)
     logs = os.path.join(ROOT, folders(date)["own"], "logs")
     os.makedirs(logs, exist_ok=True)
-    key = key or key_reader()
     for i, step in enumerate(PARTS[name]):
+        if os.path.lexists(stop_path(date, name)):
+            raise SystemExit(f"--go {name}: stopped (`stop`) after {len(lock['runs'])} of {len(PARTS[name])} runs: "
+                             "nothing more starts")
         delay = delay_of(step, i)
-        argv = command(step, date, launch_id=launch_id, delay=delay) + overage_args(step, allow_overage)
+        argv = command(step, date, launch_id=launch_id, delay=delay)
         with private_log(os.path.join(logs, step["id"] + ".log")) as log:
-            p = popen(["caffeinate", "-i", *argv], cwd=ROOT, env=step_env(step, key), stdout=log,
+            p = popen(["caffeinate", "-i", *argv], cwd=ROOT, env=clean_env(), stdout=log,
                       stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
         lock["runs"][step["id"]] = {"pid": p.pid, "delay_s": delay}
         write_lock(date, name, lock)  # at once: an interrupted launch leaves every started run recorded
@@ -712,11 +669,10 @@ def launch(name, date, popen=None, out=print, key=None, allow_overage=False):
     return lock
 
 
-def go_clients(names, date, popen=None, out=print, key=None, allow_overage=False):
+def go_clients(names, date, popen=None, out=print):
     names = list(CLIENT_PARTS) if names == ["all"] else names
-    guard(names, date, allow_overage)
-    key = key or key_reader()
-    locks = [launch(n, date, popen=popen, out=out, key=key, allow_overage=allow_overage) for n in names]
+    guard(names, date)
+    locks = [launch(n, date, popen=popen, out=out) for n in names]
     out(f"started: {', '.join(names)}; the terminal may be closed. `python3 harness/night.py --date {date} status` "
         "shows which runs are alive.")
     return locks
@@ -803,21 +759,58 @@ def status(date, ps=None, out=print, table=None):
     return counts
 
 
-def stop(target, date, ps=None, killpg=None, out=print, dry=False, table=None):
-    """Signals (SIGTERM, to its process group) exactly the runs of the named client(s) that are alive: those the lock
-    records (pid and command line checked), and any process carrying the launch's id on its command line (a worker of
-    an interrupted launch). A group that ended meanwhile is passed over; the others are still signalled."""
+def launcher_alive(pid, date, ps=None):
+    """The launcher of this night is still running in process `pid` (never this very process): its command line is
+    harness/night.py's, with this night's date and --go."""
+    if not isinstance(pid, int) or pid <= 1 or pid == os.getpid():
+        return False
+    seen = " " + (ps or process_command)(pid) + " "
+    return "night.py" in seen and f" --date {date} " in seen and " --go " in seen
+
+
+def stop(target, date, ps=None, killpg=None, kill=None, out=print, dry=False, table=None, wait=10.0, sleep=None):
+    """Stops the named client(s) for this night, in this order: the stop mark (the launcher starts nothing more once
+    it is there), the launcher itself if it still runs (SIGTERM, then a wait for it to end), then the process group of
+    exactly the client's runs that are alive: those the lock records (pid and command line checked), and any process
+    carrying the launch's id on its command line (a worker of an interrupted launch). A group that ended meanwhile is
+    passed over; the others are still signalled."""
+    refuse_other_clients("stop", [target])
     names = list(CLIENT_PARTS) if target == "all" else [target]
     if any(n not in CLIENT_PARTS for n in names):
         raise SystemExit(f"stop: one of {', '.join(CLIENT_PARTS)}, or all")
-    killpg = killpg or os.killpg
+    killpg, kill, sleep = killpg or os.killpg, kill or os.kill, sleep or time.sleep
     signalled = []
     for name in names:
         lock = read_lock_any(date, name)
+        if dry:
+            out(f"{name}: would write its stop mark <client-home>/night-{date}/launch/{name}.stop. Dry run: nothing "
+                "written.")
+        elif os.path.isdir(night_dir(date)):
+            launch_dir = os.path.join(night_dir(date), "launch")
+            if not os.path.isdir(launch_dir):
+                os.mkdir(launch_dir, 0o700)
+            if not os.path.lexists(stop_path(date, name)):
+                C.write_private(stop_path(date, name), time.strftime("%Y-%m-%dT%H:%M:%SZ\n", time.gmtime()))
+            out(f"{name}: stop mark written: nothing more of it starts this night")
         if lock is None:
-            out(f"{name}: not launched: nothing to stop")
+            out(f"{name}: not launched: no run to stop")
             continue
+        launcher = lock.get("launcher_pid")
+        if launcher_alive(launcher, date, ps):
+            if dry:
+                out(f"{name}: would signal its launcher (pid {launcher}). Dry run: nothing sent.")
+            else:
+                try:
+                    kill(launcher, signal.SIGTERM)
+                    out(f"{name}: its launcher (pid {launcher}) signalled")
+                except ProcessLookupError:
+                    pass
+                waited = 0.0
+                while waited < wait and launcher_alive(launcher, date, ps):
+                    sleep(0.1)
+                    waited += 0.1
         groups = {}
+        lock = read_lock_any(date, name) or lock  # the launcher may have recorded one more run before it ended
         for rid, info in lock.get("runs", {}).items():
             if lock.get("launch_id") and alive(rid, info, lock["launch_id"], ps):
                 groups[info["pid"]] = rid
@@ -839,15 +832,16 @@ def stop(target, date, ps=None, killpg=None, out=print, dry=False, table=None):
     return signalled
 
 
-def dry_run_go(names, date, out=print, allow_overage=False):
+def dry_run_go(names, date, out=print):
     names = list(CLIENT_PARTS) if names == ["all"] else names
-    out(f"`--go {' '.join(names)}`: checks (step 1's snapshot, the smoke results marked, no launch yet of the "
-        f"client(s) for this night), then creates <client-home>/night-{date}/launch/<client>.json exclusively, starts "
-        "each run as its own background process (caffeinate -i, a session of its own) and returns:")
+    out(f"`--go {' '.join(names)}`: checks (step 1's snapshot, the smoke results marked, no launch yet and no stop "
+        f"mark of the client(s) for this night), then creates <client-home>/night-{date}/launch/<client>.json "
+        "exclusively with the launcher's pid, starts each run as its own background process (caffeinate -i, a session "
+        "of its own), looking for the stop mark before each start, and returns:")
     for n in names:
         out(f"  {n}: " + ", ".join(f"{s['id']} (+{delay_of(s, i)} s)" for i, s in enumerate(PARTS[n])))
     for n in names:
-        dry_run(PARTS[n], date, out=out, allow_overage=allow_overage)
+        dry_run(PARTS[n], date, out=out)
     total = sum(len(PARTS[n]) for n in names)
     out(f"Dry run of `--go {' '.join(names)}`: {total} runs; nothing run, nothing sent, nothing written.")
 
@@ -858,12 +852,10 @@ def main(argv=None):
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true", help="say what the command would do; do nothing")
     mode.add_argument("--go", action="store_true", help="run them")
-    ap.add_argument("what", nargs="+", help="smoke | claude | codex | devin | muse | all; or: untouched, login <client>, "
-                                             "smoke-reviewed, status, stop <client>|all")
+    ap.add_argument("what", nargs="+", help="smoke | codex | devin | all; or: untouched, login codex|devin, "
+                                             "smoke-reviewed, status, stop codex|devin|all")
     ap.add_argument("--save", action="store_true")
     ap.add_argument("--report", action="store_true")
-    ap.add_argument("--allow-overage", action="store_true",
-                    help="Claude runs start even when the account is in paid overage (they then use paid usage)")
     a = ap.parse_args(argv)
     head, dry = a.what[0], a.dry_run
     if head == "status":
@@ -877,7 +869,7 @@ def main(argv=None):
         return
     if head == "login":
         if len(a.what) < 2:
-            raise SystemExit("login claude|codex|devin")
+            raise SystemExit("login codex|devin")
         login(a.what[1], a.date, dry=dry)
         return
     if head == "smoke-reviewed":
@@ -890,24 +882,25 @@ def main(argv=None):
         return
     if a.what == ["smoke"]:
         if dry:
-            dry_run(PARTS["smoke"], a.date, allow_overage=a.allow_overage)
+            dry_run(PARTS["smoke"], a.date)
             print(f"Dry run of the smoke runs: {len(PARTS['smoke'])} runs, in the foreground; nothing run, nothing sent.")
         elif a.go:
-            go_smoke(a.date, allow_overage=a.allow_overage)
+            go_smoke(a.date)
         else:
             for s in PARTS["smoke"]:
                 print(f"{s['id']}: {shown(command(s, a.date))}")
         return
     names = a.what
+    refuse_other_clients("--go" if a.go else "night.py", names)
     if dry:
         if names == ["all"] or all(n in CLIENT_PARTS for n in names):
-            dry_run_go(names, a.date, allow_overage=a.allow_overage)
+            dry_run_go(names, a.date)
         else:
             steps = select(names)
             dry_run(steps, a.date)
             print(f"Dry run of {len(steps)} runs: nothing run, nothing sent.")
     elif a.go:
-        go_clients(names, a.date, allow_overage=a.allow_overage)
+        go_clients(names, a.date)
     else:
         for s in select(names):
             print(f"{s['id']}: {shown(command(s, a.date))}")

@@ -141,9 +141,9 @@ off; Claude Code's own retries are switched off. Every new session's first line 
 `harness/client_limits.py` walks an input size through the same clients. It is **not yet trusted**: no own-client
 input limit is published, and a login's input limits stay the proxy's. `harness/night.py` holds the run plan of
 [`docs/own-clients.md`](docs/own-clients.md), section 4, as commands; `--dry-run` prints each one with its tool's own
-dry run and sends nothing, and nothing is sent without `--go`. The first night is the own clients' cache runs only;
-after the smoke runs, `--go <client>` (or `--go all`) starts a client's runs in the background under one lock per
-client (`status`, `stop <client>|all`). [`docs/own-clients-RUN.md`](docs/own-clients-RUN.md) has the steps: the
+dry run and sends nothing, and nothing is sent without `--go`. The first night is the cache runs of Codex CLI and Devin
+CLI only; after the smoke runs, `--go <client>` (or `--go all`) starts a client's runs in the background under one
+lock per client (`status`, `stop <client>|all`). [`docs/own-clients-RUN.md`](docs/own-clients-RUN.md) has the steps: the
 owner's one-time setup, the night, the morning.
 
 ## observed.json
