@@ -45,7 +45,10 @@ It supersedes what the list below says of pi, Provimux, OpenRouter and the super
   through no link, folder 700 and files 600.
 - **Codex** runs with `-c model_provider="openai"` on every command line, and a state folder whose `config.toml`
   selects another provider, a profile or another base URL is refused; the model that answered is read from the
-  thread's session file (its `turn_context`, or a `model_reroute`).
+  thread's session file, and a check counts only when the invocation added exactly one new turn there, with a
+  `turn_context` carrying that turn's id and naming the requested model, and no other model record (a
+  `model_reroute`, a context of another or an older turn); otherwise it is `check-invalid` (`no-model`,
+  `ambiguous-model` or `other-model`), and the builder refuses a Codex check without `model_evidence` `own-turn`.
 - **The smoke review** is checked by `night.py` itself: S3b's cold control (`stop`/`no-observable-cache`) is an
   expected answer; a late control is refused, and a probe whose control can only be checked late stops
   (`control-late`).
@@ -500,8 +503,9 @@ their own, with the three kind names the site's design uses.
 
 **New keys on a cache entry made by `harness/probe.py`** (computed from the raw file, absent on older runs):
 
-- `client_version`: what `<client> --version` printed when the run started. What a client decides changes with
-  its version.
+- `client_version`: the version number in the first line of `<client> --version` when the run started (digits and
+  dots, with at most one simple suffix: `0.171.0`), or `unknown`; nothing else the client printed is kept. What a
+  client decides changes with its version.
 - `written_ttl`, only where the client reports the lifetime of its cache writes (Claude Code): `"1h"` or `"5m"`.
   A run whose writes are mixed is refused.
 

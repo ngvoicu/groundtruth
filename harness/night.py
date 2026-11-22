@@ -25,9 +25,12 @@ own: closing the terminal ends none), each told when to begin (--delay: the star
 client's launch is written once, in a lock file created exclusively (<client-home>/night-<date>/launch/<client>.json:
 the launch's id, the launcher's own pid, written before any run starts, and each run's pid as it starts); a second go
 of that client for that night is refused. Before each start the launcher looks for the client's stop mark
-(launch/<client>.stop) and starts nothing more once it is there. `stop` writes that mark, signals the launcher if it
-still runs, then the process group of exactly the client's runs: those the lock records (pid alive, and its command
-line carrying the run's label and the launch's id), and any process carrying the launch's id.
+(launch/<client>.stop) and starts nothing more once it is there; right after each start (the run's pid recorded) it
+looks again, and a mark found then stops the run it just started and ends the launch. `stop` writes that mark first,
+before it looks anything up; then waits for this night's launcher (found on the process table, lock or no lock) to
+end, at most a few seconds, signalling it if it does not; then signals the process group of exactly the client's runs:
+those the lock records (pid alive, and its command line carrying the run's label and the launch's id), and any
+process carrying this night's launch id for the client.
 
 Every command honours --dry-run: it prints what it would do and does nothing else (no folder, no marker, no lock, no
 signal, no client run). Nothing is sent without --go. The owner's everyday state is protected by isolation (each
@@ -633,11 +636,12 @@ def stop_path(date, client):
     return os.path.join(night_dir(date), "launch", client + ".stop")
 
 
-def launch(name, date, popen=None, out=print):
+def launch(name, date, popen=None, out=print, killpg=None):
     """One client's runs, each its own background process. The lock file is created exclusively, with the launcher's
-    own pid, before the first run starts, and rewritten with each run's pid as soon as that run is started. Before each
-    start the client's stop mark is looked for: once `stop` wrote it, nothing more starts."""
-    popen = popen or subprocess.Popen
+    own pid, before the first run starts, and rewritten with each run's pid as soon as that run is started. The
+    client's stop mark is looked for before each start, and again right after it (the run's pid recorded): a stop
+    written while a run was being started stops that run (its process group signalled) and the launch ends there."""
+    popen, killpg = popen or subprocess.Popen, killpg or os.killpg
     d = make_night_dir(date)
     launch_dir = os.path.join(d, "launch")
     if not os.path.isdir(launch_dir):
@@ -665,14 +669,22 @@ def launch(name, date, popen=None, out=print):
                       stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
         lock["runs"][step["id"]] = {"pid": p.pid, "delay_s": delay}
         write_lock(date, name, lock)  # at once: an interrupted launch leaves every started run recorded
+        if os.path.lexists(stop_path(date, name)):
+            # `stop` came while this run was being started: the run just started is stopped too, and nothing more.
+            try:
+                killpg(p.pid, signal.SIGTERM)  # its own session: its process group is its pid
+            except ProcessLookupError:
+                pass
+            raise SystemExit(f"--go {name}: stopped (`stop`) while starting {step['id']}: it was signalled at once; "
+                             f"{len(lock['runs']) - 1} of {len(PARTS[name])} runs had started before it")
         out(f"{step['id']} pid {p.pid}, begins {delay} s after the go ({step['model']})")
     return lock
 
 
-def go_clients(names, date, popen=None, out=print):
+def go_clients(names, date, popen=None, out=print, killpg=None):
     names = list(CLIENT_PARTS) if names == ["all"] else names
     guard(names, date)
-    locks = [launch(n, date, popen=popen, out=out) for n in names]
+    locks = [launch(n, date, popen=popen, out=out, killpg=killpg) for n in names]
     out(f"started: {', '.join(names)}; the terminal may be closed. `python3 harness/night.py --date {date} status` "
         "shows which runs are alive.")
     return locks
@@ -704,16 +716,16 @@ def alive(run_id, info, launch_id, ps=None):
     return f" --label {run_id} " in seen and f" --launch-id {launch_id} " in seen
 
 
-def launch_mark(date, name, lock):
-    """What a worker of this launch carries on its command line: its launch id, or (lock unreadable: a launch
-    interrupted before writing it) the id's prefix for this night and client."""
-    lid = (lock or {}).get("launch_id")
-    return f" --launch-id {lid} " if lid else f" --launch-id {date}-{name}-"
+def launch_mark(date, name, lock=None):
+    """What every worker of this night and client carries on its command line: the night's launch-id prefix for the
+    client (`--launch-id <date>-<client>-`), whatever the lock says or whether there is one yet (a launch id is
+    `<date>-<client>-<12 hex>`, and there is one launch per client and night)."""
+    return f" --launch-id {date}-{name}-"
 
 
 def workers(date, name, lock, table=None):
-    """{process group: run label} of every process whose command line carries this launch's mark: the workers of an
-    interrupted launch included, whether or not the lock recorded them."""
+    """{process group: run label} of every process whose command line carries this night's launch id for the client:
+    the workers of an interrupted launch, or of a launch whose lock was not there yet, included."""
     mark, found = launch_mark(date, name, lock), {}
     for pid, pgid, cmd in (table or process_table)():
         seen = " " + cmd + " "
@@ -768,68 +780,124 @@ def launcher_alive(pid, date, ps=None):
     return "night.py" in seen and f" --date {date} " in seen and " --go " in seen
 
 
-def stop(target, date, ps=None, killpg=None, kill=None, out=print, dry=False, table=None, wait=10.0, sleep=None):
-    """Stops the named client(s) for this night, in this order: the stop mark (the launcher starts nothing more once
-    it is there), the launcher itself if it still runs (SIGTERM, then a wait for it to end), then the process group of
-    exactly the client's runs that are alive: those the lock records (pid and command line checked), and any process
-    carrying the launch's id on its command line (a worker of an interrupted launch). A group that ended meanwhile is
-    passed over; the others are still signalled."""
+def parent_table():
+    """(pid, parent pid, command line) of every process."""
+    p = subprocess.run(["ps", "-ax", "-o", "pid=,ppid=,command="], capture_output=True, text=True)
+    rows = []
+    for line in p.stdout.splitlines():
+        parts = line.split(None, 2)
+        if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
+            rows.append((int(parts[0]), int(parts[1]), parts[2]))
+    return rows
+
+
+def launchers(date, table=None):
+    """The pids of every launcher of this night that may be running: a process whose command line names
+    harness/night.py, carries --go (or its abbreviation --g) and this night's date, in any form. Never this process nor
+    one of its ancestors (the shell that runs `stop`)."""
+    rows = (table or parent_table)()
+    parent = {pid: ppid for pid, ppid, _ in rows}
+    mine, p = {os.getpid()}, os.getpid()
+    while p in parent and parent[p] not in mine and parent[p] > 1:
+        p = parent[p]
+        mine.add(p)
+    mine.add(os.getppid())
+    found = []
+    for pid, _, cmd in rows:
+        words = cmd.split()
+        if pid in mine or pid <= 1:
+            continue
+        if any(w.endswith("night.py") for w in words) and any(w in ("--go", "--g") for w in words) and date in cmd:
+            found.append(pid)
+    return sorted(found)
+
+
+def stop(target, date, ps=None, killpg=None, kill=None, out=print, dry=False, table=None, wait=10.0, sleep=None,
+         launcher_table=None):
+    """Stops the named client(s) for this night, in this order:
+      1. the stop mark of every named client, before anything is looked up: a launcher that has not yet started a run
+         starts none, and one that is starting a run stops it as soon as it is started (launch);
+      2. a wait until every launcher of this night has ended (each ends by itself once it sees the mark), at most
+         `wait` seconds; one still running then is signalled (SIGTERM) and waited for again;
+      3. the process group of every run of the client that is alive: those the lock records (pid and command line
+         checked), and every process carrying this night's launch id for the client on its command line, whether or
+         not a lock was there when `stop` began; looked for twice, a moment apart, so that a run whose process was
+         still starting is found too. A group that ended meanwhile is passed over; the others are still signalled.
+    Without GROUNDTRUTH_CLIENT_HOME it refuses (the mark cannot be written): set it as for the night."""
     refuse_other_clients("stop", [target])
     names = list(CLIENT_PARTS) if target == "all" else [target]
     if any(n not in CLIENT_PARTS for n in names):
         raise SystemExit(f"stop: one of {', '.join(CLIENT_PARTS)}, or all")
     killpg, kill, sleep = killpg or os.killpg, kill or os.kill, sleep or time.sleep
-    signalled = []
+    if dry:
+        for name in names:
+            out(f"{name}: would write its stop mark <client-home>/night-{date}/launch/{name}.stop, wait for this "
+                "night's launcher to end, then signal its runs. Dry run: nothing written.")
+            for pgid, rid in sorted(groups_of(date, name, ps, table).items()):
+                out(f"{rid}: would signal process group {pgid}. Dry run: nothing sent.")
+        return []
+    # 1. The marks, first.
+    # Made when missing (mode 700), never refused over a folder's mode: a stop always gets its mark written.
+    need_client_home("stop")
+    os.makedirs(os.path.join(night_dir(date), "launch"), mode=0o700, exist_ok=True)
     for name in names:
-        lock = read_lock_any(date, name)
-        if dry:
-            out(f"{name}: would write its stop mark <client-home>/night-{date}/launch/{name}.stop. Dry run: nothing "
-                "written.")
-        elif os.path.isdir(night_dir(date)):
-            launch_dir = os.path.join(night_dir(date), "launch")
-            if not os.path.isdir(launch_dir):
-                os.mkdir(launch_dir, 0o700)
-            if not os.path.lexists(stop_path(date, name)):
-                C.write_private(stop_path(date, name), time.strftime("%Y-%m-%dT%H:%M:%SZ\n", time.gmtime()))
-            out(f"{name}: stop mark written: nothing more of it starts this night")
-        if lock is None:
-            out(f"{name}: not launched: no run to stop")
-            continue
-        launcher = lock.get("launcher_pid")
-        if launcher_alive(launcher, date, ps):
-            if dry:
-                out(f"{name}: would signal its launcher (pid {launcher}). Dry run: nothing sent.")
-            else:
+        if not os.path.lexists(stop_path(date, name)):
+            C.write_private(stop_path(date, name), time.strftime("%Y-%m-%dT%H:%M:%SZ\n", time.gmtime()))
+        out(f"{name}: stop mark written: nothing more of it starts this night")
+    # 2. The launchers: they end by themselves on the mark; one that does not is signalled.
+    def wait_launchers():
+        waited = 0.0
+        while waited < wait:
+            if not launchers(date, launcher_table):
+                return []
+            sleep(0.1)
+            waited += 0.1
+        return launchers(date, launcher_table)
+    left = wait_launchers()
+    if left:
+        for pid in left:
+            try:
+                kill(pid, signal.SIGTERM)
+                out(f"a launcher of this night (pid {pid}) still ran after {wait:g} s: signalled")
+            except ProcessLookupError:
+                pass
+        left = wait_launchers()
+        for pid in left:
+            out(f"a launcher of this night (pid {pid}) still runs: run `stop` again, then `status`")
+    # 3. The runs, by the lock and by the launch id on the process table; looked for again a moment later.
+    signalled, tried = [], set()
+    for attempt in range(2):
+        if attempt:
+            sleep(0.3)
+        for name in names:
+            for pgid, rid in groups_of(date, name, ps, table).items():
+                if pgid in tried:
+                    continue
+                tried.add(pgid)
                 try:
-                    kill(launcher, signal.SIGTERM)
-                    out(f"{name}: its launcher (pid {launcher}) signalled")
+                    killpg(pgid, signal.SIGTERM)
                 except ProcessLookupError:
-                    pass
-                waited = 0.0
-                while waited < wait and launcher_alive(launcher, date, ps):
-                    sleep(0.1)
-                    waited += 0.1
-        groups = {}
-        lock = read_lock_any(date, name) or lock  # the launcher may have recorded one more run before it ended
+                    out(f"{rid}: process group {pgid} had ended")
+                    continue
+                signalled.append(pgid)
+                out(f"{rid}: process group {pgid} stopped")
+    if not signalled:
+        out("no run alive: nothing signalled" + ("" if not left else " (but a launcher still runs: see above)"))
+    return signalled
+
+
+def groups_of(date, name, ps=None, table=None):
+    """{process group: run id} of the client's runs that are alive: those the lock records (pid alive and its command
+    line that run's, of this launch), and every process carrying this night's launch id for the client."""
+    groups = {}
+    lock = read_lock_any(date, name)
+    if lock:
         for rid, info in lock.get("runs", {}).items():
             if lock.get("launch_id") and alive(rid, info, lock["launch_id"], ps):
                 groups[info["pid"]] = rid
-        for pgid, label in workers(date, name, lock, table).items():
-            groups.setdefault(pgid, label)
-        for pgid, rid in groups.items():
-            if dry:
-                out(f"{rid}: would signal process group {pgid}. Dry run: nothing sent.")
-                continue
-            try:
-                killpg(pgid, signal.SIGTERM)
-            except ProcessLookupError:
-                out(f"{rid}: process group {pgid} had ended")
-                continue
-            signalled.append(pgid)
-            out(f"{rid}: process group {pgid} stopped")
-    if not dry and not signalled:
-        out("no run alive: nothing signalled")
-    return signalled
+    for pgid, label in workers(date, name, lock, table).items():
+        groups.setdefault(pgid, label)
+    return groups
 
 
 def dry_run_go(names, date, out=print):

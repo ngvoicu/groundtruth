@@ -410,12 +410,17 @@ class Point6Model(unittest.TestCase):
                           run=run)
             turn[:] = [ctx]
             luna = s.resume(tid, "p").record()
+            self.assertEqual((luna["model"], luna["model_evidence"]), ("gpt-6-luna", "own-turn"))
+            # (At 7cc500c a turn that also carried a record of the earlier turn, or a reroute, gave a model; now the
+            # earlier turn's id, or two models for one turn, make it ambiguous: test_fifth_review.)
             turn[:] = [done, dict(ctx, payload=dict(ctx["payload"], turn_id="t2")), dict(reroute, payload=dict(
                 reroute["payload"], turn_id="t2"))]
-            astra = s.resume(tid, "p").record()
-            self.assertEqual((luna["model"], astra["model"]), ("gpt-6-luna", "gpt-6-astra"))
+            u = s.resume(tid, "p")
+            self.assertEqual((u.model, u.model_issue), (None, "ambiguous-model"))
             turn[:] = [started]
-            self.assertIsNone(s.resume(tid, "p").model)
+            u = s.resume(tid, "p")
+            self.assertEqual((u.model, u.model_issue), (None, "no-model"))
+            astra = dict(luna, model="gpt-6-astra")
             # The builder: warm checks answered by Astra under the scheduled Luna entry.
             start = {"event": "start", "harness": "codex", "client_version": "f", "isolation": probe.ISOLATION,
                      "model": "gpt-6-luna", "at": "2026-11-23T20:00:00Z"}
@@ -425,7 +430,7 @@ class Point6Model(unittest.TestCase):
             path = os.path.join(t, "CX6.jsonl")
             write(path, "".join(json.dumps(x) + "\n" for x in rows))
             run = {"id": "CX6", "file": path, "route": "codex-subscription", "model": "gpt-6-luna"}
-            with self.assertRaisesRegex(SystemExit, "answered by gpt-6-astra"):
+            with self.assertRaisesRegex(SystemExit, "answered by .?gpt-6-astra"):
                 B.build_cache({"runs": [run]})
             for r in rows[2:4]:
                 r["usage"] = luna

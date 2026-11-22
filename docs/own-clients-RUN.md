@@ -43,8 +43,9 @@ So you can use your computer and your tools as usual during the night, Codex and
 subscription (about 1,620 requests), each through its own client. A login's quota is the account's own: start when
 the plans' meters are low.
 
-**Devin's account history.** 823 Devin sessions from the night (819 in the runs, 4 in the smoke runs, before any
-retried priming) will appear in the owner's Devin account history. Each one's first line is `groundtruth cache
+**Devin's account history.** Up to about 820 Devin sessions from the night (819 if every run goes to its end, 4 in
+the smoke runs) will appear in the owner's Devin account history: fewer if a control misses (that run ends after its
+control), one more for each priming that is tried again. Each one's first line is `groundtruth cache
 measurement <salt> (an automated test, not a task).` (the Devin CLI cannot name a session). Nothing deletes them.
 
 **1. The folders and the snapshot, before any login** (1 minute). `$G` must be a local folder, outside the
@@ -76,8 +77,10 @@ python3 harness/night.py --date $N login devin      # the Devin account
 Codex is told to keep its login in a file (`$G/codex-cli/auth.json`) and to use its built-in ChatGPT provider
 (`model_provider="openai"`); every Codex run says the same on its command line, and a `$G/codex-cli/config.toml`
 that selects another provider, a profile or another base URL is refused. Before every run the night checks each
-login's status, with the same folders, and refuses an API key. Never run `devin auth logout`, and never copy an
-everyday login file. No key goes in the Keychain for this night.
+login's status, with the same folders, and refuses an API key; a status that does not positively say it is logged in
+(Codex: `Logged in using ChatGPT`; Devin: `Logged in`, `Logged in as …`) is refused too, whatever its exit code. Never
+run `devin auth logout`, and never copy an everyday login file. Neither login asks you to put anything in the Keychain,
+and Codex is told to keep its login in a file.
 
 **3. A look at the report** (1 minute).
 
@@ -87,8 +90,13 @@ python3 harness/night.py --date $N untouched --report
 
 It lists what changed since step 1, folder by folder, and the Keychain's items by name; every line is in the file it
 names, under `$G/night-$N/` (mode 600). Changes your own tools made meanwhile may appear, and that is expected.
-Nothing of the night's should appear in your Keychain: an item added or changed by Codex or Devin after step 2 is a
-question for whoever maintains `harness/clients.py`, with the report.
+
+What the Keychain part shows, and what it cannot: it compares the items' names and modification dates at step 1 with
+those now, so it shows an item **added, removed or changed between those two moments** that it could list both times,
+whoever did it. It cannot prove that no key was written: an item written and removed again between the two moments,
+an item a listing does not show, or a secret read, leaves no line in it; and if the Keychain could not be listed, it
+says so instead. An item added or changed by Codex or Devin after step 2 is a question for whoever maintains
+`harness/clients.py`, with the report.
 
 The owner's part ends here.
 
@@ -119,9 +127,11 @@ its priming is left out, so a sleeping computer loses checks, not truth.
   its pid is alive and that process is that run of this launch. How a run ended is in its results file
   (`results/own-clients-$N/<id>.jsonl`), and its console output in `results/own-clients-$N/logs/<id>.log`.
 - **Stopping**: `python3 harness/night.py --date $N stop <client>` (or `stop all`) first writes the client's stop mark
-  (`$G/night-$N/launch/<client>.stop`: a launcher still starting runs starts no more), then signals the launcher if it
-  still runs, then exactly that client's runs that are alive: those its launch file records, and any process carrying
-  its launch's id. Nothing more of that client starts that night. `--dry-run stop all` names them and does nothing. A
+  (`$G/night-$N/launch/<client>.stop`), before it looks anything up: a launcher starts no run after it, and stops at
+  once a run it was just starting. Then it waits (a few seconds at most) for the night's launcher to end, signalling it
+  if it does not, and then signals exactly that client's runs that are alive: those its launch file records, and any
+  process carrying the night's launch id for that client, launch file or not. It needs `GROUNDTRUTH_CLIENT_HOME` set
+  as for the night (it refuses without it). Nothing more of that client starts that night. `--dry-run stop all` names them and does nothing. A
   run also stops by itself on a quota refusal or a missed or late control.
 
 ### The smoke review (step 3)
@@ -132,8 +142,10 @@ version and the isolation; exactly one check, the control, made in time (not lat
 naming the model that answered; no failed, invalid, refused or retried request; the last line `done` with the control
 warm. S3b asks whether Devin still reports no cached token for `gpt-6-1-terra`: a cold control there, ending
 `stop`/`no-observable-cache`, is the expected answer and is noted, not refused. A late control is refused everywhere,
-and so is a check without its own model evidence (`check-invalid`, `no-model`): for Codex this shows whether its
-session file names each turn's model; if S2 shows it, the Codex runs would measure nothing, so hand it to whoever
+and so is a check whose answering model is not certain (`check-invalid`, `no-model`, `ambiguous-model` or
+`other-model`). For Codex a check counts only when its session file shows exactly one new turn for that invocation,
+with a model record carrying that turn's id, naming the requested model, and no other model record since the
+invocation began. If S2 shows `no-model` or `ambiguous-model`, the Codex runs would measure nothing: hand it to whoever
 maintains `harness/clients.py`.
 
 Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each invocation's raw output, redacted, is in
@@ -142,8 +154,9 @@ Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each inv
 
 - [ ] `--go smoke` ended with "the smoke results pass the automatic checks".
 - [ ] Each file's first line shows `"confinement": "sandbox-exec: …"`.
-- [ ] `S2.jsonl`'s first line shows `model_provider="openai"` in both commands, and its check's `"usage"` has a
-      `"model"`.
+- [ ] `S2.jsonl`'s first line shows `model_provider="openai"` in both commands and a `"client_version"` that is a
+      version number (`unknown` means the client's `--version` printed something else: note it), and its check's
+      `"usage"` has `"model": "gpt-6-luna"` and `"model_evidence": "own-turn"`.
 - [ ] `S3.jsonl`'s first line shows `"process_model": "in-process"` and `"keepalive_max_pings": 0` under `"devin"`.
 - [ ] `ls -A "$G"/home/*` shows what each client wrote in its throwaway home. Note anything there for the
       maintainer; it needs no action.
@@ -173,4 +186,5 @@ Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each inv
      with the reason;
    - run `python3 scripts/build_observed.py`, then `python3 scripts/build_observed.py --check`. The builder refuses a
      check that was not one explicit model request, or that names no model of its own turn, or another model than
-     the manifest's.
+     the manifest's, or (Codex) whose model is not bound to its own turn (`model_evidence` `own-turn`); a client
+     version is published only as a version number, anything else as `unknown`.

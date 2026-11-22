@@ -578,13 +578,16 @@ class FindingM1CodexModel(unittest.TestCase):
                 return 0, f["stdout"], ""
             s = C.Session(C.Codex("gpt-6-luna"), env={}, io=t + "/io", work=t + "/work", home=os.path.join(t, "state"),
                           run=run)
-            turn[:] = [{"type": "turn_context", "payload": {"model": "gpt-6-luna", "cwd": "/w"}},
+            turn[:] = [{"type": "turn_context", "payload": {"model": "gpt-6-luna", "cwd": "/w", "turn_id": "t1"}},
                        {"type": "event_msg", "payload": {"type": "token_count"}}]
             self.assertEqual(s.resume(tid, "p").model, "gpt-6-luna")
-            turn[:] = [{"type": "turn_context", "payload": {"model": "gpt-6-luna", "cwd": "/w"}},
+            # A reroute (Codex's ModelRerouteEvent carries no turn id) is a model record of no turn: the check's model
+            # is not certain (since the fifth review; it was recorded as the rerouted model before).
+            turn[:] = [{"type": "turn_context", "payload": {"model": "gpt-6-luna", "cwd": "/w", "turn_id": "t2"}},
                        {"type": "event_msg", "payload": {"type": "model_reroute", "from_model": "gpt-6-luna",
                                                          "to_model": "gpt-6-astra"}}]
-            self.assertEqual(s.resume(tid, "p").model, "gpt-6-astra")
+            u = s.resume(tid, "p")
+            self.assertEqual((u.model, u.model_issue), (None, "ambiguous-model"))
 
 
 class FindingM3Waves(unittest.TestCase):

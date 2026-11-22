@@ -79,6 +79,19 @@ def age_label(seconds):
     return f"{seconds}s"
 
 
+# The one form a client version takes in observed.json (harness/clients.py, VERSION_TOKEN: the same pattern): digits
+# and dots, with at most one simple suffix. Anything else a raw file records as a version is published as `unknown`.
+VERSION_TOKEN = re.compile(r"[0-9]{1,6}(?:\.[0-9]{1,6}){1,3}(?:-[A-Za-z0-9][A-Za-z0-9.]{0,23})?")
+
+
+def public_version(value):
+    """A recorded client version as observed.json may publish it: the value when it is exactly a version token, else
+    `unknown`; None when the run recorded none."""
+    if value is None:
+        return None
+    return value if isinstance(value, str) and VERSION_TOKEN.fullmatch(value) else "unknown"
+
+
 def read_harness(path):
     """harness/probe.py event log: one JSON object per line."""
     with open(os.path.join(ROOT, path)) as f:
@@ -109,6 +122,18 @@ def read_harness(path):
             # M-1: a check whose own turn named no model is not a measurement of the manifest's model.
             raise SystemExit(f"{path}: a check at {r.get('age')} has no model evidence of its own turn: not published "
                              "(the run goes in excluded, or its file is repaired from the probe)")
+        own = start["at"][:10] >= OWN_CLIENTS_SINCE and start.get("isolation")
+        if u.get("model_issue"):
+            raise SystemExit(f"{path}: a check at {r.get('age')} records {u['model_issue']!r}: its answering model is not "
+                             "certain; not published")
+        if own and start.get("harness") == "codex" and u.get("model_evidence") != "own-turn":
+            # Codex names no model in its output: only a model bound to the check's own single new turn, and equal to
+            # the requested one (harness/clients.py, codex_answer), says which model answered.
+            raise SystemExit(f"{path}: a Codex check at {r.get('age')} has no model evidence bound to its own turn "
+                             "(model_evidence own-turn): not published (the run goes in excluded)")
+        if own and start.get("harness") == "codex" and u.get("model") != start.get("model"):
+            raise SystemExit(f"{path}: a Codex check at {r.get('age')} was answered by {u.get('model')!r}, not the "
+                             f"requested {start.get('model')!r}: not published")
         if u.get("model"):
             answered.add(u["model"])
         if r.get("late"):
@@ -126,13 +151,15 @@ def read_harness(path):
         "checks": checks,
         "late": late,
         "effort": start.get("effort"),
-        "client_version": start.get("client_version"),
+        "client_version": public_version(start.get("client_version")),
         "client_env": start.get("client_env") or {},
         "isolation": start.get("isolation"),
         "any_cached": any((u.get("cached") or 0) > 0 or (u.get("raw") or {}).get("cached") for u in usages),
         "written_ttls": sorted(ttls),
         "stop": next((r.get("reason") for r in rows if r["event"] == "stop"), None),
         "answered_models": sorted(answered),
+        "requested_model": start.get("model"),
+        "exact_model": start.get("harness") == "codex",
     }
 
 
@@ -222,7 +249,12 @@ def same_model(answered, manifest):
 
 def check_answered_model(run, data):
     """M-1: a check answered by another model than the manifest's is never published under the manifest's model."""
-    other = [m for m in data.get("answered_models") or [] if not same_model(m, run["model"])]
+    same = (lambda a, m: a == m) if data.get("exact_model") else same_model
+    other = [m for m in data.get("answered_models") or [] if not same(m, run["model"])]
+    asked = data.get("requested_model")
+    if data.get("exact_model") and asked is not None and asked != run["model"]:
+        raise SystemExit(f"{run['id']}: the run asked for {asked}, not the manifest's {run['model']}: not published "
+                         "under that model")
     if other:
         raise SystemExit(f"{run['id']}: its checks were answered by {', '.join(other)}, not {run['model']} (a reroute): "
                          "not published under that model; the run goes in excluded")

@@ -11,7 +11,8 @@ so the loops know no client by name (docs/own-clients.md, sections 1 and 5).
     parse()       a pure function of what the client printed: a Usage, or Refused / ClientError
     preflight()   the state folder's own settings checked against the route (Codex: the provider its config selects)
     allowed_link() the links a client itself makes in its state folder that may leave it (Codex's two helpers)
-    answered_model() the model that answered, where the output leaves it out (Codex: its session file)
+    answered_model() the model that answered, where the output leaves it out (Codex: its session file, bound to the
+                  invocation's one new turn by its id, and only when it is the requested model)
 
 Every client process runs under sandbox-exec on macOS (confine): no file write under the owner's home folder except
 in its state folder, its throwaway HOME and its temporary folder.
@@ -48,13 +49,22 @@ def throwaway_home(state):
     return os.path.join(os.path.dirname(state.rstrip(os.sep)), "home", os.path.basename(state.rstrip(os.sep)))
 
 
-VERSION_TEXT = re.compile(r"[A-Za-z0-9 ._()+-]{1,80}")
+# A client's version as a public record may hold it: digits and dots (two to four numbers), and at most one simple
+# suffix after a hyphen, from letters, digits and dots (`0.171.0`, `3000.14.30821`, `1.2.0-beta.1`). Nothing else of
+# what the client printed is ever kept: scripts/build_observed.py applies the same pattern (VERSION_TOKEN there).
+VERSION_TOKEN = re.compile(r"[0-9]{1,6}(?:\.[0-9]{1,6}){1,3}(?:-[A-Za-z0-9][A-Za-z0-9.]{0,23})?")
+UNKNOWN_VERSION = "unknown"
 
 
-def version_text(line):
-    """A client's version line as a public record may hold it: letters, digits, spaces and ._()+- only."""
-    line = (line or "").strip()
-    return line if VERSION_TEXT.fullmatch(line) else "unrecognised"
+def version_text(text):
+    """The version token of a client's `--version` output: taken from its first line only, the one whitespace-separated
+    word there that matches VERSION_TOKEN exactly (`codex-cli 0.171.0` -> `0.171.0`, `devin 3000.14.30821 (a09c...)` ->
+    `3000.14.30821`). No such word, or more than one: `unknown`. Whatever else the client printed (a warning, a path)
+    is never recorded."""
+    lines = (text or "").strip().splitlines()
+    first = lines[0] if lines else ""
+    found = [w for w in first.split() if VERSION_TOKEN.fullmatch(w)]
+    return found[0] if len(found) == 1 else UNKNOWN_VERSION
 
 
 def throwaway_tmp(state):
@@ -73,6 +83,10 @@ class Usage:
     model: str | None = None
     write_5m: int | None = None
     write_1h: int | None = None
+    # Codex: why the answering model is not known for certain (`no-model`, `ambiguous-model`, `other-model`), or None;
+    # and, when it is, `own-turn` (bound to this invocation's one new turn, and the requested model).
+    model_issue: str | None = None
+    model_evidence: str | None = None
     handle: str | None = None  # the session id the client reported (Codex thread, Devin session); not logged here
 
     def record(self):
@@ -102,6 +116,8 @@ class ClientError(Exception):
 # path, anything) go only to the run's console log, redacted, never into a public file.
 ERROR_KINDS = ("timeout", "spawn", "exit-nonzero", "quota", "input", "client-cap", "parse", "no-usage", "wrong-turn",
                "not-one-call", "no-model", "login", "other")
+# Why a check's answering model is not taken (harness/probe.py logs the check `check-invalid` with this reason).
+MODEL_ISSUES = ("no-model", "ambiguous-model", "other-model")
 
 
 def error_kind(e):
@@ -225,12 +241,12 @@ class Client:
         return lambda rel, target: self.allowed_link(rel, target, env)
 
     def answered_model(self, state, handle, after=None):
-        """The model that answered, where the client's output leaves it out but its state folder has it (Codex): only
-        a turn newer than `after` (turn_mark before the invocation) counts, never an earlier turn's model."""
-        return None
+        """(model, issue, evidence): the model that answered, where the client's output leaves it out but its state
+        folder has it (Codex), bound to this invocation (`after`: turn_mark before it). The others: nothing to add."""
+        return None, None, None
 
     def turn_mark(self, state, handle):
-        """How many turns the session's record holds before an invocation (Codex), or None."""
+        """What the session's record holds before an invocation (Codex: its file, size and turn ids), or None."""
         return None
 
     def version_command(self):
@@ -251,7 +267,8 @@ class Client:
             # What the client printed is redacted whole, then clipped (never clipped first: a clipped key escapes its
             # redaction); it reaches only the console log.
             raise ClientError(f"{self.binary} --version failed: {redact(err or out)[-300:]}", kind="exit-nonzero")
-        return version_text(redact(line[-1].strip()))
+        # Only the version token of the first line (version_text); anything else the client printed is dropped.
+        return version_text((out or err).strip())
 
     # --- one invocation -----------------------------------------------------------------------------------------
     def new_session(self):
@@ -338,57 +355,99 @@ class Claude(Client):
                      handle=result.get("session_id"))
 
 
-def codex_turns(path):
-    """(number of turns, model evidence of the last turn) of a Codex session file (see Codex.answered_model). A record
-    with a turn id other than the current turn's starts a new turn (a `task_complete` of a turn never announced
-    included), so a turn without its own `turn_context` or `model_reroute` has no model; records without ids are
-    grouped by their kind (a second `turn_context` or `task_started` is a new turn)."""
-    turns = []  # each: {"id", "started", "ctx", "model"}
+# The records of a Codex session file that bear on which model answered a turn, and on which turn a record is of.
+CODEX_MODEL_RECORDS = ("turn_context", "model_reroute")
+CODEX_TURN_EVENTS = ("task_started", "task_complete", "turn_started", "turn_complete", "turn_aborted")
 
-    def turn(tid, flag=None):
-        cur = turns[-1] if turns else None
-        if cur is not None:
-            if tid and cur["id"] == tid:
-                return cur
-            if tid and not cur["id"] and (flag is None or not cur[flag]):
-                cur["id"] = tid
-                return cur
-            if not tid and (flag is None or not cur[flag]):
-                return cur
-        new = {"id": tid, "started": False, "ctx": False, "model": None}
-        turns.append(new)
-        return new
+
+def codex_records(path, start=0):
+    """[(kind, turn id or None, model or None)] of the records of a Codex session file from byte `start` on: every
+    `turn_context` (its model), every `model_reroute` (the model it rerouted to), every turn event, and any other
+    record that carries a turn id (kind `other`). A line that is not JSON is kind `unreadable`."""
+    out = []
+    with open(path, "rb") as f:
+        f.seek(start)
+        data = f.read()
+    for raw in data.decode("utf-8", "replace").splitlines():
+        if not raw.strip():
+            continue
+        try:
+            d = json.loads(raw)
+        except ValueError:
+            out.append(("unreadable", None, None))
+            continue
+        if not isinstance(d, dict):
+            continue
+        p = d.get("payload") if isinstance(d.get("payload"), dict) else {}
+        tid = p.get("turn_id") if isinstance(p.get("turn_id"), str) and p.get("turn_id") else None
+        if d.get("type") == "turn_context":
+            out.append(("turn_context", tid, p.get("model") if isinstance(p.get("model"), str) else None))
+        elif d.get("type") == "event_msg" and p.get("type") == "model_reroute":
+            out.append(("model_reroute", tid, p.get("to_model") if isinstance(p.get("to_model"), str) else None))
+        elif d.get("type") == "event_msg" and p.get("type") in CODEX_TURN_EVENTS:
+            out.append((p["type"], tid, None))
+        elif tid:
+            out.append(("other", tid, None))
+    return out
+
+
+def codex_mark(path):
+    """What a Codex session file holds before an invocation: its path, its size and every turn id in it."""
+    if not path:
+        return {"path": None, "size": 0, "ids": []}
     try:
-        with open(path, errors="replace") as f:
-            for line in f:
-                if not any(k in line for k in ('"turn_context"', '"turn_id"', '"model_reroute"', '"task_started"')):
-                    continue
-                try:
-                    d = json.loads(line)
-                except ValueError:
-                    continue
-                p = d.get("payload") or {}
-                tid = p.get("turn_id") if isinstance(p.get("turn_id"), str) else None
-                if d.get("type") == "turn_context":
-                    t = turn(tid, "ctx")
-                    t["ctx"] = True
-                    t["model"] = p["model"] if isinstance(p.get("model"), str) else None
-                elif d.get("type") == "event_msg" and p.get("type") == "task_started":
-                    turn(tid, "started")["started"] = True
-                elif d.get("type") == "event_msg" and p.get("type") == "model_reroute":
-                    t = turn(tid) if tid else (turns[-1] if turns else None)
-                    if t is not None and isinstance(p.get("to_model"), str):
-                        t["model"] = p["to_model"]
-                elif tid:
-                    turn(tid)  # any other record of a turn: a new id is a new turn, with no model evidence yet
+        size = os.path.getsize(path)
+        ids = sorted({tid for _, tid, _ in codex_records(path) if tid})
     except OSError:
-        return 0, None
-    return len(turns), (turns[-1]["model"] if turns else None)
+        return {"path": None, "size": 0, "ids": [], "unreadable": True}
+    return {"path": path, "size": size, "ids": ids}
 
 
-def codex_turn_model(path):
-    """The model evidence of the last turn of a Codex session file, or None."""
-    return codex_turns(path)[1]
+def codex_answer(path, mark, requested):
+    """(model, issue, evidence) of the one invocation that ran after `mark` (codex_mark before it), read from the
+    records it added to the session file. The check counts only when:
+      - the records added carry exactly one turn id, never seen before in the file (a repeated or older id is not
+        this invocation's turn), and every turn record added carries an id;
+      - every model record added (`turn_context`, `model_reroute`) carries that turn's id, and together they name
+        exactly one model;
+      - that model is the requested one.
+    Otherwise: `no-model` (no new turn, or a new turn with no model record), `ambiguous-model` (a model record of no
+    turn or of another turn, an older turn id, two new turns, two models for the turn, a file that changed under the
+    mark, or a line that cannot be read), or `other-model` (one clear model, not the requested one)."""
+    if not path:
+        return None, "no-model", None
+    if mark is None or mark.get("unreadable") or (mark.get("path") and mark["path"] != path):
+        return None, "ambiguous-model", None
+    try:
+        if os.path.getsize(path) < mark["size"]:
+            return None, "ambiguous-model", None
+        records = codex_records(path, mark["size"])
+    except OSError:
+        return None, "ambiguous-model", None
+    if any(kind == "unreadable" for kind, _, _ in records):
+        return None, "ambiguous-model", None
+    old = set(mark.get("ids") or ())
+    ids = []
+    for kind, tid, _ in records:
+        if tid and tid not in ids:
+            ids.append(tid)
+        if not tid and kind != "other":
+            return None, "ambiguous-model", None  # a turn or model record of no turn
+    if any(t in old for t in ids) or len(ids) > 1:
+        return None, "ambiguous-model", None
+    if not ids:
+        return None, "no-model", None
+    models = {m for kind, tid, m in records if kind in CODEX_MODEL_RECORDS}
+    if any(kind in CODEX_MODEL_RECORDS and not m for kind, _, m in records):
+        return None, "ambiguous-model", None  # a model record without a model name
+    if not models:
+        return None, "no-model", None
+    if len(models) > 1:
+        return None, "ambiguous-model", None
+    model = models.pop()
+    if model != requested:
+        return model, "other-model", None
+    return model, None, "own-turn"
 
 
 # The item types of a Codex turn that are not a tool call: a turn with any other item made more than one request.
@@ -455,22 +514,15 @@ class Codex(Client):
         return found[-1] if found else None
 
     def turn_mark(self, state, handle):
-        path = self.rollout(state, handle)
-        return codex_turns(path)[0] if path else 0
+        # A new session (no handle yet): its file is all this invocation's.
+        return codex_mark(self.rollout(state, handle) if handle else None)
 
     def answered_model(self, state, handle, after=None):
-        """From the thread's session file in CODEX_HOME/sessions: the model of the thread's last turn, the one just
-        measured: its `turn_context` model, or the model the server rerouted it to (`model_reroute`, to_model). The
-        evidence is bound to that turn: the last turn must be newer than `after` (the count before the invocation),
-        and a turn without its own model evidence is unknown (None), never the previous turn's. `codex exec --json`
-        prints neither. Only that one string is read out; the file stays in the state folder."""
-        path = self.rollout(state, handle)
-        if not path:
-            return None
-        count, model = codex_turns(path)
-        if after is not None and count <= after:
-            return None
-        return model
+        """From the thread's session file in CODEX_HOME/sessions (`codex exec --json` prints no model): the model of
+        the one turn this invocation added, bound to it by its turn id, and only when it is the requested model (see
+        codex_answer; `after` is turn_mark before the invocation). Only that one string is read out; the file stays in
+        the state folder."""
+        return codex_answer(self.rollout(state, handle), after, self.model)
 
     def command(self, prompt_file, resume=None, session=None, files=None):
         base = ["--json", "--skip-git-repo-check", "-m", self.model, *self._config()]
@@ -787,9 +839,26 @@ def login_ok(client, code, out, err):
         if not re.search(r"logged in using chatgpt", text, re.I):
             return "the status does not say 'Logged in using ChatGPT'"
         return None
+    if client.harness == "devin":
+        # A positive login only: a line that says it is logged in, and nothing that says otherwise. The exit code alone
+        # (0 with `Not logged in`, or with nothing printed) is never a login.
+        if re.search(r"api[ _-]?key", text, re.I):
+            return "the status names an API key"
+        if DEVIN_NOT_LOGGED_IN.search(text):
+            return "the status does not show a login (it says it is not logged in, or that the login lapsed)"
+        if not any(DEVIN_LOGGED_IN.match(line.strip()) for line in text.splitlines()):
+            return "the status does not say 'Logged in'"
+        return None
     if re.search(r"api[ _-]?key", text, re.I):
         return "the status names an API key"
     return None
+
+
+# The Devin CLI's status: a line `Logged in`, `Logged in.`, `Logged in as <who>` or `Logged in (via <how>)` (the wording
+# in its 3000.14 binary), and none of its negative wordings.
+DEVIN_LOGGED_IN = re.compile(r"logged in(?:\.?$|\s+as\s+\S|\s+\(via\s+\S)", re.I)
+DEVIN_NOT_LOGGED_IN = re.compile(r"not\s+(?:logged|signed)\s+in|logged\s+out|log\s*in\s+first|re-?authenticat"
+                                 r"|expired|not\s+authori[sz]ed|no\s+credentials|WINDSURF_", re.I)
 
 
 def state_folder(client, base, root, user_home=None, env=None, run=None, check_login=True):
@@ -985,7 +1054,7 @@ class Session:
             f.write(prompt)
         argv = self.client.command(pf, resume=resume, session=session, files=files)
         # The session's turns before this invocation: a model read from its record afterwards must be a newer turn's.
-        mark = self.client.turn_mark(self.home, resume) if resume else 0
+        mark = self.client.turn_mark(self.home, resume)
         if self.client.prompt_mode == "arg":
             argv = [prompt if a == pf else a for a in argv]
         if self.writable is not None:
@@ -1040,8 +1109,12 @@ class Session:
             u.handle = resume or session
         if u.model is None:
             # Only this invocation's own turn: never a model carried over from an earlier one.
-            u.model = self.client.answered_model(self.home, u.handle, after=mark)
-        u.model = model_text(self.redact(str(u.model))) if u.model is not None else None
+            u.model, u.model_issue, u.model_evidence = self.client.answered_model(self.home, u.handle, after=mark)
+        if u.model is not None:
+            shown = model_text(self.redact(str(u.model)))
+            if shown != u.model:
+                # A model name a public record cannot hold as it is: no model evidence at all.
+                u.model, u.model_issue, u.model_evidence = None, "no-model", None
         return u
 
     def start(self, prompt):

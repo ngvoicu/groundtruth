@@ -168,7 +168,7 @@ subscription routes that have no public API (a ChatGPT plan through Codex, Devin
 - **`cache`**: one entry per run. `route` (whose account), `client` (what sent the requests), `model` (the id on that
   route), `options` (anything that changes caching: an explicit ttl, a retention setting, reasoning level) and
   `checks`, the raw counts per age: `{ "age": "30m", "age_s": 1800, "warm": 3, "total": 3 }`. A run of
-  `harness/probe.py` adds `client_version` (what `<client> --version` printed), and `written_ttl` (`1h` or `5m`)
+  `harness/probe.py` adds `client_version` (the version number `<client> --version` printed, or `unknown`), and `written_ttl` (`1h` or `5m`)
   where the client reports the lifetime of its cache writes (Claude Code); a run whose writes are mixed, or whose
   options ask a ttl its writes do not show, is refused. An own-client run in which no reply reported a cached token
   measured nothing: it goes in `excluded`, never in `cache`.

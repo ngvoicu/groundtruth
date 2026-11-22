@@ -195,9 +195,12 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
             log({"event": "check-invalid", **base, "reason": "not-one-call", "usage": r, "prime": primed})
             watch(r)
             return None
-        if not r.get("model"):
-            # No model evidence of this turn's own: not a measurement (it could have been answered by another model).
-            log({"event": "check-invalid", **base, "reason": "no-model", "usage": r, "prime": primed})
+        issue = r.get("model_issue")
+        if issue or not r.get("model"):
+            # No model evidence of this turn's own, evidence that is not certainly this turn's, or another model than
+            # the one asked for (Codex: clients.codex_answer): not a measurement of the requested model.
+            log({"event": "check-invalid", **base, "reason": issue if issue in C.MODEL_ISSUES else "no-model",
+                 "usage": r, "prime": primed})
             watch(r)
             return None
         watch(r)

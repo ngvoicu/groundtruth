@@ -1,0 +1,414 @@
+"""The final check of the first night at 7cc500c (the fifth review): its three blocking cases and two wording notes,
+each replayed from the review's receipts. Every test here fails at 7cc500c. Nothing is sent and no real client is
+run: stand-in programs, stand-in workers and stand-in launchers, in temporary folders.
+
+    python3 -m unittest discover -s test -p "test_*.py"
+"""
+import io
+import json
+import os
+import signal
+import subprocess
+import sys
+import tempfile
+import time
+import unittest
+import uuid
+from contextlib import redirect_stdout, redirect_stderr
+from unittest import mock
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+sys.path.insert(0, os.path.join(ROOT, "harness"))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+sys.path.insert(0, HERE)
+import clients as C  # noqa: E402
+import night  # noqa: E402
+import probe  # noqa: E402
+import build_observed as B  # noqa: E402
+import test_second_review as R2  # noqa: E402  (as a module: its tests are not collected twice)
+from test_probe import FakeClock  # noqa: E402
+
+Owner = R2.Owner
+write, DATE = R2.write, R2.DATE
+SAVED = os.path.join(HERE, "fixtures", "review5")  # the review's own probe output at 7cc500c (publication.log)
+MODEL = "gpt-6-luna"
+WARNING = "codex-cli 0.171.0\nCould not load private workspace Acme Payroll"
+
+
+def build(path, model=MODEL):
+    return B.build_cache({"runs": [{"id": "CX6", "route": "codex-subscription", "file": path, "model": model}]})[0]
+
+
+class CodexNight(Owner):
+    """The review's end-to-end replay (end_to_end.py): the real probe and builder, a stand-in Codex whose session file
+    each variant writes; at 150 s the stand-in's answer comes from gpt-6-astra (except `matching-evidence`)."""
+
+    def run_case(self, variant):
+        base = self.client_home()
+        state = os.path.join(base, "codex-cli")
+        write(os.path.join(state, "auth.json"), "{}", 0o600)
+        clock, sessions = FakeClock(), {}
+
+        def append(sid, events):
+            path = os.path.join(state, "sessions", "2099", "01", "01", f"rollout-2099-01-01T00-00-00-{sid}.jsonl")
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "a") as f:
+                f.write("".join(json.dumps(e) + "\n" for e in events))
+
+        def ev(kind, turn, **kv):
+            payload = dict(type=kind, **kv)
+            if turn:
+                payload["turn_id"] = turn
+            return {"type": "event_msg", "payload": payload}
+
+        def ctx(turn, model=MODEL):
+            return {"type": "turn_context", "payload": {"turn_id": turn, "model": model}}
+
+        def standin(argv, env, cwd, stdin, timeout):
+            if "--version" in argv:
+                return 0, (WARNING if variant == "version-warning" else "codex-cli 0.171.0"), ""
+            if "status" in argv:
+                return 0, "Logged in using ChatGPT", ""
+            new = "resume" not in argv
+            sid = str(uuid.uuid4()) if new else argv[argv.index("resume") + 1]
+            stdin.read()
+            now = clock.now()
+            if new:
+                sessions[sid] = {"at": now, "n": len(sessions)}
+            s = sessions[sid]
+            age = round(now - s["at"])
+            clock.t += 1
+            changed = s["n"] >= 2 and not new and age == 150
+            turn = str(uuid.uuid4())
+            if new:
+                s["prime_turn"] = turn
+            astra = "gpt-6-astra"
+            cases = {
+                "old-context-after-complete": [ev("task_started", turn), ev("task_complete", turn), ctx(s["prime_turn"])],
+                "context-after-reroute": [ev("task_started", turn), ctx(turn),
+                                          ev("model_reroute", turn, from_model=MODEL, to_model=astra), ctx(turn),
+                                          ev("task_complete", turn)],
+                "explicit-reroute": [ev("task_started", turn), ctx(turn),
+                                     ev("model_reroute", turn, from_model=MODEL, to_model=astra), ev("task_complete", turn)],
+                # Codex's own ModelRerouteEvent has no turn id (from_model, to_model, reason).
+                "reroute-without-id": [ev("task_started", turn), ctx(turn),
+                                       ev("model_reroute", None, from_model=MODEL, to_model=astra),
+                                       ev("task_complete", turn)],
+                "other-model": [ev("task_started", turn), ctx(turn, astra), ev("task_complete", turn)],
+                "two-turns": [ev("task_started", turn), ctx(turn), ev("task_complete", turn),
+                              ev("task_started", turn + "b"), ctx(turn + "b"), ev("task_complete", turn + "b")],
+                "no-model": [ev("task_started", turn), ev("task_complete", turn)],
+                "complete-only": [ev("task_complete", turn)],
+                "unchanged-rollout": [],
+            }
+            roll = cases[variant] if changed and variant in cases else \
+                [ev("task_started", turn), ctx(turn), ev("task_complete", turn)]
+            append(sid, roll)
+            total = (18000 if s["n"] == 0 else 25000) if new else 50020
+            cached = 0 if new and s["n"] == 0 else (18000 if new else 43000)
+            events = [{"type": "thread.started", "thread_id": sid}, {"type": "turn.started"},
+                      {"type": "item.completed", "item": {"type": "agent_message", "id": "m", "text": "OK"}},
+                      {"type": "turn.completed", "usage": {"input_tokens": total, "cached_input_tokens": cached,
+                                                           "cache_write_input_tokens": total - cached, "output_tokens": 5}}]
+            return 0, "".join(json.dumps(x) + "\n" for x in events), ""
+        out = os.path.join(self.repo, "results", variant)
+        with mock.patch.object(C, "_run", side_effect=standin), mock.patch.object(probe, "Clock", return_value=clock), \
+                redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            probe.main(["--harness", "codex", "--model", MODEL, "--label", "CX6", "--ages", "2.5m", "--words", "20",
+                        "--replicas", "1", "--out", out])
+        path = os.path.join(out, "CX6.jsonl")
+        with open(path) as f:
+            text = f.read()
+        events = [json.loads(x) for x in text.splitlines()]
+        row = next(e for e in events if e["event"] in ("check", "check-invalid") and e["age"] == "2.5m")
+        return path, text, events, row
+
+
+class Case1Version(CodexNight):
+    """1: `client_version` is the version token of the first line, or `unknown`; never the client's other words."""
+
+    def test_the_version_token(self):
+        for printed, kept in (("codex-cli 0.171.0", "0.171.0"), ("devin 3000.14.30821 (a09cd7f323ee)", "3000.14.30821"),
+                              (WARNING, "0.171.0"), ("tool 1.2.0-beta.1", "1.2.0-beta.1"),
+                              ("Could not load private workspace Acme Payroll\ncodex-cli 0.171.0", "unknown"),
+                              ("fixture version 1", "unknown"), ("1.2.3 4.5.6", "unknown"),
+                              ("cli /" + "Users/someone/Private/1.2.3", "unknown"), ("cli 1.2.3_<secret>", "unknown"),
+                              ("cli 1.2.3-" + "x" * 40, "unknown"), ("2.1.330 (Claude Code)", "2.1.330")):
+            with self.subTest(printed=printed):
+                self.assertEqual(C.Codex("m").version({}, run=lambda argv, **kw: (0, printed, "")), kept)
+
+    def test_the_review_s_warning_is_never_published(self):
+        path, text, events, row = self.run_case("version-warning")
+        self.assertEqual(events[0]["client_version"], "0.171.0")
+        for word in ("Acme", "Payroll", "private workspace", "Could not"):
+            self.assertNotIn(word, text)
+        self.assertEqual(build(path)["client_version"], "0.171.0")
+
+    def test_the_builder_applies_the_same_rule(self):
+        self.assertEqual(B.VERSION_TOKEN.pattern, C.VERSION_TOKEN.pattern)
+        # The review's own artifact (publication.log:1), its checks given bound model evidence so that only the
+        # version is at issue: the diagnostic it recorded is published as `unknown`.
+        with open(os.path.join(SAVED, "CX6-version-warning.jsonl")) as f:
+            rows = [json.loads(x) for x in f]
+        self.assertEqual(rows[0]["client_version"], "Could not load private workspace Acme Payroll")
+        for r in rows:
+            if r["event"] == "check":
+                r["usage"]["model_evidence"] = "own-turn"
+        with tempfile.TemporaryDirectory() as t:
+            path = os.path.join(t, "CX6.jsonl")
+            write(path, "".join(json.dumps(r) + "\n" for r in rows))
+            self.assertEqual(build(path)["client_version"], "unknown")
+            for value, shown in (("0.171.0", "0.171.0"), ("fixture version 1", "unknown"), (7, "unknown")):
+                rows[0]["client_version"] = value
+                write(path, "".join(json.dumps(r) + "\n" for r in rows))
+                self.assertEqual(build(path)["client_version"], shown)
+
+
+class Case3Model(CodexNight):
+    """3: a Codex check counts only on exactly one new turn whose own model record (its id) names the requested model,
+    with no other model record since the invocation began; anything else is check-invalid, and the builder refuses
+    it."""
+
+    def test_the_review_s_two_cases_and_their_kin(self):
+        expected = {"old-context-after-complete": "ambiguous-model", "context-after-reroute": "ambiguous-model",
+                    "explicit-reroute": "ambiguous-model", "reroute-without-id": "ambiguous-model",
+                    "two-turns": "ambiguous-model", "other-model": "other-model", "no-model": "no-model",
+                    "complete-only": "no-model", "unchanged-rollout": "no-model"}
+        for variant, reason in expected.items():
+            with self.subTest(variant=variant):
+                path, text, events, row = self.run_case(variant)
+                self.assertEqual((row["event"], row.get("reason")), ("check-invalid", reason))
+                self.assertNotEqual(row["usage"].get("model_evidence"), "own-turn")
+                if reason != "other-model":
+                    self.assertIsNone(row["usage"].get("model"))
+                with self.assertRaises(SystemExit):
+                    build(path)
+
+    def test_a_bound_answer_of_the_requested_model_still_counts(self):
+        path, text, events, row = self.run_case("matching-evidence")
+        self.assertEqual((row["event"], row["usage"]["model"], row["usage"]["model_evidence"]),
+                         ("check", MODEL, "own-turn"))
+        entry = build(path)
+        self.assertEqual((entry["model"], entry["client_version"]), (MODEL, "0.171.0"))
+        self.assertEqual(next(c for c in entry["checks"] if c["age_s"] == 150)["total"], 1)
+
+    def test_the_review_s_published_artifacts_are_refused(self):
+        # publication.log:2: the 7cc500c probe's output for the two cases, which its builder published as Luna.
+        for variant in ("old-context-after-complete", "context-after-reroute"):
+            with self.subTest(variant=variant), self.assertRaisesRegex(SystemExit, "bound to its own turn"):
+                build(os.path.join(SAVED, f"CX6-{variant}.jsonl"))
+
+    def test_the_builder_refuses_an_uncertain_or_other_model(self):
+        with open(os.path.join(SAVED, "CX6-old-context-after-complete.jsonl")) as f:
+            rows = [json.loads(x) for x in f]
+        for r in rows:
+            if r["event"] == "check":
+                r["usage"]["model_evidence"] = "own-turn"
+        last = max(i for i, r in enumerate(rows) if r["event"] == "check")
+        with tempfile.TemporaryDirectory() as t:
+            path = os.path.join(t, "CX6.jsonl")
+            write(path, "".join(json.dumps(r) + "\n" for r in rows))
+            self.assertEqual(build(path)["model"], MODEL)  # bound evidence of the requested model: published
+            for change, message in (({"model_issue": "ambiguous-model"}, "not certain"),
+                                    ({"model": "gpt-6-astra"}, "answered by"),
+                                    ({"model_evidence": None}, "bound to its own turn")):
+                with self.subTest(change=change):
+                    changed = [dict(r, usage=dict(r["usage"], **change)) if i == last else r for i, r in enumerate(rows)]
+                    write(path, "".join(json.dumps(r) + "\n" for r in changed))
+                    with self.assertRaisesRegex(SystemExit, message):
+                        build(path)
+            rows[0]["model"] = "gpt-6-astra"  # a run of another model listed under this one
+            write(path, "".join(json.dumps(r) + "\n" for r in rows))
+            with self.assertRaises(SystemExit):
+                build(path)
+
+    def test_the_reader_s_rules(self):
+        def lines(*records):
+            return "".join(r + "\n" if isinstance(r, str) else json.dumps(r) + "\n" for r in records)
+
+        def ctx(tid, m=MODEL):
+            return {"type": "turn_context", "payload": {"turn_id": tid, "model": m}}
+        with tempfile.TemporaryDirectory() as t:
+            path = os.path.join(t, "rollout.jsonl")
+            write(path, lines(ctx("p")))
+            mark = C.codex_mark(path)
+            self.assertEqual(mark["ids"], ["p"])
+            for added, answer in (([ctx("m")], (MODEL, None, "own-turn")),
+                                  ([ctx("p")], (None, "ambiguous-model", None)),
+                                  ([{"type": "turn_context", "payload": {"model": MODEL}}], (None, "ambiguous-model", None)),
+                                  (["not json"], (None, "ambiguous-model", None)),
+                                  ([], (None, "no-model", None))):
+                with self.subTest(added=added):
+                    write(path, lines(ctx("p"), *added))
+                    self.assertEqual(C.codex_answer(path, mark, MODEL), answer)
+            write(path, "")  # the file shrank under the mark
+            self.assertEqual(C.codex_answer(path, mark, MODEL)[1], "ambiguous-model")
+            self.assertEqual(C.codex_answer(os.path.join(t, "other.jsonl"), mark, MODEL)[1], "ambiguous-model")
+
+
+class Case2Stop(Owner):
+    """2: `stop` writes the mark before any lookup, waits for the launcher, then finds the runs by the lock and by the
+    night's launch id; the launcher looks at the mark again right after each start."""
+
+    def setUp(self):
+        super().setUp()
+        self.worker = os.path.join(self.tmp, "worker.py")
+        write(self.worker, "import time\ntime.sleep(60)\n")
+        self.client_home()
+        night.make_night_dir(DATE)
+        for p in (night.everyday_path(DATE), night.reviewed_path(DATE)):
+            write(p, "fixture")
+        self.procs = []
+        self.addCleanup(self.cleanup)
+
+    def cleanup(self):
+        for p in self.procs:
+            if p.poll() is None:
+                try:
+                    os.killpg(p.pid, signal.SIGKILL)
+                except (ProcessLookupError, PermissionError):
+                    p.kill()
+            p.wait(timeout=10)
+        for pid, _, cmd in night.process_table():
+            if self.worker in cmd:
+                try:
+                    os.killpg(pid, signal.SIGKILL)
+                except (ProcessLookupError, PermissionError):
+                    pass
+
+    def ours(self):
+        """The pids of the stand-in workers of this night still alive."""
+        return [pid for pid, _, cmd in night.process_table() if self.worker in cmd and f"--launch-id {DATE}-" in cmd]
+
+    def settle(self):
+        for _ in range(200):
+            if not self.ours():
+                return []
+            time.sleep(0.02)
+        return self.ours()
+
+    def test_the_review_s_race_replay(self):
+        # stop-race.log: the launcher creates the lock and starts CX1 right after `stop`'s first lock lookup.
+        launcher = os.path.join(self.tmp, "night.py")
+        write(launcher, f"""import sys
+sys.path.insert(0, {os.path.join(ROOT, 'harness')!r})
+import night
+night.ROOT = {self.repo!r}
+night.command = lambda step, date, launch_id=None, delay=None: [sys.executable, "-B", {self.worker!r}, "--label",
+                                                               step["id"], "--launch-id", launch_id]
+print("at-start", flush=True)
+input()
+def progress(line):
+    if line.startswith("CX1 pid "):
+        print(line, flush=True)
+        input()
+night.go_clients(["codex"], {DATE!r}, out=progress)
+""")
+        env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
+        p = subprocess.Popen([sys.executable, "-B", launcher, "--date", DATE, "--go", "codex"], env=env,
+                             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                             start_new_session=True)
+        self.procs.append(p)
+        self.assertEqual(p.stdout.readline().strip(), "at-start")
+        real, released = night.read_lock_any, []
+
+        def observe(day, client):
+            value = real(day, client)
+            if client == "codex" and not released:
+                released.append(True)
+                try:
+                    p.stdin.write("continue\n")
+                    p.stdin.flush()
+                except (BrokenPipeError, OSError):
+                    return value
+                p.stdout.readline()  # `CX1 pid …` (the launcher started it), or nothing (it ended)
+            return value
+        with mock.patch.object(night, "read_lock_any", side_effect=observe):
+            signalled = night.stop("all", DATE, out=lambda *_: None, wait=1.0)
+        self.assertEqual(self.settle(), [], "a worker of the night survived a stop that returned")
+        try:
+            p.stdin.write("continue\n")
+            p.stdin.flush()
+        except (BrokenPipeError, OSError):
+            pass
+        p.wait(timeout=10)
+        self.assertEqual(self.settle(), [])
+        lock = night.read_lock(DATE, "codex") or {"runs": {}}
+        self.assertEqual(sorted(signalled), sorted(info["pid"] for info in lock["runs"].values()))
+
+    def test_stop_writes_the_mark_before_it_looks_anything_up(self):
+        seen = []
+
+        def looked(*a, **k):
+            seen.append(all(os.path.lexists(night.stop_path(DATE, c)) for c in night.CLIENT_PARTS))
+            return None if a else []
+        with mock.patch.object(night, "read_lock_any", side_effect=looked), \
+                mock.patch.object(night, "read_lock", side_effect=looked), \
+                mock.patch.object(night, "process_table", side_effect=looked), \
+                mock.patch.object(night, "parent_table", side_effect=looked, create=True):
+            night.stop("all", DATE, out=lambda *_: None, wait=0.2)
+        self.assertTrue(seen)
+        self.assertTrue(all(seen), seen)
+
+    def test_a_worker_of_the_night_without_a_lock_is_stopped(self):
+        # The lock was not there yet when `stop` looked (or never written): the launch id on the command line finds it.
+        lid = f"{DATE}-codex-0123456789ab"
+        w = subprocess.Popen([sys.executable, "-B", self.worker, "--label", "CX1", "--launch-id", lid],
+                             start_new_session=True)
+        self.procs.append(w)
+        for _ in range(200):
+            if w.pid in self.ours():
+                break
+            time.sleep(0.02)
+        self.assertIsNone(night.read_lock_any(DATE, "codex"))
+        self.assertEqual(night.stop("codex", DATE, out=lambda *_: None, wait=0.2), [w.pid])
+        self.assertEqual(w.wait(timeout=10), -signal.SIGTERM)
+
+    def test_the_launcher_stops_the_run_it_was_starting(self):
+        # The mark appears while CX1 is being started (between the look before the start and the start itself).
+        sent, started = [], []
+
+        def popen(argv, **kw):
+            started.append(argv)
+            C.write_private(night.stop_path(DATE, "codex"), "now\n")
+            return mock.Mock(pid=987654)
+        with mock.patch.object(night.os, "killpg", side_effect=lambda pgid, sig: sent.append((pgid, sig))), \
+                self.assertRaisesRegex(SystemExit, "stopped"):
+            night.go_clients(["codex"], DATE, popen=popen, out=lambda *_: None)
+        self.assertEqual(len(started), 1)
+        self.assertEqual(sent, [(987654, signal.SIGTERM)])
+        self.assertEqual(sorted(night.read_lock(DATE, "codex")["runs"]), ["CX1"])
+
+
+class DevinStatus(unittest.TestCase):
+    """Devin's status must say it is logged in; an exit code of 0 alone is never a login (owner.log:16)."""
+
+    def test_the_review_s_status_replies(self):
+        devin = C.Devin("m")
+        for code, reply, ok in ((0, "", False), (0, "Not logged in", False),
+                                (0, "Not logged in. Run `devin auth login`", False),
+                                (0, "Logged in with an API key", False), (0, "Logged in with provided API key.", False),
+                                (0, "Logged in (via WINDSURF_API_KEY)", False), (1, "Logged in", False),
+                                (0, "Logged out successfully", False), (0, "Logged in", True), (0, "Logged in.", True),
+                                (0, "Logged in as someone", True)):
+            with self.subTest(code=code, reply=reply):
+                self.assertEqual(C.login_ok(devin, code, reply, "") is None, ok)
+
+
+class RunWording(unittest.TestCase):
+    """The RUN document: what the Keychain report shows (not that no key was written), and Devin's session count."""
+
+    def test_the_two_notes(self):
+        with open(os.path.join(ROOT, "docs", "own-clients-RUN.md")) as f:
+            text = " ".join(f.read().split())
+        self.assertIn("Up to about 820 Devin sessions", text)
+        self.assertIn("fewer if a control misses", text)
+        self.assertNotIn("823", text)
+        self.assertIn("It cannot prove that no key was written", text)
+        self.assertNotIn("No key goes in the Keychain", text)
+        self.assertNotIn("Nothing of the night's should appear in your Keychain", text)
+
+
+if __name__ == "__main__":
+    unittest.main()

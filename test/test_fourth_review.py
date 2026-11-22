@@ -209,7 +209,9 @@ night.go_clients(["codex"], {DATE!r}, out=out)
             lock = night.read_lock(DATE, "codex")
             self.assertEqual(lock["launcher_pid"], p.pid)
             signalled = night.stop("all", DATE, out=lambda *_: None)
-            self.assertEqual(p.wait(timeout=10), -signal.SIGTERM)
+            # Since the fifth review `stop` waits for the launcher, which ends by itself on the stop mark (exit 1);
+            # one that does not is signalled.
+            self.assertIn(p.wait(timeout=10), (1, -signal.SIGTERM))
             lock = night.read_lock(DATE, "codex")
             self.assertEqual(sorted(signalled), sorted(info["pid"] for info in lock["runs"].values()))
             for info in lock["runs"].values():
@@ -316,7 +318,7 @@ class Point5RunDocument(unittest.TestCase):
         self.assertTrue("login codex" in owner and "login devin" in owner)
         self.assertFalse("login claude" in owner or "META_API_KEY" in owner or "security add-generic-password" in owner)
         self.assertTrue("**2. The two logins**" in owner)
-        self.assertTrue("823 Devin sessions" in owner)
+        self.assertTrue("Up to about 820 Devin sessions" in owner)  # the fifth review's wording
 
 
 if __name__ == "__main__":
