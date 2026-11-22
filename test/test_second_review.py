@@ -346,6 +346,7 @@ class Finding4DryRun(Owner):
         with mock.patch.object(night.os, "killpg", forbidden), mock.patch.object(night.os, "kill", forbidden), \
                 mock.patch.object(night.subprocess, "Popen", forbidden), \
                 mock.patch.object(night, "process_command", lambda pid: live), \
+                mock.patch.object(night, "process_table", lambda: [(4242, 4242, live)]), \
                 mock.patch.object(night, "dry_run", lambda *a, **k: None), \
                 mock.patch.object(night, "keychain_items", forbidden), redirect_stdout(io.StringIO()) as said:
             for cmd in commands:
@@ -494,7 +495,7 @@ class Finding9Launcher(Owner):
         self.smoke_files(self.repo, s3b_cold=True)
         problems, notes = night.smoke_verdict(DATE)
         self.assertEqual(problems, [])
-        self.assertTrue(any(n.startswith("S3b: no cached token") for n in notes))
+        self.assertTrue(any(n.startswith("S3b: the control was cold") for n in notes))
         self.smoke_files(self.repo, s3b_cold=False, late="S2")  # the review's warm control at 600 s
         problems, _ = night.smoke_verdict(DATE)
         self.assertTrue(any("S2: the control was checked late" in p for p in problems), problems)

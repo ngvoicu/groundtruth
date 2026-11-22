@@ -35,8 +35,9 @@ from dataclasses import dataclass
 # What a client's process gets of the caller's environment; everything else (API keys, base URLs, proxy settings,
 # cache switches) never reaches it. A client adds the variables of its state folder and what the run sets. HOME is
 # never the caller's: every client process gets a throwaway one (throwaway_home), so a client that ignores its state
-# folder's variable writes under it, never under the owner's home folder.
-ALLOW = ("PATH", "USER", "LANG", "TERM", "TMPDIR")
+# folder's variable writes under it, never under the owner's home folder. TMPDIR is never the caller's either: every
+# client gets its own under <client-home> (throwaway_tmp), so no setting of the shell widens what it may write.
+ALLOW = ("PATH", "USER", "LANG", "TERM")
 
 
 def throwaway_home(state):
@@ -45,6 +46,11 @@ def throwaway_home(state):
     (`security list-keychains` is empty under it): a client cannot reach the owner's Keychain from there, and Claude
     Code keeps its login in <state folder>/.credentials.json instead."""
     return os.path.join(os.path.dirname(state.rstrip(os.sep)), "home", os.path.basename(state.rstrip(os.sep)))
+
+
+def throwaway_tmp(state):
+    """The TMPDIR of every process of a client: <client-home>/tmp/<the state folder's name> (mode 700)."""
+    return os.path.join(os.path.dirname(state.rstrip(os.sep)), "tmp", os.path.basename(state.rstrip(os.sep)))
 
 OK_PROMPT = "Reply with OK only. Do not use any tools."
 
@@ -144,6 +150,7 @@ class Client:
         base = os.environ if base is None else base
         env = {k: base[k] for k in ALLOW if k in base}
         env["HOME"] = throwaway_home(home)
+        env["TMPDIR"] = throwaway_tmp(home)
         env.update(self.home_vars(home))
         env.update(self.run_vars())
         env.update(self.settings)
@@ -158,6 +165,23 @@ class Client:
 
     def preflight(self, state):
         """Raise SystemExit when the state folder would send the runs elsewhere than the route (Codex's config)."""
+
+    # The login file the client's own login writes in its state folder (relative), or None. `login_evidence` finds it.
+    login_file = None
+
+    def login_evidence(self, state):
+        """The client's login file in its state folder, a regular non-empty file not a link; None when there is none.
+        (Devin: any credentials.toml or auth.json under the folder; the others: their one file.)"""
+        found = [os.path.join(state, self.login_file)] if self.login_file else \
+            [f for f in login_files(state) if os.path.basename(f) in ("credentials.toml", "auth.json")]
+        for f in found:
+            if os.path.isfile(f) and not os.path.islink(f) and os.path.getsize(f) > 0:
+                return f
+        return None
+
+    # The login is checked by its file too before every run (Claude: its status alone can be answered by a login
+    # kept elsewhere, the everyday one in the Keychain).
+    needs_login_file = False
 
     def allowed_link(self, rel, target, env=None):
         """Whether a link the client itself makes in its state folder may leave it (none but Codex's helpers)."""
@@ -176,11 +200,18 @@ class Client:
     def version(self, env, run=None, writable=None):
         run = run or _run
         argv = self.version_command() if writable is None else confine(self.version_command(), env, writable)
-        code, out, err = run(argv, env=env, cwd=None, stdin=None, timeout=60)
+        redact = Redactor(env, [env.get("HOME"), env.get("TMPDIR"), *(writable or ()), os.path.expanduser("~")])
+        try:
+            code, out, err = run(argv, env=env, cwd=None, stdin=None, timeout=60)
+        except subprocess.TimeoutExpired:
+            raise ClientError(f"{self.binary} --version did not answer within 60 s") from None
+        except OSError as e:
+            raise ClientError(f"{self.binary} --version could not be run ({type(e).__name__})") from None
         line = (out or err).strip().splitlines()
         if code or not line:
-            raise ClientError(f"{self.binary} --version failed: {(err or out)[-300:]}")
-        return line[-1].strip()
+            # What the client printed is redacted: a diagnostic may hold a value of its environment (a key).
+            raise ClientError(redact(f"{self.binary} --version failed: {(err or out)[-300:]}"))
+        return redact(line[-1].strip())
 
     # --- one invocation -----------------------------------------------------------------------------------------
     def new_session(self):
@@ -211,6 +242,7 @@ class Claude(Client):
     """Claude Code, on a Claude login (claude-subscription). Its secure storage is the Keychain with a plaintext
     fallback; under its throwaway HOME `security` finds no Keychain, so the login is <state folder>/.credentials.json."""
     harness, client_id, binary = "claude", "claude-code", "claude"
+    login_file, needs_login_file = ".credentials.json", True
     prompt_mode = "stdin"
     settable = ("CLAUDE_CODE_PROMPT_CACHE_TTL",)
     defaults = ("~/.claude", "~/.claude.json")
@@ -266,6 +298,44 @@ class Claude(Client):
                      handle=result.get("session_id"))
 
 
+def codex_turn_model(path):
+    """The model evidence of the last turn of a Codex session file (see Codex.answered_model), or None."""
+    turns = []  # each: {"id", "started", "ctx", "model"}
+
+    def turn(tid, flag):
+        cur = turns[-1] if turns else None
+        if cur is not None and ((tid and cur["id"] == tid) or (not tid or not cur["id"]) and not cur[flag]):
+            if tid:
+                cur["id"] = cur["id"] or tid
+            return cur
+        new = {"id": tid, "started": False, "ctx": False, "model": None}
+        turns.append(new)
+        return new
+    try:
+        with open(path, errors="replace") as f:
+            for line in f:
+                if not any(k in line for k in ('"turn_context"', '"model_reroute"', '"task_started"')):
+                    continue
+                try:
+                    d = json.loads(line)
+                except ValueError:
+                    continue
+                p = d.get("payload") or {}
+                tid = p.get("turn_id") if isinstance(p.get("turn_id"), str) else None
+                if d.get("type") == "turn_context":
+                    t = turn(tid, "ctx")
+                    t["ctx"] = True
+                    t["model"] = p["model"] if isinstance(p.get("model"), str) else None
+                elif d.get("type") == "event_msg" and p.get("type") == "task_started":
+                    turn(tid, "started")["started"] = True
+                elif d.get("type") == "event_msg" and p.get("type") == "model_reroute" and turns \
+                        and isinstance(p.get("to_model"), str):
+                    turns[-1]["model"] = p["to_model"]
+    except OSError:
+        return None
+    return turns[-1]["model"] if turns else None
+
+
 # The item types of a Codex turn that are not a tool call: a turn with any other item made more than one request.
 CODEX_TEXT_ITEMS = {"agent_message", "reasoning"}
 # Codex refuses a message above MAX_USER_INPUT_TEXT_CHARS (1,048,576 characters) before it sends anything.
@@ -275,6 +345,7 @@ CODEX_CAP = re.compile(r"1,?048,?576|(?:maximum|max) (?:input |message )?(?:leng
 class Codex(Client):
     """OpenAI's Codex CLI, on a ChatGPT plan (codex-subscription)."""
     harness, client_id, binary = "codex", "codex-cli", "codex"
+    login_file = "auth.json"
     cumulative = True  # `codex exec resume --json` reports the thread's running total, not the last turn
     prompt_mode = "stdin"
     defaults = ("~/.codex",)
@@ -323,32 +394,17 @@ class Codex(Client):
         return bool(self.HELPER_LINK.match(rel)) and bool(exe) and target == os.path.realpath(exe)
 
     def answered_model(self, state, handle):
-        """From the thread's session file in CODEX_HOME/sessions: the model of its last turn (`turn_context`), or the
-        model the server rerouted it to (`model_reroute`, to_model). `codex exec --json` prints neither. Only that one
-        string is read out; the file stays in the state folder."""
+        """From the thread's session file in CODEX_HOME/sessions: the model of the thread's last turn, the one just
+        measured: its `turn_context` model, or the model the server rerouted it to (`model_reroute`, to_model). The
+        evidence is bound to that turn: a turn (a `task_started`, or a new `turn_context`) without its own model
+        evidence is unknown (None), never the previous turn's. `codex exec --json` prints neither. Only that one string
+        is read out; the file stays in the state folder."""
         if not state or not handle or not re.fullmatch(r"[0-9A-Za-z-]{8,64}", str(handle)):
             return None
         found = sorted(glob.glob(os.path.join(state, "sessions", "*", "*", "*", f"rollout-*-{handle}.jsonl")))
         if not found:
             return None
-        model = None
-        try:
-            with open(found[-1], errors="replace") as f:
-                for line in f:
-                    if '"turn_context"' not in line and '"model_reroute"' not in line:
-                        continue
-                    try:
-                        d = json.loads(line)
-                    except ValueError:
-                        continue
-                    p = d.get("payload") or {}
-                    if d.get("type") == "turn_context" and isinstance(p.get("model"), str):
-                        model = p["model"]
-                    elif d.get("type") == "event_msg" and p.get("type") == "model_reroute" and isinstance(p.get("to_model"), str):
-                        model = p["to_model"]
-        except OSError:
-            return None
-        return model
+        return codex_turn_model(found[-1])
 
     def command(self, prompt_file, resume=None, session=None, files=None):
         base = ["--json", "--skip-git-repo-check", "-m", self.model, *self._config()]
@@ -496,9 +552,16 @@ class Muse(Client):
             raise ClientError("no run.usage line" + (f"; usage-like events: {' | '.join(other[:2])}" if other else ""))
         # Every run in the output counts: two runs (two run.started, or two run.usage) are at least two calls, never
         # the last run's figures alone.
+        # A count is what Muse said: an explicit 0 is no call, an absent or non-integer count is unknown (None), and
+        # neither is ever promoted to one; a check counts only on an explicit single call (harness/probe.py).
         ms = [m for x in usages for m in (x.get("models") or [])]
-        calls = sum(x.get("calls") if isinstance(x.get("calls"), int) else 1 for x in usages)
-        calls = max(calls, runs, len(usages))
+        counts = [x.get("calls") for x in usages]
+        if not all(isinstance(c, int) and not isinstance(c, bool) and c >= 0 for c in counts):
+            calls = None
+        else:
+            calls = sum(counts)
+            if runs > 1 or len(usages) > 1:
+                calls = max(calls, runs, len(usages))
         names = {m.get("model") for m in ms}
         return Usage(total=sum(m.get("input_tokens", 0) for m in ms), cached=sum(m.get("cached_tokens", 0) for m in ms),
                      write=None, calls=calls, model=ms[0].get("model") if len(names) == 1 and ms else None)
@@ -589,7 +652,7 @@ def check_private(what, path, mode=0o700):
         raise SystemExit(f"{what} is a link: refused")
     if st.st_uid != os.getuid():
         raise SystemExit(f"{what} belongs to another user: refused")
-    if S.S_IMODE(st.st_mode) & 0o077:
+    if S.S_IMODE(st.st_mode) != mode:
         raise SystemExit(f"{what} has mode {S.S_IMODE(st.st_mode):o}, not {mode:o}: run `chmod {mode:o}` on it "
                          "(docs/own-clients-RUN.md, step 1)")
 
@@ -610,23 +673,25 @@ def prepare_home(what, state, base, root, user_home, allowed=None):
     of it, outside the repository, every Git checkout, every everyday folder and every synced folder, private (700),
     holding no link that leaves it."""
     home = throwaway_home(state)
-    if os.path.islink(home) or os.path.islink(os.path.dirname(home)) or (os.path.lexists(home) and not os.path.isdir(home)):
-        raise SystemExit(f"{what}: its HOME <client-home>/home/{os.path.basename(state)} is not under <client-home> "
-                         "(a link out of it, or not a folder): refused")
-    for d in (os.path.dirname(home), home):
-        if not os.path.isdir(d):
-            os.mkdir(d, 0o700)
-            os.chmod(d, 0o700)
-    real, real_base = os.path.realpath(home), os.path.realpath(base)
-    if not inside(real, real_base) or real == real_base:
-        raise SystemExit(f"{what}: its HOME <client-home>/home/{os.path.basename(state)} is not under <client-home> "
-                         "(a link out of it): refused")
-    check_folder(f"{what}: its HOME", home, root, user_home)
-    check_private(f"{what}: <client-home>/home", os.path.dirname(home))
-    check_private(f"{what}: its HOME <client-home>/home/{os.path.basename(state)}", home)
-    out = links_out(home, allowed)
-    if out:
-        raise SystemExit(f"{what}: its HOME holds links that leave it: {', '.join(out[:5])}")
+    for kind, folder in (("HOME", home), ("TMPDIR", throwaway_tmp(state))):
+        rel = f"<client-home>/{os.path.basename(os.path.dirname(folder))}/{os.path.basename(state)}"
+        if os.path.islink(folder) or os.path.islink(os.path.dirname(folder)) or \
+                (os.path.lexists(folder) and not os.path.isdir(folder)):
+            raise SystemExit(f"{what}: its {kind} {rel} is not under <client-home> (a link out of it, or not a folder): "
+                             "refused")
+        for d in (os.path.dirname(folder), folder):
+            if not os.path.isdir(d):
+                os.mkdir(d, 0o700)
+                os.chmod(d, 0o700)
+        real, real_base = os.path.realpath(folder), os.path.realpath(base)
+        if not inside(real, real_base) or real == real_base:
+            raise SystemExit(f"{what}: its {kind} {rel} is not under <client-home> (a link out of it): refused")
+        check_folder(f"{what}: its {kind}", folder, root, user_home)
+        check_private(f"{what}: {os.path.dirname(rel)}", os.path.dirname(folder))
+        check_private(f"{what}: its {kind} {rel}", folder)
+        out = links_out(folder, allowed)
+        if out:
+            raise SystemExit(f"{what}: its {kind} holds links that leave it: {', '.join(out[:5])}")
     return home
 
 
@@ -687,18 +752,32 @@ def state_folder(client, base, root, user_home=None, env=None, run=None, check_l
     client.preflight(home)
     prepare_home(f"{client.client_id}", home, base, root, user_home)
     if check_login:
-        cmd = client.login_command()
-        e = env if env is not None else client.environment(home)
-        if cmd:
-            code, o, er = (run or _run)(confine(cmd, e, [home, e.get("HOME"), e.get("TMPDIR")]), env=e, cwd=None,
-                                        stdin=None, timeout=120)
-            why = login_ok(client, code, o, er)
-            if why:
-                raise SystemExit(f"{client.client_id}: refused: {why} ({' '.join(cmd[:4])})")
+        if client.needs_login_file and not client.login_evidence(home):
+            raise SystemExit(f"{client.client_id}: refused: no login file in its state folder (<client-home>/{name}/"
+                             f"{client.login_file}, non-empty): its status could be answered by a login kept elsewhere")
+        why = login_status(client, home, env, run)
+        if why:
+            raise SystemExit(f"{client.client_id}: refused: {why}")
         for k in client.passthrough:
             if not (env if env is not None else os.environ).get(k):
                 raise SystemExit(f"{client.client_id}: {k} is not set (read it from the Keychain into the environment)")
     return home
+
+
+def login_status(client, state, env=None, run=None):
+    """None when the client's own status command, run in its folders and sandbox, shows the subscription login; else
+    why not."""
+    cmd = client.login_command()
+    if not cmd:
+        return None
+    e = env if env is not None else client.environment(state)
+    try:
+        code, o, er = (run or _run)(confine(cmd, e, [state, e.get("HOME"), e.get("TMPDIR")]), env=e, cwd=None,
+                                    stdin=None, timeout=120)
+    except subprocess.TimeoutExpired:
+        return f"the status command did not answer within 120 s ({' '.join(cmd[:4])})"
+    why = login_ok(client, code, o, er)
+    return f"{why} ({' '.join(cmd[:4])})" if why else None
 
 
 # --- the OS-level layer: each client process under sandbox-exec, no write under the home folder but its own folders --
@@ -714,6 +793,10 @@ def sandbox_profile(writable, user_home=None):
     for p in [user_home, *paths]:
         if '"' in p or "\\" in p:
             raise SystemExit(f"sandbox: a folder name with a quote or a backslash cannot be confined: {p!r}")
+    for p in paths:
+        if inside(user_home, p):
+            raise SystemExit("sandbox: an allowed folder is the home folder or holds it: refused (it would allow every "
+                             "write the profile exists to deny)")
     allow = " ".join(f'(subpath "{p}")' for p in paths)
     return (f'(version 1)(allow default)(deny file-write* (subpath "{user_home}"))'
             + (f"(allow file-write* {allow})" if allow else ""))
@@ -743,6 +826,7 @@ OPAQUE = re.compile(r"(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{32,}(?![A-Za-z0-9_-])")
 class Redactor:
     def __init__(self, env=None, paths=()):
         env = env or {}
+        paths = [p for p in paths if p and p != os.sep]
         self.secrets = sorted({v for k, v in env.items() if SECRET_NAME.search(k) and v and len(v) >= 8}, key=len, reverse=True)
         self.paths = sorted({os.path.realpath(p) for p in paths if p} | {p for p in paths if p}, key=len, reverse=True)
 
@@ -758,12 +842,15 @@ class Redactor:
         return OPAQUE.sub("<opaque>", text)
 
     def scrub(self, text):
-        """Only the secret values (as they are, and as JSON writes them): for a public record, whose other fields
-        (session ids, model names) must stay readable."""
+        """The secret values (as they are, and as JSON writes them), the run's folders and any home-folder path: for a
+        public record or a console log, whose other fields (session ids, model names) must stay readable."""
         text = text or ""
         for v in self.secrets:
             text = text.replace(v, "<secret>").replace(json.dumps(v)[1:-1], "<secret>")
-        return text
+        for p in self.paths:
+            if len(p) > 1:
+                text = text.replace(p, "<folder>").replace(json.dumps(p)[1:-1], "<folder>")
+        return HOME_PATH.sub("<home>", text)
 
 
 def write_private(path, text):
@@ -791,7 +878,8 @@ class Session:
         # HOME, its temporary folder); every invocation then runs under sandbox-exec (confine). None: not confined.
         self.writable, self.home = writable, home
         # Every text of the client's that leaves this object (an error, a refusal, a kept output) is redacted.
-        self.redact = Redactor(env, [home, io, work, os.path.dirname(io), (env or {}).get("HOME"),
+        self.redact = Redactor(env, [home, home and os.path.dirname(home), io, work, os.path.dirname(io),
+                                     (env or {}).get("HOME"), (env or {}).get("TMPDIR"), *(writable or ()),
                                      os.path.expanduser("~")])
         # A private folder for the redacted raw output (smoke runs), or None: checked and made (mode 700) by the
         # caller (harness/probe.py, private_capture_folder); every file in it is written mode 600.
@@ -825,8 +913,15 @@ class Session:
             argv = confine(argv, self.env, self.writable)
         try:
             with open(pf) as stdin:
-                code, out, err = self.run(argv, env=self.env, cwd=self.work,
-                                          stdin=stdin if self.client.prompt_mode == "stdin" else None, timeout=self.timeout)
+                try:
+                    code, out, err = self.run(argv, env=self.env, cwd=self.work,
+                                              stdin=stdin if self.client.prompt_mode == "stdin" else None,
+                                              timeout=self.timeout)
+                except subprocess.TimeoutExpired:
+                    # Never the exception's text: it holds the command line, the sandbox profile and its folders.
+                    raise ClientError(f"the client did not answer within {self.timeout} s") from None
+                except OSError as e:
+                    raise ClientError(f"the client could not be run ({type(e).__name__})") from None
             contents = {}
             for name, (path, keep) in files.items():
                 found = sorted(glob.glob(path)) if any(c in path for c in "*?[") else [path]

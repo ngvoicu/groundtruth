@@ -93,9 +93,20 @@ def read_harness(path):
             if u.get(key):
                 ttls.add(ttl)
     # check-invalid (a turn of more than one request) and check-failed rows are not checks.
+    answered = set()
     for r in rows:
         if r["event"] != "check":
             continue
+        u = r.get("usage") if isinstance(r.get("usage"), dict) else {}
+        # A check is one model request, said so explicitly: a check whose usage gives another count (0: no call at
+        # all) is never published; from the own-client design on the count must be there.
+        if "calls" in u and u["calls"] != 1:
+            raise SystemExit(f"{path}: a {r['event']} at {r.get('age')} records {u['calls']!r} model requests, not 1: "
+                             "it is not a check (the run goes in excluded, or its file is repaired from the probe)")
+        if "calls" not in u and start["at"][:10] >= OWN_CLIENTS_SINCE and start.get("isolation"):
+            raise SystemExit(f"{path}: a check at {r.get('age')} records no count of model requests: not published")
+        if u.get("model"):
+            answered.add(u["model"])
         if r.get("late"):
             # A late control is no control: a 30-second re-send made minutes later shows nothing about the cache.
             late += 1
@@ -117,6 +128,7 @@ def read_harness(path):
         "any_cached": any((u.get("cached") or 0) > 0 or (u.get("raw") or {}).get("cached") for u in usages),
         "written_ttls": sorted(ttls),
         "stop": next((r.get("reason") for r in rows if r["event"] == "stop"), None),
+        "answered_models": sorted(answered),
     }
 
 
@@ -189,6 +201,29 @@ def check_own_route(name, client, route):
         raise SystemExit(f"{name}: {client} is the own client of {OWN_CLIENT_ROUTE.get(client)}, not of {route}")
 
 
+EFFORT_SUFFIX = re.compile(r"-(?:none|minimal|low|medium|high|xhigh|max)$")
+DATE_SUFFIX = re.compile(r"-\d{8}$")
+
+
+def same_model(answered, manifest):
+    """Whether the model a check's reply names is the manifest's: the same id, or it with the client's own additions
+    (Devin's effort suffix, a dated snapshot suffix)."""
+    a, m = answered.lower(), manifest.lower()
+    for _ in range(2):
+        if a == m:
+            return True
+        a = DATE_SUFFIX.sub("", EFFORT_SUFFIX.sub("", a))
+    return a == m
+
+
+def check_answered_model(run, data):
+    """M-1: a check answered by another model than the manifest's is never published under the manifest's model."""
+    other = [m for m in data.get("answered_models") or [] if not same_model(m, run["model"])]
+    if other:
+        raise SystemExit(f"{run['id']}: its checks were answered by {', '.join(other)}, not {run['model']} (a reroute): "
+                         "not published under that model; the run goes in excluded")
+
+
 def check_own_run(run, client, data, options):
     """The refusals of docs/own-clients.md, section 3, for a run file of harness/probe.py. Returns the written ttl."""
     ttls = data.get("written_ttls") or []
@@ -232,6 +267,7 @@ def build_cache(manifest):
         check_own_route(run["id"], client, run["route"])
         options = dict(run.get("options") or {})
         written = check_own_run(run, client, data, options)
+        check_answered_model(run, data)
         # A run file that records its extra body fields: each must be in the manifest's options, as sent, or in
         # removed_by_proxy: a field the client sent that is shown not to reach the provider on this route and build
         # (options are what the provider received; the proof goes in the run's note).

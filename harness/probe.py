@@ -26,6 +26,7 @@ Usage:
       --label H1 --out DIR [--filler random|list] [--dry-run]
 """
 import argparse, heapq, json, os, random, shutil, sys, tempfile, time
+sys.dont_write_bytecode = True  # a dry run writes nothing, not even the interpreter's cache
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -125,16 +126,21 @@ def late_after(age):
 
 
 def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler="random", cumulative=None,
-              waves=WAVES, wave_gap=WAVE_GAP):
+              waves=WAVES, wave_gap=WAVE_GAP, expect_ttl=None):
     """The loop. `h` has start(prompt) -> (handle, usage dict) and resume(handle, prompt) -> usage dict and raises
     clients.Refused / another exception; `log` takes one event; `clock` has now() and sleep(). Returns the stop reason
-    or None."""
+    or None. `expect_ttl` ("1h": Claude Code's default inside a plan's usage): a first cache write of another lifetime
+    ends the run (`stop`, `overage`): in paid overage Claude Code writes the 5-minute cache, and the run would use paid
+    usage."""
     clock = clock or Clock()
     cumulative = getattr(h, "cumulative", False) if cumulative is None else cumulative
     seen_ttl = [None]
 
     def watch(usage):
         t = written_ttl(usage)
+        if expect_ttl and t and t != expect_ttl and not seen_ttl[0]:
+            raise Stop("overage", f"the first cache write is {t}, not {expect_ttl}: the account is in paid overage "
+                                  "(harness/night.py --allow-overage runs anyway)")
         if t == "mixed" or (t and seen_ttl[0] and t != seen_ttl[0]):
             raise Stop("tier-changed", f"a reply wrote {t} after {seen_ttl[0]}")
         seen_ttl[0] = seen_ttl[0] or t
@@ -301,6 +307,11 @@ def parser():
     ap.add_argument("--delay", type=float, default=0.0,
                     help="seconds to wait before the run's checks and first request (harness/night.py staggers starts)")
     ap.add_argument("--launch-id", help="harness/night.py's mark of the launch this run belongs to (process identity)")
+    ap.add_argument("--allow-overage", action="store_true",
+                    help="Claude Code: run even when its first cache write shows the 5-minute tier (paid overage)")
+    ap.add_argument("--stop-if-overage-in", metavar="LABELS",
+                    help="Claude Code, 5-minute runs: do not start when one of these runs (in --out) stopped for overage "
+                         "or a tier change (a 5-minute run cannot tell overage from its own writes)")
     ap.add_argument("--dry-run", action="store_true", help="print the run's start event and plan; run nothing, send nothing")
     return ap
 
@@ -353,7 +364,37 @@ def private_capture_folder(keep, client_home, root, user_home=None):
     return keep
 
 
+OVERAGE_STOPS = ("overage", "tier-changed")
+
+
+def overage_in(out, labels):
+    """The first of `labels` whose run file in `out` ended for overage or a tier change, or None."""
+    for label in [x.strip() for x in (labels or "").split(",") if x.strip()]:
+        try:
+            with open(os.path.join(out, label + ".jsonl")) as f:
+                rows = [json.loads(x) for x in f if x.strip()]
+        except (OSError, ValueError):
+            continue
+        if any(r.get("event") == "stop" and r.get("reason") in OVERAGE_STOPS for r in rows):
+            return label
+    return None
+
+
 def main(argv=None):
+    """The probe; any failure before or outside the run's own log reaches the console redacted (the console log of a
+    launched run is kept, mode 600, beside the results): never a traceback, a child-only value or a folder."""
+    redact = C.Redactor(os.environ, [os.environ.get("GROUNDTRUTH_CLIENT_HOME"), os.path.expanduser("~")])
+    try:
+        return _main(argv)
+    except SystemExit as e:
+        if isinstance(e.code, str):
+            raise SystemExit(redact.scrub(e.code)) from None  # printed by Python, exit 1
+        raise
+    except Exception as e:  # noqa: BLE001 - reported redacted, never as a traceback
+        raise SystemExit(redact.scrub(f"probe: {type(e).__name__}: {e}")) from None
+
+
+def _main(argv=None):
     a = parser().parse_args(argv)
     ages, labels = ages_of(a.schedule, a.ages)
     settings = settings_of(a.client_env)
@@ -398,6 +439,15 @@ def main(argv=None):
     if a.delay > 0:
         # A staggered start (harness/night.py): waits first, so that the checks below are made just before the run.
         time.sleep(a.delay)
+    expect_ttl = None
+    if a.harness == "claude" and not a.allow_overage:
+        if settings.get("CLAUDE_CODE_PROMPT_CACHE_TTL") == "5m":
+            found = overage_in(a.out, a.stop_if_overage_in)
+            if found:
+                raise SystemExit(f"{a.label}: not started: {found} stopped for paid overage (or a tier change); "
+                                 "--allow-overage runs anyway")
+        else:
+            expect_ttl = "1h"
     keep = private_capture_folder(a.keep_raw, a.client_home, ROOT) if a.keep_raw else None
     home = None
     if client.isolated:
@@ -417,9 +467,8 @@ def main(argv=None):
         C.check_folder("the working folder (TMPDIR)", tmp, ROOT, os.path.realpath(os.path.expanduser("~")))
         writable = None
         if env is not None:
-            os.makedirs(os.path.join(tmp, "tmp"))
-            env["TMPDIR"] = os.path.join(tmp, "tmp")
-            writable = [home, env.get("HOME"), tmp]  # what the client may write under the home folder (confine)
+            # The client's TMPDIR is its own under <client-home> (clients.throwaway_tmp), never the shell's.
+            writable = [home, env.get("HOME"), env.get("TMPDIR"), tmp]  # what the client may write (confine)
         session = C.Session(client, env=env, io=os.path.join(tmp, "io"), work=os.path.join(tmp, "work"),
                             home=home, keep=keep, writable=writable)
         start.update(client_version=client.version(env, writable=writable),
@@ -437,7 +486,7 @@ def main(argv=None):
 
         log(start)
         run_probe(Harness(session), ages=ages, labels=labels, replicas=a.replicas, words=a.words, salt=salt, log=log,
-                  filler=a.filler, waves=a.waves, wave_gap=a.wave_gap)
+                  filler=a.filler, waves=a.waves, wave_gap=a.wave_gap, expect_ttl=expect_ttl)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

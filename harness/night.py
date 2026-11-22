@@ -31,7 +31,9 @@ client's state folder and throwaway HOME, and sandbox-exec: harness/clients.py) 
 (`untouched --report`), never a reason to stop. Muse Code's key comes from the Keychain only at --go, straight into
 the runs that need it, and is never printed or written (its fingerprint is left for the commit scan).
 """
-import argparse
+import sys
+sys.dont_write_bytecode = True  # a dry run writes nothing, not even the interpreter's cache
+import argparse  # noqa: E402
 import json
 import os
 import signal
@@ -201,12 +203,13 @@ def clean_env(extra=None):
     return env
 
 
-def dry_run(steps, date, out=print):
+def dry_run(steps, date, out=print, allow_overage=False):
     for i, step in enumerate(steps):
         argv = command(step, date, launch_id="<launch-id>" if step["kind"] == "probe" else None,
-                       delay=delay_of(step, i) if step["kind"] == "probe" else None)
+                       delay=delay_of(step, i) if step["kind"] == "probe" else None) + overage_args(step, allow_overage)
         out(f"== {step['id']}: {shown(argv)}")
-        p = subprocess.run([*argv, "--dry-run"], cwd=ROOT, capture_output=True, text=True, timeout=120, env=clean_env())
+        p = subprocess.run([*argv, "--dry-run"], cwd=ROOT, capture_output=True, text=True, timeout=120,
+                           env=clean_env({"PYTHONDONTWRITEBYTECODE": "1"}))
         text = (p.stdout + p.stderr).strip()
         out("\n".join("   " + line for line in text.splitlines()))
         if p.returncode:
@@ -251,12 +254,23 @@ def snapshot_files(user_home=None, vanished=None):
     return out
 
 
+def dump_keychain():
+    """`security dump-keychain`'s output, or None when it fails (never taken for an empty Keychain)."""
+    try:
+        p = subprocess.run(["security", "dump-keychain"], capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return p.stdout if p.returncode == 0 else None
+
+
 def keychain_items(run=None):
     """The Keychain's items by class, service, account, label and modification date: `security dump-keychain`
-    without -d lists attributes only, never a secret."""
-    run = run or (lambda: subprocess.run(["security", "dump-keychain"], capture_output=True, text=True, timeout=120).stdout)
+    without -d lists attributes only, never a secret. None when the Keychain could not be listed."""
+    text = (run or dump_keychain)()
+    if text is None:
+        return None
     items, cur = [], None
-    for line in run().splitlines():
+    for line in text.splitlines():
         line = line.strip()
         if line.startswith("keychain:"):
             if cur:
@@ -289,6 +303,8 @@ def compare_everyday(before, now):
             lines.append(f"added: {p}")
         elif bf[p] != nf[p]:
             lines.append(f"changed: {p}")
+    if before.get("keychain") is None or now.get("keychain") is None:
+        return lines  # untouched() says the Keychain could not be compared
     bk, nk = set(before["keychain"]), set(now["keychain"])
     gone = {identity(i): i for i in bk - nk}
     new = {identity(i): i for i in nk - bk}
@@ -373,15 +389,23 @@ def untouched(date, mode, user_home=None, lister=None, out=print, at=None, dry=F
     now = {"files": snapshot_files(user_home, vanished), "keychain": keychain_items(lister)}
     if mode == "save":
         C.write_private(path, json.dumps(now))
-        out(f"saved: {len(now['files'])} paths under the everyday folders, {len(now['keychain'])} Keychain items")
+        out(f"saved: {len(now['files'])} paths under the everyday folders, "
+            + (f"{len(now['keychain'])} Keychain items" if now["keychain"] is not None else
+               "and NOT the Keychain's items: `security dump-keychain` failed; the morning report will say it cannot "
+               "compare them"))
         return []
     with open(path) as f:
         before = json.load(f)
     changed = compare_everyday(before, now)
+    missing = [when for when, side in (("at the snapshot", before), ("now", now)) if side.get("keychain") is None]
+    if missing:
+        changed.append(f"Keychain not compared: its items could not be listed {' and '.join(missing)} (`security "
+                       "dump-keychain` failed): nothing is known of them")
     gone = [f"vanished during the walk: {p}" for p in sorted(set(vanished))]
     report = report_path(date, at)
     C.write_private(report, f"The everyday state against the snapshot of {date}, taken before the logins: for a person "
-                    "to judge. The owner's own use of his tools changes these folders too.\n"
+                    "to judge. The owner's own use of his tools (Claude Code, Codex, Devin, Muse Code, pi) changes "
+                    "these folders and items too: a line here is not, by itself, the night's doing.\n"
                     + ("".join(x + "\n" for x in changed) or "nothing changed\n") + "".join(x + "\n" for x in gone))
     if gone:
         out(f"report: {len(gone)} paths were removed while the walk passed them (the owner's tools at work); named in "
@@ -401,37 +425,54 @@ def untouched(date, mode, user_home=None, lister=None, out=print, at=None, dry=F
     for x in changed:
         if x.startswith("Keychain"):
             out("  " + x)
+    out("  (the owner's own use changes these too: a line is not, by itself, the night's doing)")
     return changed
 
 
 # --- the logins: each client's own command, in its own folders and under its sandbox ---------------------------------
 
-def login(name, date, run=None, dry=False, out=print, user_home=None):
+def login(name, date, run=None, dry=False, out=print, user_home=None, status_run=None):
     """`login claude|codex|devin`: the client's login command with exactly the environment every run of the night
-    has (its state folder's variables, its throwaway HOME, the short allow-list) and under sandbox-exec (no write under
-    the home folder but its own folders). Afterwards its login file is set to mode 600 and the folder checked."""
+    has (its state folder's variables, its throwaway HOME and TMPDIR, the short allow-list) and under sandbox-exec (no
+    write under the home folder but its own folders). Only after step 1's snapshot. Success is said only when the
+    client's login file is in its state folder (a regular, non-empty file, then set to mode 600) and the client's own
+    status command, in the same folders and sandbox, shows the subscription login."""
     if name not in LOGINS:
         raise SystemExit(f"login: one of {', '.join(LOGINS)} (Muse Code's key goes in the Keychain, step 3)")
     client = C.CLIENTS[name]("m")
     if dry:
         out(f"login {name}: {' '.join(LOGINS[name])}" + (" under sandbox-exec" if C.CONFINED else "")
-            + f", in <client-home>/{client.client_id} with HOME=<client-home>/home/{client.client_id}")
-        out("   then: its login file set to mode 600 and the state folder checked. Dry run: nothing run.")
+            + f", in <client-home>/{client.client_id} with HOME=<client-home>/home/{client.client_id} and "
+            f"TMPDIR=<client-home>/tmp/{client.client_id}")
+        out("   then: its login file found (non-empty) and set to mode 600, its status command run, the state folder "
+            "checked. Dry run: nothing run.")
         return None
     base = need_client_home("login")
+    if not os.path.exists(everyday_path(date)):
+        raise SystemExit(f"login {name}: no snapshot of {date} (`untouched --save`, step 1): it comes before the logins")
     state = os.path.abspath(os.path.join(base, client.client_id))
     env = client.environment(state)
     user_home = os.path.realpath(user_home or os.path.expanduser("~"))
     C.state_folder(client, base, ROOT, user_home=user_home, env=env, check_login=False)
-    argv = C.confine(LOGINS[name], env, [state, env["HOME"], env.get("TMPDIR")])
+    argv = C.confine(LOGINS[name], env, [state, env["HOME"], env["TMPDIR"]])
     code = (run or subprocess.run)(argv, env=env, cwd=state).returncode
     if code:
-        raise SystemExit(f"login {name}: the client exited {code}")
-    for f in C.login_files(os.path.realpath(state)):
+        raise SystemExit(f"login {name}: the client exited {code}: not logged in")
+    real = os.path.realpath(state)
+    found = client.login_evidence(real)
+    if not found:
+        where = client.login_file or "credentials.toml or auth.json"
+        raise SystemExit(f"login {name}: the client exited 0, but no login file is in <client-home>/{client.client_id} "
+                         f"({where}, non-empty): the login is not in the night's folder; not done")
+    for f in C.login_files(real):
         if not os.path.islink(f) and os.path.isfile(f):
             os.chmod(f, 0o600)
     C.state_folder(client, base, ROOT, user_home=user_home, env=env, check_login=False)
-    out(f"login {name}: done; its login file is in <client-home>/{client.client_id}, mode 600")
+    why = C.login_status(client, real, env, status_run)
+    if why:
+        raise SystemExit(f"login {name}: the login file is there, but the client's status refuses: {why}; not done")
+    out(f"login {name}: done; its login file <client-home>/{client.client_id}/{os.path.relpath(found, real)} is there, "
+        "mode 600, and the client's status shows the subscription login")
     return code
 
 
@@ -488,6 +529,10 @@ def smoke_verdict(date):
             problems.append(f"{sid}: no results")
             continue
         start, last = ev[0], ev[-1]
+        if sid == "S1" and last.get("event") == "stop" and last.get("reason") == "overage":
+            notes.append("S1: the Claude account is in paid overage (its first cache write was the 5-minute tier): the "
+                         "Claude runs are refused unless `--go claude --allow-overage` (they would use paid usage)")
+            continue
         if start.get("event") != "start" or not start.get("client_version"):
             problems.append(f"{sid}: its first line is not a start with the client's version")
         if start.get("isolation") != ISOLATION:
@@ -512,14 +557,14 @@ def smoke_verdict(date):
             continue
         if sid in COLD_EXPECTED and last.get("event") == "stop" and last.get("reason") == "no-observable-cache" \
                 and c.get("warm") is False:
-            notes.append(f"{sid}: no cached token read (stop/no-observable-cache): the expected answer, noted")
+            notes.append(f"{sid}: the control was cold (stop/no-observable-cache): the expected answer, noted")
             continue
         problems.append(f"{sid}: ended {last.get('event')}{'/' + str(last.get('reason')) if last.get('reason') else ''}"
                         f" with the control {'warm' if c.get('warm') else 'cold'}")
     return problems, notes
 
 
-def go_smoke(date, run=None, out=print, key=None):
+def go_smoke(date, run=None, out=print, key=None, allow_overage=False):
     """The smoke runs, one after the other, in the foreground; then the verdict."""
     run, key = run or subprocess.run, key or key_reader()
     need_client_home("--go smoke")
@@ -530,7 +575,7 @@ def go_smoke(date, run=None, out=print, key=None):
         if os.path.exists(os.path.join(ROOT, folder_of(step, date), step["id"] + ".jsonl")):
             out(f"{step['id']}: its results exist already: skipped")
             continue
-        argv = command(step, date)
+        argv = command(step, date) + overage_args(step, allow_overage)
         out(f"== {step['id']}: {shown(argv)}")
         code = run(["caffeinate", "-i", *argv], cwd=ROOT, env=step_env(step, key)).returncode
         if code:
@@ -581,7 +626,14 @@ def read_lock(date, client):
         return None
 
 
-def guard(names, date):
+def claude_overage(date):
+    """Whether the smoke run S1 stopped because Claude Code's first cache write showed the 5-minute tier (paid
+    overage)."""
+    ev = read_events(os.path.join(ROOT, folders(date)["smoke"], "S1.jsonl")) or []
+    return any(e.get("event") == "stop" and e.get("reason") == "overage" for e in ev)
+
+
+def guard(names, date, allow_overage=False):
     if not names or any(n not in CLIENT_PARTS for n in names):
         raise SystemExit(f"--go: smoke, or one of {', '.join(CLIENT_PARTS)}, or all (the four)")
     need_client_home("--go")
@@ -590,6 +642,9 @@ def guard(names, date):
                          "needs it; nothing started")
     if not os.path.exists(reviewed_path(date)):
         raise SystemExit("--go: the clients' runs wait until the smoke results were checked and read (`smoke-reviewed`)")
+    if "claude" in names and claude_overage(date) and not allow_overage:
+        raise SystemExit("--go: the Claude account is in paid overage (S1's first cache write was the 5-minute tier): "
+                         "its runs would use paid usage. Nothing started; --allow-overage starts them anyway")
     taken = [n for n in names if os.path.lexists(lock_path(date, n))]
     if taken:
         raise SystemExit(f"--go: {', '.join(taken)} launched already for {date} (`status`, `stop`); a second start is "
@@ -604,8 +659,29 @@ def write_lock(date, name, lock):
     os.replace(tmp, lock_path(date, name))
 
 
-def launch(name, date, popen=None, out=print, key=None):
-    """One client's runs, each its own background process; the lock file is created exclusively before the first."""
+def private_log(path):
+    """A console log, mode 600 (appended to; made 600 if it existed), never through a link."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    os.fchmod(fd, 0o600)
+    return os.fdopen(fd, "a")
+
+
+def overage_args(step, allow_overage):
+    """Claude runs: --allow-overage when the owner gave it; the 5-minute runs (CC5 - CC8) are told which runs to read
+    for an overage stop, since their own writes cannot show it."""
+    if step.get("harness") != "claude":
+        return []
+    if allow_overage:
+        return ["--allow-overage"]
+    if "CLAUDE_CODE_PROMPT_CACHE_TTL=5m" in step["args"]:
+        return ["--stop-if-overage-in", ",".join(s["id"] for s in PARTS["claude"]
+                                                 if "CLAUDE_CODE_PROMPT_CACHE_TTL=5m" not in s["args"])]
+    return []
+
+
+def launch(name, date, popen=None, out=print, key=None, allow_overage=False):
+    """One client's runs, each its own background process; the lock file is created exclusively before the first,
+    and rewritten with each run's pid as soon as that run is started."""
     popen = popen or subprocess.Popen
     d = make_night_dir(date)
     launch_dir = os.path.join(d, "launch")
@@ -624,25 +700,23 @@ def launch(name, date, popen=None, out=print, key=None):
     logs = os.path.join(ROOT, folders(date)["own"], "logs")
     os.makedirs(logs, exist_ok=True)
     key = key or key_reader()
-    try:
-        for i, step in enumerate(PARTS[name]):
-            delay = delay_of(step, i)
-            argv = command(step, date, launch_id=launch_id, delay=delay)
-            with open(os.path.join(logs, step["id"] + ".log"), "a") as log:
-                p = popen(["caffeinate", "-i", *argv], cwd=ROOT, env=step_env(step, key), stdout=log,
-                          stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
-            lock["runs"][step["id"]] = {"pid": p.pid, "delay_s": delay}
-            out(f"{step['id']} pid {p.pid}, begins {delay} s after the go ({step['model']})")
-    finally:
-        write_lock(date, name, lock)
+    for i, step in enumerate(PARTS[name]):
+        delay = delay_of(step, i)
+        argv = command(step, date, launch_id=launch_id, delay=delay) + overage_args(step, allow_overage)
+        with private_log(os.path.join(logs, step["id"] + ".log")) as log:
+            p = popen(["caffeinate", "-i", *argv], cwd=ROOT, env=step_env(step, key), stdout=log,
+                      stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
+        lock["runs"][step["id"]] = {"pid": p.pid, "delay_s": delay}
+        write_lock(date, name, lock)  # at once: an interrupted launch leaves every started run recorded
+        out(f"{step['id']} pid {p.pid}, begins {delay} s after the go ({step['model']})")
     return lock
 
 
-def go_clients(names, date, popen=None, out=print, key=None):
+def go_clients(names, date, popen=None, out=print, key=None, allow_overage=False):
     names = list(CLIENT_PARTS) if names == ["all"] else names
-    guard(names, date)
+    guard(names, date, allow_overage)
     key = key or key_reader()
-    locks = [launch(n, date, popen=popen, out=out, key=key) for n in names]
+    locks = [launch(n, date, popen=popen, out=out, key=key, allow_overage=allow_overage) for n in names]
     out(f"started: {', '.join(names)}; the terminal may be closed. `python3 harness/night.py --date {date} status` "
         "shows which runs are alive.")
     return locks
@@ -654,6 +728,17 @@ def process_command(pid):
     return p.stdout.strip() if p.returncode == 0 else ""
 
 
+def process_table():
+    """(pid, process group, command line) of every process."""
+    p = subprocess.run(["ps", "-ax", "-o", "pid=,pgid=,command="], capture_output=True, text=True)
+    rows = []
+    for line in p.stdout.splitlines():
+        parts = line.split(None, 2)
+        if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
+            rows.append((int(parts[0]), int(parts[1]), parts[2]))
+    return rows
+
+
 def alive(run_id, info, launch_id, ps=None):
     """The run's process is alive and is that run: its command line carries `--label <id>` and this launch's id."""
     pid = info.get("pid")
@@ -663,52 +748,98 @@ def alive(run_id, info, launch_id, ps=None):
     return f" --label {run_id} " in seen and f" --launch-id {launch_id} " in seen
 
 
-def status(date, ps=None, out=print):
-    """Which runs are alive, by their processes (never by their progress files)."""
+def launch_mark(date, name, lock):
+    """What a worker of this launch carries on its command line: its launch id, or (lock unreadable: a launch
+    interrupted before writing it) the id's prefix for this night and client."""
+    lid = (lock or {}).get("launch_id")
+    return f" --launch-id {lid} " if lid else f" --launch-id {date}-{name}-"
+
+
+def workers(date, name, lock, table=None):
+    """{process group: run label} of every process whose command line carries this launch's mark: the workers of an
+    interrupted launch included, whether or not the lock recorded them."""
+    mark, found = launch_mark(date, name, lock), {}
+    for pid, pgid, cmd in (table or process_table)():
+        seen = " " + cmd + " "
+        if mark in seen and pgid > 1 and pid != os.getpid():
+            label = seen.split(" --label ", 1)[1].split()[0] if " --label " in seen else "?"
+            found.setdefault(pgid, label)
+    return found
+
+
+def read_lock_any(date, name):
+    """The lock (a dict), {} when it exists but cannot be read (an interrupted launch), None when there is none."""
+    path = lock_path(date, name)
+    if not os.path.lexists(path):
+        return None
+    try:
+        return read_lock(date, name) or {}
+    except ValueError:
+        return {}
+
+
+def status(date, ps=None, out=print, table=None):
+    """Which runs are alive, by their processes (never by their progress files); a worker carrying the launch's id but
+    missing from the lock (an interrupted launch) is listed too."""
     counts = {}
     for name in CLIENT_PARTS:
-        lock = read_lock(date, name)
-        if not lock:
+        lock = read_lock_any(date, name)
+        if lock is None:
             out(f"{name}: not launched")
             continue
-        out(f"{name}: launched {lock.get('started')}")
+        out(f"{name}: launched {lock.get('started', '(its lock is incomplete: an interrupted launch)')}")
+        recorded = set()
         for rid, info in lock.get("runs", {}).items():
-            st = "alive" if alive(rid, info, lock["launch_id"], ps) else "ended"
+            st = "alive" if lock.get("launch_id") and alive(rid, info, lock["launch_id"], ps) else "ended"
             counts[st] = counts.get(st, 0) + 1
+            recorded.add(info.get("pid"))
             out(f"  {rid:6} {st}  pid {info.get('pid')}")
+        for pgid, label in workers(date, name, lock, table).items():
+            if pgid not in recorded:
+                counts["alive, not in the lock"] = counts.get("alive, not in the lock", 0) + 1
+                out(f"  {label:6} alive, not in the lock (an interrupted launch)  process group {pgid}")
     out(", ".join(f"{v} {k}" for k, v in counts.items()) or "nothing launched")
     out("Liveness only: how each run ended is in its results file.")
     return counts
 
 
-def stop(target, date, ps=None, killpg=None, out=print, dry=False):
-    """Signals (SIGTERM, to its process group) exactly the runs of the named client(s) that are alive and are those
-    runs (alive)."""
+def stop(target, date, ps=None, killpg=None, out=print, dry=False, table=None):
+    """Signals (SIGTERM, to its process group) exactly the runs of the named client(s) that are alive: those the lock
+    records (pid and command line checked), and any process carrying the launch's id on its command line (a worker of
+    an interrupted launch). A group that ended meanwhile is passed over; the others are still signalled."""
     names = list(CLIENT_PARTS) if target == "all" else [target]
     if any(n not in CLIENT_PARTS for n in names):
         raise SystemExit(f"stop: one of {', '.join(CLIENT_PARTS)}, or all")
     killpg = killpg or os.killpg
     signalled = []
     for name in names:
-        lock = read_lock(date, name)
-        if not lock:
+        lock = read_lock_any(date, name)
+        if lock is None:
             out(f"{name}: not launched: nothing to stop")
             continue
+        groups = {}
         for rid, info in lock.get("runs", {}).items():
-            if not alive(rid, info, lock["launch_id"], ps):
-                continue
+            if lock.get("launch_id") and alive(rid, info, lock["launch_id"], ps):
+                groups[info["pid"]] = rid
+        for pgid, label in workers(date, name, lock, table).items():
+            groups.setdefault(pgid, label)
+        for pgid, rid in groups.items():
             if dry:
-                out(f"{rid}: would signal process group {info['pid']}. Dry run: nothing sent.")
+                out(f"{rid}: would signal process group {pgid}. Dry run: nothing sent.")
                 continue
-            killpg(info["pid"], signal.SIGTERM)
-            signalled.append(info["pid"])
-            out(f"{rid}: process group {info['pid']} stopped")
+            try:
+                killpg(pgid, signal.SIGTERM)
+            except ProcessLookupError:
+                out(f"{rid}: process group {pgid} had ended")
+                continue
+            signalled.append(pgid)
+            out(f"{rid}: process group {pgid} stopped")
     if not dry and not signalled:
         out("no run alive: nothing signalled")
     return signalled
 
 
-def dry_run_go(names, date, out=print):
+def dry_run_go(names, date, out=print, allow_overage=False):
     names = list(CLIENT_PARTS) if names == ["all"] else names
     out(f"`--go {' '.join(names)}`: checks (step 1's snapshot, the smoke results marked, no launch yet of the "
         f"client(s) for this night), then creates <client-home>/night-{date}/launch/<client>.json exclusively, starts "
@@ -716,7 +847,7 @@ def dry_run_go(names, date, out=print):
     for n in names:
         out(f"  {n}: " + ", ".join(f"{s['id']} (+{delay_of(s, i)} s)" for i, s in enumerate(PARTS[n])))
     for n in names:
-        dry_run(PARTS[n], date, out=out)
+        dry_run(PARTS[n], date, out=out, allow_overage=allow_overage)
     total = sum(len(PARTS[n]) for n in names)
     out(f"Dry run of `--go {' '.join(names)}`: {total} runs; nothing run, nothing sent, nothing written.")
 
@@ -731,6 +862,8 @@ def main(argv=None):
                                              "smoke-reviewed, status, stop <client>|all")
     ap.add_argument("--save", action="store_true")
     ap.add_argument("--report", action="store_true")
+    ap.add_argument("--allow-overage", action="store_true",
+                    help="Claude runs start even when the account is in paid overage (they then use paid usage)")
     a = ap.parse_args(argv)
     head, dry = a.what[0], a.dry_run
     if head == "status":
@@ -757,10 +890,10 @@ def main(argv=None):
         return
     if a.what == ["smoke"]:
         if dry:
-            dry_run(PARTS["smoke"], a.date)
+            dry_run(PARTS["smoke"], a.date, allow_overage=a.allow_overage)
             print(f"Dry run of the smoke runs: {len(PARTS['smoke'])} runs, in the foreground; nothing run, nothing sent.")
         elif a.go:
-            go_smoke(a.date)
+            go_smoke(a.date, allow_overage=a.allow_overage)
         else:
             for s in PARTS["smoke"]:
                 print(f"{s['id']}: {shown(command(s, a.date))}")
@@ -768,13 +901,13 @@ def main(argv=None):
     names = a.what
     if dry:
         if names == ["all"] or all(n in CLIENT_PARTS for n in names):
-            dry_run_go(names, a.date)
+            dry_run_go(names, a.date, allow_overage=a.allow_overage)
         else:
             steps = select(names)
             dry_run(steps, a.date)
             print(f"Dry run of {len(steps)} runs: nothing run, nothing sent.")
     elif a.go:
-        go_clients(names, a.date)
+        go_clients(names, a.date, allow_overage=a.allow_overage)
     else:
         for s in select(names):
             print(f"{s['id']}: {shown(command(s, a.date))}")

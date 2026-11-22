@@ -23,6 +23,13 @@ its fingerprint instead (SHA-256, length and first six characters) in SCAN_FINGE
 
     python3 harness/scan_secrets.py --git <repository>    # every file a commit could take: staged, changed, untracked
 
+    python3 harness/scan_secrets.py --own-clients --git .                    # the own-client night: no proxy file read
+    python3 harness/scan_secrets.py --own-clients results/own-clients-<date> # its results with their console logs
+
+--own-clients reads no proxy or pi file (the night uses neither): its sources are the key variables of the shell and
+the fingerprints the night left (Muse Code's key, from the Keychain item `groundtruth META_API_KEY`), and in a
+folder it scans every console log under `logs`, ignored by git or not.
+
 A `logs` folder is mostly local (a run's console output, never committed), but a campaign may force-add its usage
 logs. So in a `logs` folder the files git tracks are scanned (staged ones included) and the others skipped; in a
 folder that is not in a git work tree (the tree the pre-commit hook and CI export from the index, where every file is
@@ -222,8 +229,9 @@ def tracked(folder):
     return {os.path.normpath(p) for p in out.stdout.split("\0") if p}
 
 
-def files_in(target):
-    """Every file to scan under `target`: `logs` folders only for what git tracks (or all of it outside git)."""
+def files_in(target, all_logs=False):
+    """Every file to scan under `target`: `logs` folders only for what git tracks (or all of it outside git, or with
+    `all_logs`: the own-client night's console logs, which stay local)."""
     if os.path.isfile(target):
         # a single file is scanned too (os.walk yields nothing for one, which would pass it unread)
         yield target
@@ -236,7 +244,7 @@ def files_in(target):
             yield os.path.join(root, name)
         for d in logs:
             folder = os.path.join(root, d)
-            keep = tracked(folder)
+            keep = None if all_logs else tracked(folder)
             for sub, subdirs, subnames in os.walk(folder):
                 subdirs[:] = [s for s in subdirs if s not in (".git", "node_modules")]
                 for name in subnames:
@@ -245,10 +253,28 @@ def files_in(target):
                         yield path
 
 
+def collect_own():
+    """The own-client night's sources: only the key variables of this shell (KEY_ENVS). The proxy's and pi's files
+    (SCAN_CLIENT_KEYS, SCAN_KEYS_FILE, SCAN_CONFIG, SCAN_LOGINS) are never opened: the night uses neither. Muse Code's
+    key, read from the Keychain item `groundtruth META_API_KEY` at the night's go, is found by the fingerprint the
+    night left (SCAN_FINGERPRINTS)."""
+    secrets = {}
+    for name in KEY_ENVS:
+        value = os.environ.get(name)
+        if isinstance(value, str) and len(value) >= 16 and " " not in value:
+            secrets.setdefault(value, f"environment variable {name}")
+    return secrets
+
+
 def main():
     if len(sys.argv) < 2:
         sys.exit(__doc__)
-    secrets = collect()
+    own = sys.argv[1] == "--own-clients"
+    if own:
+        del sys.argv[1]
+        if len(sys.argv) < 2:
+            sys.exit(__doc__)
+    secrets = collect_own() if own else collect()
     known = fingerprints()
     client_home = os.environ.get("GROUNDTRUTH_CLIENT_HOME")
     paths = {p for p in (client_home, client_home and os.path.realpath(client_home)) if p and len(p) > 4}
@@ -262,7 +288,7 @@ def main():
                 sys.exit(f"{target}: no such file or folder")
         targets = [(t, None) for t in args]
     for target, listed in targets:
-        for path in (listed if listed is not None else files_in(target)):
+        for path in (listed if listed is not None else files_in(target, all_logs=own)):
             files += 1
             text = open(path, errors="ignore").read()
             found = []

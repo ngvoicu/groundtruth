@@ -147,7 +147,8 @@ class Environment(unittest.TestCase):
             for harness in OWN:
                 with self.subTest(harness=harness):
                     env = C.CLIENTS[harness]("m").environment(home, base=BASE)
-                    self.assertEqual(env, {**allowed, "HOME": C.throwaway_home(home), **expected[harness]})
+                    self.assertEqual(env, {**allowed, "HOME": C.throwaway_home(home), "TMPDIR": C.throwaway_tmp(home),
+                                           **expected[harness]})
 
     def test_every_client_gets_a_throwaway_home_beside_its_state_folder_never_the_callers(self):
         for harness, client in C.CLIENTS.items():
@@ -189,6 +190,8 @@ class StateFolder(unittest.TestCase):
         self.base = os.path.join(t, "client-home")
         for d in (self.user, self.repo, self.base, os.path.join(self.base, "claude-code"), os.path.join(self.base, "muse-code")):
             os.makedirs(d)
+        with open(os.path.join(self.base, "claude-code", ".credentials.json"), "w") as f:
+            f.write("{}")  # Claude's login file (finding 1 of the third review: checked before every run)
         self.calls = []
 
     def tearDown(self):
@@ -331,6 +334,9 @@ print(json.dumps({{"type": "result", "is_error": False, "num_turns": 1, "session
             for d in (user, repo, os.path.join(base, "claude-code"), bin_):
                 os.makedirs(d, mode=0o700)
             os.chmod(base, 0o700)
+            fd = os.open(os.path.join(base, "claude-code", ".credentials.json"), os.O_WRONLY | os.O_CREAT, 0o600)
+            os.write(fd, b"{}")
+            os.close(fd)
             with open(os.path.join(bin_, "claude"), "w") as f:
                 f.write(self.FAKE.format(python=sys.executable))
             os.chmod(os.path.join(bin_, "claude"), 0o755)
@@ -347,7 +353,7 @@ print(json.dumps({{"type": "result", "is_error": False, "num_turns": 1, "session
                              for d, dirs, files in os.walk(throwaway) for n in dirs + files)
             self.assertEqual(written, [".claude", ".claude.json", ".claude/projects", ".claude/projects/session.jsonl"])
             self.assertEqual(os.listdir(user), [], "nothing under the caller's home folder")
-            self.assertEqual(os.listdir(state), [], "the state folder is what the client ignored")
+            self.assertEqual(os.listdir(state), [".credentials.json"], "the state folder is what the client ignored")
 
 
 class SessionRuns(unittest.TestCase):
