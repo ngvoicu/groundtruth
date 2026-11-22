@@ -85,7 +85,7 @@ class Point1Stop(Owner):
             sent.append(("group", pgid))  # never delivered
         with mock.patch.object(night.os, "kill", side_effect=deliver), \
                 mock.patch.object(night.os, "killpg", side_effect=group):
-            signalled = night.stop("codex", DATE, out=lambda *_: None, wait=0.2)
+            signalled = night.stop("codex", DATE, out=lambda *_: None)
         self.assertEqual(sent, [("pid", w.pid)])
         self.assertEqual(signalled, [w.pid])
         self.assertEqual(w.wait(timeout=10), -signal.SIGTERM)
@@ -97,7 +97,7 @@ class Point1Stop(Owner):
             with self.subTest(started=started):
                 self.lock({"CX1": {"pid": w.pid, "started": started}})
                 sent = []
-                night.stop("codex", DATE, kill=lambda pid, sig: sent.append(pid), out=lambda *_: None, wait=0.2)
+                night.stop("codex", DATE, kill=lambda pid, sig: sent.append(pid), out=lambda *_: None)
                 self.assertEqual(sent, expected)
         self.assertIsNone(w.poll())
 
@@ -109,35 +109,14 @@ class Point1Stop(Owner):
             with self.subTest(command=command):
                 self.lock({}, launcher_pid=launcher.pid, launcher_started=when, launcher_command=command)
                 sent = []
-                night.stop("codex", DATE, kill=lambda pid, sig: sent.append(pid), out=lambda *_: None, wait=0.2,
-                           sleep=lambda s: None)
+                night.stop("codex", DATE, kill=lambda pid, sig: sent.append(pid), out=lambda *_: None)
                 self.assertEqual(sent, expected)
 
-    def test_the_launcher_cannot_be_ended_between_a_start_and_its_record(self):
-        # Its ending signals are held back from the start to the record, and the run gets the launcher's own mask.
-        for p in (night.everyday_path(DATE), night.reviewed_path(DATE)):
-            write(p, "fixture")
-        mask_file = os.path.join(self.tmp, "mask")
-        script = os.path.join(self.tmp, "mask.py")
-        write(script, f"import signal, sys\nopen({mask_file!r}, 'w').write(repr(sorted(int(s) for s in "
-                      "signal.pthread_sigmask(signal.SIG_BLOCK, []))))\n")
-        held = []
-        real_popen = subprocess.Popen
-
-        def popen(argv, **kw):
-            held.append(signal.pthread_sigmask(signal.SIG_BLOCK, []))
-            if held[1:]:
-                return mock.Mock(pid=987654)
-            p = real_popen([sys.executable, "-B", script], **kw)
-            p.wait(timeout=10)
-            return p
-        with mock.patch.object(night.os, "kill", side_effect=lambda pid, sig: None), \
-                mock.patch.object(night, "process_started", lambda pid: "T"):
-            night.go_clients(["codex"], DATE, popen=popen, out=lambda *_: None)
-        self.assertTrue(all(night.HELD <= set(h) for h in held))
-        self.assertFalse(night.HELD & set(signal.pthread_sigmask(signal.SIG_BLOCK, [])))  # released after
-        with open(mask_file) as f:
-            self.assertFalse({int(s) for s in night.HELD} & set(json.loads(f.read())))
+    def test_the_launcher_holds_no_signal_back(self):
+        # Since the eighth review the stop mark is the authority: no signal is held back around a start any more.
+        self.assertFalse(hasattr(night, "HELD"))
+        with open(os.path.join(ROOT, "harness", "night.py")) as f:
+            self.assertNotIn("pthread_sigmask", f.read())
 
     def test_a_launched_probe_ends_its_client_with_it(self):
         # `stop` signals the probe's pid alone: the probe ends the client invocation under way with itself.
@@ -216,7 +195,7 @@ class Point3Gate(unittest.TestCase):
         for r in rows:
             if r["event"] == "check":
                 r["usage"]["model_evidence"] = "own-turn"
-        rows.insert(-1, {"event": "model-scan", "final": True, "other_models": [], "unreadable": False})
+        rows.insert(-1, {"event": "model-scan", "final": True, "other_models": 0, "unreadable": False})
         rows[0]["at"] = at
         return rows
 
@@ -298,8 +277,8 @@ class Point3Gate(unittest.TestCase):
 
 
 class Point4ModelScan(R5.CodexNight):
-    """4: the public model-scan event carries `final`, `other_models` (model-id-shaped names, anything else `?`) and
-    `unreadable`, nothing else; the session files' own strings go to the console log only (calendar-fixtures.log:2,
+    """4: the public model-scan event carries `final`, `other_models` (since the eighth review a count: no name at all)
+    and `unreadable`, nothing else; the session files' own strings go to the console log only (calendar-fixtures.log:2,
     path-test.log)."""
 
     def test_the_review_s_strings_never_reach_the_public_file(self):
@@ -308,8 +287,8 @@ class Point4ModelScan(R5.CodexNight):
         for e in scans:
             self.assertEqual(set(e), {"event", "final", "other_models", "unreadable", "at"})
             self.assertIsInstance(e["unreadable"], bool)
-            self.assertTrue(all(n == "?" or probe.PUBLIC_MODEL.fullmatch(n) for n in e["other_models"]))
-        self.assertEqual(scans[-1]["other_models"], ["19.28.3746", "?"])
+            self.assertIs(type(e["other_models"]), int)
+        self.assertEqual(scans[-1]["other_models"], len(self.PRIVATE))
         for private in self.PRIVATE[1:]:
             self.assertNotIn(private, text)
         for word in ("Volumes", "auth.json", "t345synthetic", "unavailable", "Gpt-Upper"):

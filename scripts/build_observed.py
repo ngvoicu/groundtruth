@@ -328,8 +328,9 @@ def check_answered_model(run, data):
 
 def check_model_scan(run, data):
     """Codex, at the run's level: the probe read every session file of the run whole, at each check and at the end
-    (model-scan events: final, other_models, unreadable). A run whose files name any model but the requested one
-    anywhere, or could not all be read, or that ended on either, or whose end scan is missing, is not published."""
+    (model-scan events: final, other_models, a count, and unreadable). A run whose files name any model but the
+    requested one anywhere, or could not all be read, or that ended on either, or whose end scan is missing, is not
+    published."""
     if data.get("harness") != "codex":
         return
     if data.get("stop") in ("other-model", "unreadable-session"):
@@ -337,10 +338,12 @@ def check_model_scan(run, data):
     scans = data.get("model_scans") or []
     if not any(s.get("final") is True for s in scans):
         raise SystemExit(f"{run['id']}: no end-of-run scan of its Codex session files (model-scan): not published")
-    other = sorted({str(m) for s in scans for m in (s.get("other_models") or [])})
-    if other or any(s.get("other_models") != [] or s.get("unreadable") is not False for s in scans):
-        raise SystemExit(f"{run['id']}: its Codex session files name another model than {run['model']} ("
-                         f"{', '.join(other) or 'or could not all be read'}): the whole run is excluded")
+    def clean(s):
+        # The count of other models (an int, never a bool) is 0 and every session file could be read.
+        return type(s.get("other_models")) is int and s["other_models"] == 0 and s.get("unreadable") is False
+    if not all(clean(s) for s in scans):
+        raise SystemExit(f"{run['id']}: its Codex session files name another model than {run['model']}, or could not "
+                         "all be read (model-scan): the whole run is excluded")
 
 
 def check_own_run(run, client, data, options):

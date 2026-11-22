@@ -331,6 +331,7 @@ class Point5Launcher(Owner):
 sys.path.insert(0, {os.path.join(ROOT, 'harness')!r})
 import night
 night.ROOT = {self.repo!r}
+night.hook_problem = lambda *a, **k: None
 night.command = lambda step, date, launch_id=None, delay=None: [sys.executable, "-B", {self.worker!r}, "--label",
                                                                step["id"], "--launch-id", launch_id]
 night.write_lock = lambda *a, **k: None  # as if it died before recording anything after the first worker
@@ -349,12 +350,12 @@ night.go_clients(["codex"], {DATE!r}, out=out)
         lock = night.read_lock(DATE, "codex")
         self.assertEqual(lock["runs"], {})  # the review's state: nothing recorded
         self.assertTrue(self.wait_alive(orphan, "CX1", lock["launch_id"]))
-        # Only an abrupt death (os._exit, SIGKILL) can leave this: the launcher holds SIGTERM, SIGINT and SIGHUP back
-        # between a start and its record. `stop` acts on recorded pids only, so this orphan is not signalled; the
-        # morning's `status` and the audit see its results file.
+        # A launcher that dies between a start and its record leaves this. `stop` acts on recorded pids only, so this
+        # stand-in orphan is not signalled; a real run (harness/probe.py) is never left so: it waits for its pid in
+        # the lock before its first client call and exits without one (test_eighth_review).
         self.assertEqual(night.status(DATE, out=lambda *_: None), {})
         self.assertEqual(night.stop("all", DATE, dry=True, out=lambda *_: None), [])
-        self.assertEqual(night.stop("all", DATE, out=lambda *_: None, wait=0.2), [])
+        self.assertEqual(night.stop("all", DATE, out=lambda *_: None), [])
         self.assertTrue(night.process_command(orphan))
 
     def test_a_recorded_run_that_ended_meanwhile(self):

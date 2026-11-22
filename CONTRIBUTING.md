@@ -14,7 +14,7 @@ You need Node 22.19 or later and Python 3. No proxy is needed: send the requests
 ```bash
 git clone https://github.com/ngvoicu/groundtruth && cd groundtruth
 npm install
-ln -sf ../../scripts/pre-commit .git/hooks/pre-commit    # the check that blocks credentials, once per clone
+git config core.hooksPath scripts                       # the check that blocks credentials, once per clone
 export CACHE_PROBE_KEY=...                               # your key: never on the command line, never in a file
 ```
 

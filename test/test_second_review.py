@@ -69,7 +69,9 @@ class Owner(unittest.TestCase):
         os.makedirs(os.path.join(self.repo, ".git"))
         mask = os.umask(0o022)
         self.addCleanup(os.umask, mask)
-        for p in (mock.patch.object(C, "CONFINED", False, create=True), mock.patch.object(night, "ROOT", self.repo),
+        # The fixture repository is no Git checkout: its commit-hook check (night.hook_problem) is tested apart.
+        for p in (mock.patch.object(night, "hook_problem", return_value=None),
+                  mock.patch.object(C, "CONFINED", False, create=True), mock.patch.object(night, "ROOT", self.repo),
                   mock.patch.object(probe, "ROOT", self.repo), mock.patch.object(ss, "remember")):
             p.start()
             self.addCleanup(p.stop)

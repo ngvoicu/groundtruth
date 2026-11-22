@@ -191,6 +191,7 @@ class Point5Stop(Owner):
 sys.path.insert(0, {os.path.join(ROOT, 'harness')!r})
 import night
 night.ROOT = {self.repo!r}
+night.hook_problem = lambda *a, **k: None
 night.command = lambda step, date, launch_id=None, delay=None: [sys.executable, "-B", {self.worker!r}, "--label",
                                                                step["id"], "--launch-id", launch_id]
 def out(line):
@@ -209,8 +210,7 @@ night.go_clients(["codex"], {DATE!r}, out=out)
             lock = night.read_lock(DATE, "codex")
             self.assertEqual(lock["launcher_pid"], p.pid)
             signalled = night.stop("all", DATE, out=lambda *_: None)
-            # Since the fifth review `stop` waits for the launcher, which ends by itself on the stop mark (exit 1);
-            # one that does not is signalled.
+            # The launcher ends by itself on the stop mark (exit 1), or on `stop`'s signal to its recorded pid.
             self.assertIn(p.wait(timeout=10), (1, -signal.SIGTERM))
             lock = night.read_lock(DATE, "codex")
             self.assertEqual(sorted(signalled), sorted(info["pid"] for info in lock["runs"].values()))

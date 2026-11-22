@@ -118,8 +118,6 @@ def written_ttl(usage):
 
 
 WAVES, WAVE_GAP = 3, 300.0
-# A model name as a public model-scan event may carry it; any other text is written `?`.
-PUBLIC_MODEL = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 
 
 def late_after(age):
@@ -181,9 +179,9 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
         """The run-level model check (Codex): each session's whole record, after every check and at the run's end. A
         model other than the requested one anywhere, or a record that cannot all be read, excludes the whole run
         (scripts/build_observed.py), and a check that finds either stops it (`stop`, `other-model` or
-        `unreadable-session`). Nothing for a client that keeps no such record. The public event carries only `final`,
-        the other models' names where they have a model id's form (any other text written `?`) and `unreadable`; the
-        names as the files have them go to the console log (detail) only."""
+        `unreadable-session`). Nothing for a client that keeps no such record. The public event carries no text from
+        any session file: `final`, how many other models were named (`other_models`, a count) and `unreadable`; the
+        names go to the console log (detail, private) only, for the audit."""
         read = getattr(h, "other_models", None)
         if read is None:
             return
@@ -197,9 +195,7 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
             unreadable = unreadable or bool(bad)
         if other:
             detail(f"model-scan: other models named in the session files: {sorted(other)!r}")
-        log({"event": "model-scan", "final": bool(final),
-             "other_models": sorted({n if PUBLIC_MODEL.fullmatch(n) else "?" for n in other}),
-             "unreadable": unreadable})
+        log({"event": "model-scan", "final": bool(final), "other_models": len(other), "unreadable": bool(unreadable)})
         if not final and (other or unreadable):
             raise Stop("other-model" if other else "unreadable-session")
 
@@ -445,6 +441,56 @@ def main(argv=None):
         raise SystemExit(redact.scrub(f"probe: {type(e).__name__}: {e}")) from None
 
 
+# Seconds a launched run waits for its pid to be in the launch's lock before its first client call.
+RECORD_WAIT = 5.0
+LAUNCH_ID = re.compile(r"(\d{4}-\d{2}-\d{2})-([a-z]+)-[0-9a-f]{12}")
+
+
+class NightStop:
+    """A launched run's guard (harness/night.py): the night's stop mark is the authority. `run` is the runner of every
+    client invocation of the run (status, version, each priming and check): it looks for the mark immediately before
+    each one and exits (SystemExit) without calling the client once the mark exists. `wait_recorded` holds the run
+    before its first client call until its own pid is in the lock under its label and launch id, and exits if it is
+    not there within RECORD_WAIT seconds (a launcher ended before recording it) or the mark appears meanwhile."""
+
+    def __init__(self, client_home, launch_id, label, harness):
+        m = LAUNCH_ID.fullmatch(launch_id or "")
+        if not client_home or not m or m.group(2) != harness:
+            raise SystemExit(f"{label}: --launch-id {launch_id!r} is not a launch of {harness} under <client-home>: "
+                             "not run")
+        folder = os.path.join(client_home, f"night-{m.group(1)}", "launch")
+        self.lock, self.mark = os.path.join(folder, harness + ".json"), os.path.join(folder, harness + ".stop")
+        self.launch_id, self.label = launch_id, label
+
+    def check(self):
+        if os.path.lexists(self.mark):
+            raise SystemExit(f"{self.label}: the night's stop mark is set: no client call; the run ends here")
+
+    def recorded(self):
+        try:
+            with open(self.lock) as f:
+                lock = json.load(f)
+            run = lock["runs"][self.label]
+            return lock["launch_id"] == self.launch_id and run["pid"] == os.getpid()
+        except (OSError, ValueError, KeyError, TypeError):
+            return False
+
+    def wait_recorded(self, wait=RECORD_WAIT):
+        end = time.monotonic() + wait
+        while True:
+            self.check()
+            if self.recorded():
+                return
+            if time.monotonic() >= end:
+                raise SystemExit(f"{self.label}: its pid is not in the launch's lock after {wait:g} s: no client call; "
+                                 "the run ends here")
+            time.sleep(0.05)
+
+    def run(self, *a, **kw):
+        self.check()
+        return C._run(*a, **kw)
+
+
 def stay_awake_and_stoppable(launched):
     """A launched run (harness/night.py) is its own process: `stop` signals its pid alone. SIGTERM, SIGINT and SIGHUP
     are taken out of any inherited blocked set and end the probe through an exception, so that the client invocation
@@ -508,13 +554,17 @@ def _main(argv=None):
             print(f"{a.label}: the caller's environment (a proxy client). Dry run: nothing run, nothing sent.")
         return
     stay_awake_and_stoppable(bool(a.launch_id))
+    night = NightStop(a.client_home, a.launch_id, a.label, a.harness) if a.launch_id else None
+    if night:
+        night.wait_recorded()
+    run = night.run if night else None  # every client invocation of a launched run passes the stop mark first
     if a.delay > 0:
         # A staggered start (harness/night.py): waits first, so that the checks below are made just before the run.
         time.sleep(a.delay)
     keep = private_capture_folder(a.keep_raw, a.client_home, ROOT) if a.keep_raw else None
     home = None
     if client.isolated:
-        home = C.state_folder(client, a.client_home, ROOT)
+        home = C.state_folder(client, a.client_home, ROOT, run=run)
         env = client.environment(home)
         import scan_secrets
         for k in client.passthrough:  # a value only the child knows: its fingerprint, for the scan at commit time
@@ -533,11 +583,11 @@ def _main(argv=None):
             # The client's TMPDIR is its own under <client-home> (clients.throwaway_tmp), never the shell's.
             writable = [home, env.get("HOME"), env.get("TMPDIR"), tmp]  # what the client may write (confine)
         session = C.Session(client, env=env, io=os.path.join(tmp, "io"), work=os.path.join(tmp, "work"),
-                            home=home, keep=keep, writable=writable)
+                            home=home, keep=keep, writable=writable, run=run)
         start.update(command={"prime": session.plan(), "check": session.plan(resume="<session>")})
         # The client's version is its own text: never in a public result. It goes to the console log (mode 600) and to
         # the run's private record under <client-home> (private_record), for the audit.
-        version = client.version(env, writable=writable)
+        version = client.version(env, run=run, writable=writable)
         print(f"detail: client version: {version}", file=sys.stderr, flush=True)
         if a.client_home:
             private_record(a.client_home, a.label, salt, {"label": a.label, "salt": salt, "client": client.client_id,

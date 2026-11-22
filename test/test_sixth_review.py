@@ -93,7 +93,7 @@ class Point1Stop(Owner):
             os.kill(pid, sig)
         with mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": base_a}), \
                 mock.patch.object(night.os, "killpg", side_effect=AssertionError("a process group signalled")):
-            signalled = night.stop("all", DATE, kill=only_a, out=lambda *_: None, wait=0.5)
+            signalled = night.stop("all", DATE, kill=only_a, out=lambda *_: None)
         self.assertEqual((signalled, sent), ([a.pid], [a.pid]))
         self.assertEqual(a.wait(timeout=10), -signal.SIGTERM)
         time.sleep(0.2)
@@ -116,7 +116,7 @@ class Point1Stop(Owner):
                     write(night.lock_path(DATE, "codex"), json.dumps(dict(lock, launcher_started=recorded)))
                     killed = []
                     night.stop("codex", DATE, kill=lambda pid, sig: killed.append(pid),
-                               out=lambda *_: None, wait=0.2, sleep=lambda s: None)
+                               out=lambda *_: None)
                     self.assertEqual(killed, expected)
         self.assertIsNone(launcher.poll())  # only recorded, never really signalled here
 
@@ -130,8 +130,8 @@ class Point1Stop(Owner):
             with self.subTest(lock=lock):
                 if lock is not None:
                     write(night.lock_path(DATE, "codex"), lock)
-                self.assertEqual(night.stop("codex", DATE, kill=lambda *a: self.fail("signalled"), out=lambda *_: None,
-                                            wait=0.2), [])
+                self.assertEqual(night.stop("codex", DATE, kill=lambda *a: self.fail("signalled"),
+                                            out=lambda *_: None), [])
         self.assertIsNone(w.poll())
 
     def test_no_search_by_program_name_or_date_is_left(self):
@@ -193,7 +193,7 @@ class Point3NoVersion(R5.CodexNight):
         for r in rows:
             if r["event"] == "check":
                 r["usage"]["model_evidence"] = "own-turn"
-        rows.insert(-1, {"event": "model-scan", "final": True, "other_models": [], "unreadable": False})
+        rows.insert(-1, {"event": "model-scan", "final": True, "other_models": 0, "unreadable": False})
         rows[0]["client_version"] = "0.171.0"
         self.assertNotIn("client_version", R5.build_in_night(rows))
         self.assertFalse(hasattr(B, "VERSION_TOKEN") or hasattr(C, "VERSION_TOKEN"))
@@ -209,7 +209,7 @@ class Point4CodexRunLevel(R5.CodexNight):
                 path, text, events, row = self.run_case(variant)
                 scans = [e for e in events if e["event"] == "model-scan"]
                 self.assertTrue(scans[-1]["final"])
-                self.assertIn("gpt-6-astra", scans[-1]["other_models"])
+                self.assertGreaterEqual(scans[-1]["other_models"], 1)  # a count since the eighth review
                 if variant != "astra-in-the-baseline":  # found at the check: the run stops there
                     self.assertEqual(events[-1], dict(events[-1], event="stop", reason="other-model"))
                 with self.assertRaisesRegex(SystemExit, "gpt-6-astra|another model|other-model"):
@@ -219,7 +219,7 @@ class Point4CodexRunLevel(R5.CodexNight):
         path, text, events, row = self.run_case("matching-evidence")
         scans = [e for e in events if e["event"] == "model-scan"]
         self.assertEqual([s["final"] for s in scans], [False] * 4 + [True])  # control, 2.5m, 5m, 7.5m, the end
-        self.assertTrue(all(s["other_models"] == [] for s in scans))
+        self.assertTrue(all(s["other_models"] == 0 for s in scans))
         self.assertEqual(set(scans[-1]), {"event", "final", "other_models", "unreadable", "at"})
         self.assertEqual(R5.build_in_night(events)["model"], MODEL)
 
@@ -248,7 +248,7 @@ class Point5Gate(unittest.TestCase):
         for r in rows:
             if r["event"] == "check":
                 r["usage"]["model_evidence"] = "own-turn"
-        rows.insert(-1, {"event": "model-scan", "final": True, "other_models": [], "unreadable": False})
+        rows.insert(-1, {"event": "model-scan", "final": True, "other_models": 0, "unreadable": False})
         return rows
 
     def test_the_gate(self):

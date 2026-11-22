@@ -109,7 +109,12 @@ Anyone can do this, from the repository's root, with these set in the shell:
 
 ```bash
 export GROUNDTRUTH_CLIENT_HOME="$HOME/groundtruth-clients" N=<YYYY-MM-DD>
+git config core.hooksPath scripts      # once per clone: each worktree runs its own scripts/pre-commit
 ```
+
+`--go` refuses to start unless `git config core.hooksPath` is `scripts` in the checkout it runs from. The path is
+relative, so Git runs the commit hook of the worktree being committed, never an older one linked under the main
+checkout's `.git/hooks` (which every linked worktree would share). `--dry-run all` says whether it is set.
 
 Keep the computer on power and on the network. Each run keeps it awake (`caffeinate -i -w <its pid>`); a check made too late after
 its priming is left out, so a sleeping computer loses checks, not truth.
@@ -129,16 +134,22 @@ its priming is left out, so a sleeping computer loses checks, not truth.
 - **Watching**: `python3 harness/night.py --date $N status` lists each run as `alive` or `ended`, from its process:
   its pid is alive and that process is that run of this launch. How a run ended is in its results file
   (`results/own-clients-$N/<id>.jsonl`), and its console output in `results/own-clients-$N/logs/<id>.log`.
-- **Stopping**: `python3 harness/night.py --date $N stop <client>` (or `stop all`) first writes the client's stop mark
-  (`$G/night-$N/launch/<client>.stop`): a launcher starts no run after it, and stops at once a run it was just
-  starting. Then it reads that client's launch file and signals only the pids recorded there, each checked first: the
-  launcher (its start time and command line as it recorded them), given a few seconds to end by itself and signalled
-  if it does not; then each recorded run that is alive and is that run (its recorded start time, its command line
-  with its label and the launch file's launch id). Only those pids, never a process group, and never a process the
-  launch file does not record, so nothing of another night, another `$G` or another program is touched. A run ends
-  the client invocation it has under way when it is signalled. It needs `GROUNDTRUTH_CLIENT_HOME` set as for
-  the night (it refuses without it). Nothing more of that client starts that night. `--dry-run stop all` names them and does
-  nothing. A run also stops by itself on a quota refusal or a missed or late control.
+- **Stopping**: `python3 harness/night.py --date $N stop <client>` (or `stop all`) first sets the client's stop mark
+  (`$G/night-$N/launch/<client>.stop`). **The mark is the authority**: a launcher starts no run after it, and every
+  run looks for it immediately before each client invocation (its status, its version, each priming and check) and
+  exits without calling the client once it is there. Before its first client call a run also waits up to 5 seconds
+  for its own pid to be in the launch file, and exits if it is not (a launcher stopped between starting it and
+  recording it). **Signals are only the fast path**: `stop` then signals the pids the launch file records, each
+  checked first: the launcher (its start time and command line as it recorded them) and each recorded run that is
+  alive and is that run (its recorded start time, its command line with its label and the launch file's launch id).
+  Only those pids, never a process group, and never a process the launch file does not record, so nothing of another
+  night, another `$G` or another program is touched. A signalled run ends the client invocation it has under way. It
+  says, per client: `stop mark set; <n> recorded processes signalled; a run not yet recorded stops before its next
+  client call` (or `not launched` when there is no launch file). It needs `GROUNDTRUTH_CLIENT_HOME` set as for the
+  night (it refuses without it), and it refuses, writing nothing, when the marks' folder would be an everyday client
+  folder (`~/.codex`, …), a synced folder, the repository or a checkout. Nothing more of that client starts that
+  night. `--dry-run stop all` names them and does nothing. A run also stops by itself on a quota refusal or a missed
+  or late control.
 
 ### The smoke review (step 3)
 
@@ -164,7 +175,7 @@ Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each inv
 - [ ] Each file's first line shows `"confinement": "sandbox-exec: …"`.
 - [ ] `S2.jsonl`'s first line shows `model_provider="openai"` in both commands and no `"client_version"`; its check's
       `"usage"` has `"model": "gpt-6-luna"` and `"model_evidence": "own-turn"`; its last `model-scan` line has
-      `"final": true`, `"other_models": []` and `"unreadable": false`.
+      `"final": true`, `"other_models": 0` and `"unreadable": false`.
 - [ ] `S3.jsonl`'s first line shows `"process_model": "in-process"` and `"keepalive_max_pings": 0` under `"devin"`.
 - [ ] `ls -A "$G"/home/*` shows what each client wrote in its throwaway home. Note anything there for the
       maintainer; it needs no action.
@@ -218,10 +229,10 @@ files and console logs stay where they are: nothing of them is copied into the r
       error event (an error is only a kind: `timeout`, `exit-nonzero`, …).
 - [ ] Every `check`'s `usage.model` is the run's model (Devin: the model id, or it with its effort or date suffix);
       every Codex `check` has `"model_evidence": "own-turn"`.
-- [ ] Every Codex run ends with a `model-scan` line with `"final": true`, `"other_models": []` and
+- [ ] Every Codex run ends with a `model-scan` line with `"final": true`, `"other_models": 0` and
       `"unreadable": false`, and no line of it is `stop` with `other-model` or `unreadable-session`. (A `model-scan`
-      line carries only those three fields; a name that is not a model id's shape is written `?`, and the names as the
-      session files hold them are in the console log only.)
+      line carries no text from any session file: only `final`, the count `other_models` and `unreadable`. The names
+      themselves are in the run's console log only, on a `detail: model-scan:` line, for this audit.)
 - [ ] The `check-invalid`, `check-failed`, `retry` and `stop` lines are understood; a run whose checks are mostly
       invalid goes under `excluded` with the reason.
 

@@ -2,7 +2,9 @@
 # Blocks a commit when a file of an own-client night is in the tree before its audit (results/own-clients-<date>/
 # AUDIT.md), or when the files about to be committed hold a credential, a home-folder path, a client's state or
 # session file, or when observed.json doesn't match the raw results. Install once per clone:
-#     ln -sf ../../scripts/pre-commit .git/hooks/pre-commit
+#     git config core.hooksPath scripts
+# A relative path: Git runs, in each worktree, that worktree's own scripts/pre-commit (a hook linked under .git/hooks
+# would be the main checkout's, shared by every linked worktree). harness/night.py refuses to start a night without it.
 # It checks the whole staged tree (exported from the index), and every other file a commit could take (changed or
 # untracked, not ignored), so it doesn't matter how the files were added.
 set -euo pipefail

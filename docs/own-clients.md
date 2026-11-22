@@ -10,10 +10,15 @@ two logins where differences were seen). Claude Code and Muse Code wait for a la
 command (their drivers stay in `harness/clients.py`, tested). A public result carries no client error text at all,
 only a kind from `clients.ERROR_KINDS`; the detail goes to the run's console log (mode 600), redacted whole before any
 clipping. The launcher records its own pid before any run and looks for the client's stop mark before each start;
-`stop` writes the mark, then signals only the pids the lock records (the launcher, then the runs), each checked by
-its recorded start time and command line; never a process group. A check without model evidence of its own turn is
-`check-invalid` (`no-model`) in the probe and never published by the builder; Codex's model evidence is bound to the
-invocation's own new turn. A priming that is not one explicit model request is retried, never used.
+`stop` sets the mark, then signals only the pids the lock records (the launcher, then the runs), each checked by
+its recorded start time and command line; never a process group. Since the eighth review the mark is the authority
+and signals only the fast path: every run looks for the mark immediately before each client invocation and exits
+without calling the client once it is there, and waits (5 s at most) for its own pid in the lock before its first
+one; `stop` refuses, writing nothing, when the marks' folder resolves to an everyday folder. A night starts only from
+a checkout whose `git config core.hooksPath` is `scripts` (each worktree runs its own commit hook). A check without
+model evidence of its own turn is `check-invalid` (`no-model`) in the probe and never published by the builder;
+Codex's model evidence is bound to the invocation's own new turn. A priming that is not one explicit model request is
+retried, never used.
 
 **Since the third review (2026-11-22): the last round before the night.** A login is done only when the client's
 login file is in its state folder (non-empty, then 600) and its own status shows the subscription; a Claude run is
@@ -51,9 +56,9 @@ It supersedes what the list below says of pi, Provimux, OpenRouter and the super
   `model_reroute`, a context of another or an older turn); otherwise it is `check-invalid` (`no-model`,
   `ambiguous-model` or `other-model`), and the builder refuses a Codex check without `model_evidence` `own-turn`.
   At the run's level, every session file of the run is read whole after each check and at its end (`model-scan`):
-  any model but the requested one anywhere stops and excludes the whole run. The public `model-scan` line carries only
-  `final`, `other_models` (model-id-shaped names, anything else `?`) and `unreadable`; the files' own strings go to the
-  console log only.
+  any model but the requested one anywhere stops and excludes the whole run. The public `model-scan` line carries no
+  text from any session file: `final`, `other_models` (a count) and `unreadable`; the names go to the console log
+  only.
 - **Publication** of a night waits for its audit: `scripts/build_observed.py` refuses every own-client run of the
   new design until `results/own-clients-<date>/AUDIT.md` begins with `# Own-client night audit: passed`, which a
   person writes after reading the raw results, the Codex session files and the console logs

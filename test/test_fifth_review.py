@@ -215,7 +215,7 @@ class Case3Model(CodexNight):
             if r["event"] == "check":
                 r["usage"]["model_evidence"] = "own-turn"
         last = max(i for i, r in enumerate(rows) if r["event"] == "check")
-        rows.insert(-1, {"event": "model-scan", "final": True, "other_models": [], "unreadable": False})
+        rows.insert(-1, {"event": "model-scan", "final": True, "other_models": 0, "unreadable": False})
         self.assertEqual(build_in_night(rows)["model"], MODEL)  # bound evidence of the requested model: published
         for change, message in (({"model_issue": "ambiguous-model"}, "not certain"),
                                 ({"model": "gpt-6-astra"}, "answered by"),
@@ -253,8 +253,8 @@ class Case3Model(CodexNight):
 
 
 class Case2Stop(Owner):
-    """2: `stop` writes the mark before any lookup, waits for the launcher, then finds the runs by the lock and by the
-    night's launch id; the launcher looks at the mark again right after each start."""
+    """2: `stop` writes the mark before any lookup, then signals the pids the lock records (since the eighth review it
+    no longer waits for the launcher: the mark is the authority, and each run looks for it before every client call)."""
 
     def setUp(self):
         super().setUp()
@@ -300,6 +300,7 @@ class Case2Stop(Owner):
 sys.path.insert(0, {os.path.join(ROOT, 'harness')!r})
 import night
 night.ROOT = {self.repo!r}
+night.hook_problem = lambda *a, **k: None
 night.command = lambda step, date, launch_id=None, delay=None: [sys.executable, "-B", {self.worker!r}, "--label",
                                                                step["id"], "--launch-id", launch_id]
 print("at-start", flush=True)
@@ -330,7 +331,7 @@ night.go_clients(["codex"], {DATE!r}, out=progress)
                 p.stdout.readline()  # `CX1 pid …` (the launcher started it), or nothing (it ended)
             return value
         with mock.patch.object(night, "read_lock_any", side_effect=observe):
-            signalled = night.stop("all", DATE, out=lambda *_: None, wait=1.0)
+            signalled = night.stop("all", DATE, out=lambda *_: None)
         self.assertEqual(self.settle(), [], "a worker of the night survived a stop that returned")
         try:
             p.stdin.write("continue\n")
@@ -350,12 +351,14 @@ night.go_clients(["codex"], {DATE!r}, out=progress)
             return None if a else []
         with mock.patch.object(night, "read_lock_any", side_effect=looked), \
                 mock.patch.object(night, "read_lock", side_effect=looked):
-            night.stop("all", DATE, out=lambda *_: None, wait=0.2)
+            night.stop("all", DATE, out=lambda *_: None)
         self.assertTrue(seen)
         self.assertTrue(all(seen), seen)
 
-    def test_the_launcher_stops_the_run_it_was_starting(self):
-        # The mark appears while CX1 is being started (between the look before the start and the start itself).
+    def test_the_launcher_starts_nothing_after_the_run_it_was_starting(self):
+        # The mark appears while CX1 is being started (between the look before the start and the start itself). Since
+        # the eighth review the launcher sends no signal: CX1 is recorded and ends by itself on the mark, before any
+        # client call (harness/probe.py, NightStop; test_eighth_review).
         sent, started = [], []
 
         def popen(argv, **kw):
@@ -366,7 +369,7 @@ night.go_clients(["codex"], {DATE!r}, out=progress)
                 self.assertRaisesRegex(SystemExit, "stopped"):
             night.go_clients(["codex"], DATE, popen=popen, out=lambda *_: None)
         self.assertEqual(len(started), 1)
-        self.assertEqual(sent, [(987654, signal.SIGTERM)])
+        self.assertEqual(sent, [])
         self.assertEqual(sorted(night.read_lock(DATE, "codex")["runs"]), ["CX1"])
 
 

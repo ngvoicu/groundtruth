@@ -25,13 +25,16 @@ computer awake with `caffeinate -i -w <its pid>`; a session of its own: closing 
 when to begin (--delay: the starts are staggered), and returns. A client's launch is written once, in a lock file
 created exclusively (<client-home>/night-<date>/launch/<client>.json: the launch's id, the launcher's own pid, start
 time and command line, written before any run starts, and each run's pid and start time as it starts); a second go of
-that client for that night is refused. Before each start the launcher looks for the client's stop mark
-(launch/<client>.stop) and starts nothing more once it is there; right after each start is recorded it looks again,
-and a mark found then stops the run it just started and ends the launch (its ending signals are held back between a
-start and its record). `stop` writes that mark first, then reads the client's lock and signals only the pids it
-records: the launcher (start time and command line as recorded) after waiting a few seconds for it to end by itself,
-and each recorded run (start time as recorded, command line with its label and the lock's launch id). Only pids,
-never a process group; never a process the lock does not record.
+that client for that night is refused. The client's stop mark (launch/<client>.stop) is the authority: the launcher
+starts nothing once it is there, and every run (harness/probe.py) looks for it immediately before each client
+invocation and exits without calling the client once it exists; before its first one, a run also waits a few seconds
+for its own pid to be in the lock, and exits if it is not. `stop` sets that mark first, then signals, as the fast
+path, only the pids the client's lock records: the launcher (start time and command line as recorded) and each
+recorded run (start time as recorded, command line with its label and the lock's launch id). Only pids, never a
+process group; never a process the lock does not record. A run not yet recorded stops before its next client call.
+
+`--go` refuses to start unless this checkout's Git runs its own commit hook (`git config core.hooksPath` is
+`scripts`): in a linked worktree, a hook installed in the main checkout would otherwise check its commits.
 
 Every command honours --dry-run: it prints what it would do and does nothing else (no folder, no marker, no lock, no
 signal, no client run). Nothing is sent without --go. The owner's everyday state is protected by isolation (each
@@ -134,6 +137,27 @@ def need_client_home(what):
     if not client_home():
         raise SystemExit(f"{what}: GROUNDTRUTH_CLIENT_HOME is not set")
     return client_home()
+
+
+def hook_problem(root=None):
+    """None when Git, in the checkout the night runs from, runs that checkout's own scripts/pre-commit (`git config
+    core.hooksPath` is `scripts`, a path relative to each worktree's root), else why not."""
+    try:
+        p = subprocess.run(["git", "config", "--get", "core.hooksPath"], cwd=root or ROOT, capture_output=True,
+                           text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return "git could not be run in the checkout"
+    value = p.stdout.strip()
+    if value != "scripts":
+        return (f"`git config core.hooksPath` is {json.dumps(value) if value else 'not set'}, not `scripts`: run "
+                "`git config core.hooksPath scripts` in this checkout (docs/own-clients-RUN.md, 'The night')")
+    return None
+
+
+def need_hook(what):
+    why = hook_problem()
+    if why:
+        raise SystemExit(f"{what}: refused: the commit hook is not this checkout's own: {why}; nothing started")
 
 
 def make_night_dir(date):
@@ -537,6 +561,7 @@ def go_smoke(date, run=None, out=print):
     """The smoke runs, one after the other, in the foreground; then the verdict."""
     run = run or subprocess.run
     need_client_home("--go smoke")
+    need_hook("--go smoke")
     if not os.path.exists(everyday_path(date)):
         raise SystemExit("--go smoke: no snapshot of the everyday state (`untouched --save`, step 1): nothing started")
     make_night_dir(date)
@@ -606,6 +631,7 @@ def guard(names, date):
     if not names or any(n not in CLIENT_PARTS for n in names):
         raise SystemExit(f"--go: smoke, or one of {', '.join(CLIENT_PARTS)}, or all (the two)")
     need_client_home("--go")
+    need_hook("--go")
     if not os.path.exists(everyday_path(date)):
         raise SystemExit("--go: no snapshot of the everyday state (`untouched --save`, step 1): the morning report "
                          "needs it; nothing started")
@@ -639,19 +665,14 @@ def stop_path(date, client):
     return os.path.join(night_dir(date), "launch", client + ".stop")
 
 
-# Signals that would end the launcher: held back while a run is being started and recorded, so that the launcher is
-# never ended between starting a run and writing its pid in the lock (the pending signal ends it right after).
-HELD = {signal.SIGTERM, signal.SIGINT, signal.SIGHUP}
-
-
-def launch(name, date, popen=None, out=print, kill=None):
+def launch(name, date, popen=None, out=print):
     """One client's runs, each its own background process (harness/probe.py itself, which keeps the computer awake
     with `caffeinate -w` on its own pid). The lock file is created exclusively, with the launcher's own pid, start
     time and command line, before the first run starts, and rewritten with each run's pid and start time as soon as
-    that run is started. The client's stop mark is looked for before each start, and again right after the run is
-    recorded: a stop written meanwhile stops that run (its pid signalled) and the launch ends there. Between a start
-    and its record the launcher's ending signals are held back (HELD)."""
-    popen, kill = popen or subprocess.Popen, kill or os.kill
+    that run is started. The client's stop mark is looked for before each start: once it is there nothing more
+    starts. A run started meanwhile, or one whose launcher ended before recording it, ends by itself: it looks for the
+    mark before each client call and waits for its pid to be recorded before the first (harness/probe.py)."""
+    popen = popen or subprocess.Popen
     d = make_night_dir(date)
     launch_dir = os.path.join(d, "launch")
     if not os.path.isdir(launch_dir):
@@ -676,33 +697,19 @@ def launch(name, date, popen=None, out=print, kill=None):
                              "nothing more starts")
         delay = delay_of(step, i)
         argv = command(step, date, launch_id=launch_id, delay=delay)
-        held = signal.pthread_sigmask(signal.SIG_BLOCK, HELD)
-        try:
-            with private_log(os.path.join(logs, step["id"] + ".log")) as log:
-                # The run gets the signal mask the launcher had (never the held one): `stop` can always end it.
-                p = popen(argv, cwd=ROOT, env=clean_env(), stdout=log, stderr=subprocess.STDOUT,
-                          stdin=subprocess.DEVNULL, start_new_session=True,
-                          preexec_fn=lambda: signal.pthread_sigmask(signal.SIG_SETMASK, held))
-            lock["runs"][step["id"]] = {"pid": p.pid, "started": process_started(p.pid), "delay_s": delay}
-            write_lock(date, name, lock)  # at once: every started run is recorded before anything else
-            if os.path.lexists(stop_path(date, name)):
-                # `stop` came while this run was being started: the run just started is stopped too, and nothing more.
-                try:
-                    kill(p.pid, signal.SIGTERM)  # its pid only, never a process group
-                except ProcessLookupError:
-                    pass
-                raise SystemExit(f"--go {name}: stopped (`stop`) while starting {step['id']}: it was signalled at once; "
-                                 f"{len(lock['runs']) - 1} of {len(PARTS[name])} runs had started before it")
-        finally:
-            signal.pthread_sigmask(signal.SIG_SETMASK, held)
+        with private_log(os.path.join(logs, step["id"] + ".log")) as log:
+            p = popen(argv, cwd=ROOT, env=clean_env(), stdout=log, stderr=subprocess.STDOUT,
+                      stdin=subprocess.DEVNULL, start_new_session=True)
+        lock["runs"][step["id"]] = {"pid": p.pid, "started": process_started(p.pid), "delay_s": delay}
+        write_lock(date, name, lock)  # at once: the run waits for this record before its first client call
         out(f"{step['id']} pid {p.pid}, begins {delay} s after the go ({step['model']})")
     return lock
 
 
-def go_clients(names, date, popen=None, out=print, kill=None):
+def go_clients(names, date, popen=None, out=print):
     names = list(CLIENT_PARTS) if names == ["all"] else names
     guard(names, date)
-    locks = [launch(n, date, popen=popen, out=out, kill=kill) for n in names]
+    locks = [launch(n, date, popen=popen, out=out) for n in names]
     out(f"started: {', '.join(names)}; the terminal may be closed. `python3 harness/night.py --date {date} status` "
         "shows which runs are alive.")
     return locks
@@ -785,87 +792,91 @@ def runs_alive(lock, ps=None, started=None):
             if isinstance(info, dict) and alive(rid, info, lid, ps, started)}
 
 
-def stop(target, date, ps=None, kill=None, out=print, dry=False, wait=10.0, sleep=None, started=None):
-    """Stops the named client(s) of this night, and only the processes this night's lock of them records:
-      1. the stop mark of every named client, first: a launcher starts no run after it, and stops a run it was just
-         starting (launch looks at the mark before each start and again right after recording the run);
-      2. for each client, its lock (<client-home>/night-<date>/launch/<client>.json) is read; no lock: nothing of it
-         was started, and with the mark written nothing will be;
-      3. the launcher the lock records, if that very process still runs (pid, start time and command line as
-         recorded): a wait of at most `wait` seconds for it to end by itself on the mark, then SIGTERM to its pid;
-      4. SIGTERM to the pid of each run the lock records that is alive and is that run (its recorded start time, its
-         command line with its label and the lock's launch id).
-    Only pids, never a process group; nothing the lock does not record. Without GROUNDTRUTH_CLIENT_HOME it refuses (no
-    lock can be read and no mark written): set it as for the night."""
+def mark_dir(date):
+    """<client-home>/night-<date>/launch, where the stop marks go: resolved (links followed) and checked like every
+    folder the night writes (not an everyday folder or inside one, not synced, outside the repository and every
+    checkout) before anything is made. SystemExit otherwise, and nothing is written."""
+    base = need_client_home("stop")
+    user_home = os.path.realpath(os.path.expanduser("~"))
+    d = os.path.join(night_dir(date), "launch")
+    C.check_folder("stop: <client-home>", base, ROOT, user_home)
+    C.check_folder("stop: the stop marks' folder <client-home>/night-<date>/launch", d, ROOT, user_home)
+    return d
+
+
+def stop(target, date, ps=None, kill=None, out=print, dry=False, started=None):
+    """Stops the named client(s) of this night. The stop mark is the authority; signals are only the fast path:
+      1. the stop mark of every named client, first (its folder checked before anything is made: mark_dir): the
+         launcher starts nothing after it, and every run looks for it before each client call and exits without
+         calling the client (harness/probe.py);
+      2. then SIGTERM to the pids the client's lock (<client-home>/night-<date>/launch/<client>.json) records: the
+         launcher, if that very process still runs (pid, start time and command line as recorded), and each run that
+         is alive and is that run (its recorded start time, its command line with its label and the lock's launch id).
+    Only pids, never a process group; nothing the lock does not record. A run not yet recorded stops before its next
+    client call. Returns the run pids signalled. Without GROUNDTRUTH_CLIENT_HOME it refuses (no lock can be read and no
+    mark written): set it as for the night."""
     refuse_other_clients("stop", [target])
     names = list(CLIENT_PARTS) if target == "all" else [target]
     if any(n not in CLIENT_PARTS for n in names):
         raise SystemExit(f"stop: one of {', '.join(CLIENT_PARTS)}, or all")
-    kill, sleep = kill or os.kill, sleep or time.sleep
+    kill = kill or os.kill
     if dry:
         for name in names:
-            out(f"{name}: would write its stop mark <client-home>/night-{date}/launch/{name}.stop. Dry run: nothing "
+            out(f"{name}: would set its stop mark <client-home>/night-{date}/launch/{name}.stop. Dry run: nothing "
                 "written.")
             lock = read_lock_any(date, name)
             if lock is None:
                 out(f"{name}: not launched")
                 continue
             if launcher_alive(lock, started, ps):
-                out(f"{name}: would wait for its launcher (pid {lock['launcher_pid']}), then signal it if it still runs."
-                    " Dry run: nothing sent.")
+                out(f"{name}: would signal its launcher (pid {lock['launcher_pid']}). Dry run: nothing sent.")
             for pid, rid in sorted(runs_alive(lock, ps, started).items()):
                 out(f"{rid}: would signal pid {pid}. Dry run: nothing sent.")
         return []
-    # 1. The marks, first; the launch folder made when missing (never refused over its mode: a stop gets its mark).
-    need_client_home("stop")
-    os.makedirs(os.path.join(night_dir(date), "launch"), mode=0o700, exist_ok=True)
+    # 1. The marks, first, in a folder checked before anything is made there.
+    d = mark_dir(date)
+    os.makedirs(d, mode=0o700, exist_ok=True)
     for name in names:
         if not os.path.lexists(stop_path(date, name)):
             C.write_private(stop_path(date, name), time.strftime("%Y-%m-%dT%H:%M:%SZ\n", time.gmtime()))
-        out(f"{name}: stop mark written: nothing more of it starts this night")
     signalled = []
     for name in names:
-        # 2. The lock.
+        # 2. The pids its lock records: the fast path.
         lock = read_lock_any(date, name)
         if lock is None:
-            out(f"{name}: not launched: no run to stop")
+            out(f"{name}: stop mark set; not launched: nothing to signal")
             continue
-        # 3. Its launcher: it ends by itself on the mark; signalled (its pid) only if it does not.
-        def wait_for_launcher():
-            waited = 0.0
-            while waited < wait and launcher_alive(lock, started, ps):
-                sleep(0.1)
-                waited += 0.1
+        sent = 0
         if launcher_alive(lock, started, ps):
-            wait_for_launcher()
-            if launcher_alive(lock, started, ps):
-                try:
-                    kill(lock["launcher_pid"], signal.SIGTERM)
-                    out(f"{name}: its launcher (pid {lock['launcher_pid']}) still ran after {wait:g} s: signalled")
-                except ProcessLookupError:
-                    pass
-                wait_for_launcher()
-        # 4. Its runs, from the lock as the launcher left it: each recorded pid, checked, signalled alone.
+            try:
+                kill(lock["launcher_pid"], signal.SIGTERM)
+                sent += 1
+            except ProcessLookupError:
+                pass
         lock = read_lock_any(date, name) or lock
         for pid, rid in runs_alive(lock, ps, started).items():
             try:
                 kill(pid, signal.SIGTERM)
             except ProcessLookupError:
-                out(f"{rid}: pid {pid} had ended")
                 continue
             signalled.append(pid)
-            out(f"{rid}: pid {pid} stopped")
-    if not signalled:
-        out("no run alive: nothing signalled")
+            sent += 1
+        out(f"{name}: stop mark set; {sent} recorded process{'' if sent == 1 else 'es'} signalled; a run not yet "
+            "recorded stops before its next client call")
     return signalled
 
 
 def dry_run_go(names, date, out=print):
     names = list(CLIENT_PARTS) if names == ["all"] else names
-    out(f"`--go {' '.join(names)}`: checks (step 1's snapshot, the smoke results marked, no launch yet and no stop "
-        f"mark of the client(s) for this night), then creates <client-home>/night-{date}/launch/<client>.json "
-        "exclusively with the launcher's pid, starts each run as its own background process (caffeinate -w, a session "
-        "of its own), looking for the stop mark before each start, and returns:")
+    out(f"`--go {' '.join(names)}`: checks (this checkout's own commit hook, step 1's snapshot, the smoke results "
+        "marked, no launch yet and no stop mark of the client(s) for this night), then creates <client-home>/night-"
+        f"{date}/launch/<client>.json exclusively with the launcher's pid, starts each run as its own background "
+        "process (caffeinate -w, a session of its own), looking for the stop mark before each start, and returns. "
+        "Each run waits for its pid in the lock before its first client call and looks for the stop mark before "
+        "every one:")
+    why = hook_problem()
+    out("  the commit hook: `git config core.hooksPath` is `scripts`: this checkout's own scripts/pre-commit" if not why
+        else f"  the commit hook: --go would refuse: {why}")
     for n in names:
         out(f"  {n}: " + ", ".join(f"{s['id']} (+{delay_of(s, i)} s)" for i, s in enumerate(PARTS[n])))
     for n in names:
