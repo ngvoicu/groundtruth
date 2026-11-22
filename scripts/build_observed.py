@@ -81,23 +81,34 @@ def age_label(seconds):
     return f"{seconds}s"
 
 
-# The publication gate of an own-client night (docs/own-clients-RUN.md, "The morning"): nothing of a night (no run,
-# no `excluded` entry, no raw file in a commit) is published until a person has audited its raw results, the Codex
-# session files and the console logs, and written results/own-clients-<date>/AUDIT.md with exactly this first line.
-# No symbolic link is accepted anywhere under results/own-clients-*: a file is the night's only where it lies.
+# The publication gate of a night (docs/own-clients-RUN.md, "The morning"; docs/weekly-night.md, "Tuesday"): nothing of
+# a night (no run, no `excluded` entry, no raw file in a commit) is published until a person has audited its raw
+# results, the Codex session files and the console logs, and written its AUDIT.md with exactly the first line of its
+# kind: results/own-clients-<date>/ (the first own-client night, by hand) or results/night-<date>/ (the weekly Monday
+# night, harness/weekly.py). No symbolic link is accepted anywhere under either: a file is the night's only where it
+# lies.
 AUDIT_FIRST_LINE = "# Own-client night audit: passed"
-NIGHT_FOLDER = re.compile(r"^results/own-clients-(\d{4}-\d{2}-\d{2})(?:/|$)")
-NIGHT_NAME = re.compile(r"own-clients-(\d{4}-\d{2}-\d{2})")
+NIGHT_AUDIT_FIRST_LINE = "# Night audit: passed"
+FIRST_LINES = {"own-clients": AUDIT_FIRST_LINE, "night": NIGHT_AUDIT_FIRST_LINE}
+NIGHT_FOLDER = re.compile(r"^results/((?:own-clients|night)-(\d{4}-\d{2}-\d{2}))(?:/|$)")
+NIGHT_NAME = re.compile(r"(?<![\w-])((?:own-clients|night)-\d{4}-\d{2}-\d{2})(?![\w-])")
+NIGHT_PREFIXES = ("own-clients-", "night-")
+
+
+def night_folder(night):
+    """A night's folder name under results/: `own-clients-<date>` or `night-<date>`; a bare date is the first kind's."""
+    return night if night.startswith(NIGHT_PREFIXES) else f"own-clients-{night}"
 
 
 def night_links(root):
-    """Every symbolic link under results/own-clients-* of `root` (the night folders themselves included), relative."""
+    """Every symbolic link under results/own-clients-* and results/night-* of `root` (the night folders themselves
+    included), relative."""
     results, found = os.path.join(root, "results"), []
     if not os.path.isdir(results):
         return found
     for name in sorted(os.listdir(results)):
         top = os.path.join(results, name)
-        if not name.startswith("own-clients-"):
+        if not name.startswith(NIGHT_PREFIXES):
             continue
         if os.path.islink(top):
             found.append(os.path.relpath(top, root))
@@ -107,24 +118,27 @@ def night_links(root):
     return found
 
 
-def audit_problem(root, date):
-    """None when results/own-clients-<date>/AUDIT.md of `root` is a regular file whose first line is
-    AUDIT_FIRST_LINE; else why not."""
-    audit = os.path.join(root, "results", f"own-clients-{date}", "AUDIT.md")
+def audit_problem(root, night):
+    """None when results/<night>/AUDIT.md of `root` is a regular file whose first line is its kind's (FIRST_LINES);
+    else why not. `night`: the folder's name (`own-clients-<date>`, `night-<date>`), or a date (the first kind)."""
+    folder = night_folder(night)
+    first_line = FIRST_LINES[folder.rsplit("-", 3)[0]]
+    audit = os.path.join(root, "results", folder, "AUDIT.md")
     if os.path.islink(audit) or not os.path.isfile(audit):
-        return f"the night own-clients-{date} has no AUDIT.md: nothing of it is published before its audit " \
-               "(docs/own-clients-RUN.md, \"The morning\")"
+        return f"the night {folder} has no AUDIT.md: nothing of it is published before its audit " \
+               "(docs/own-clients-RUN.md, \"The morning\"; docs/weekly-night.md, \"Tuesday\")"
     with open(audit, errors="replace") as f:
         first = f.readline().rstrip("\n")
-    if first != AUDIT_FIRST_LINE:
-        return f"results/own-clients-{date}/AUDIT.md does not begin with {AUDIT_FIRST_LINE!r}: the night's audit is " \
+    if first != first_line:
+        return f"results/{folder}/AUDIT.md does not begin with {first_line!r}: the night's audit is " \
                "not passed"
     return None
 
 
 def night_of(name, path):
-    """The night (its date) a raw file belongs to, read both from the path the manifest gives and from the file it
-    resolves to; None when neither is under results/own-clients-*. Refused when the two disagree."""
+    """The night (its folder's name) a raw file belongs to, read both from the path the manifest gives and from the
+    file it resolves to; None when neither is under results/own-clients-* or results/night-*. Refused when the two
+    disagree."""
     lexical = os.path.normpath(path).replace(os.sep, "/")
     resolved = os.path.relpath(os.path.realpath(os.path.join(ROOT, path)), os.path.realpath(ROOT)).replace(os.sep, "/")
     nights = {m.group(1) for m in (NIGHT_FOLDER.match(lexical), NIGHT_FOLDER.match(resolved)) if m}
@@ -134,17 +148,18 @@ def night_of(name, path):
     return nights.pop() if nights else None
 
 
-def check_audit(name, date):
-    why = audit_problem(ROOT, date)
+def check_audit(name, night):
+    why = audit_problem(ROOT, night)
     if why:
         raise SystemExit(f"{name}: {why}")
 
 
 def audit_gate(root):
-    """The commit hook's gate (and CI's), over a tree: no link under results/own-clients-*, and every night folder
-    that holds any file has its AUDIT.md with AUDIT_FIRST_LINE. Returns the problems (empty: the tree may be
+    """The commit hook's gate (and CI's), over a tree: no link under results/own-clients-* or results/night-*, and
+    every night folder that holds any file has its AUDIT.md with its kind's first line (FIRST_LINES). Returns the problems (empty: the tree may be
     committed)."""
-    problems = [f"{link}: a symbolic link under results/own-clients-*: refused" for link in night_links(root)]
+    problems = [f"{link}: a symbolic link under a night's folder (results/own-clients-*, results/night-*): refused"
+                for link in night_links(root)]
     results = os.path.join(root, "results")
     for name in sorted(os.listdir(results)) if os.path.isdir(results) else []:
         m = NIGHT_FOLDER.match(f"results/{name}")
@@ -363,7 +378,7 @@ def check_own_run(run, client, data, options):
 def build_cache(manifest):
     links = night_links(ROOT)
     if links:
-        raise SystemExit(f"{links[0]}: a symbolic link under results/own-clients-*: nothing is built while one is there")
+        raise SystemExit(f"{links[0]}: a symbolic link under a night's folder: nothing is built while one is there")
     entries = []
     for run in manifest["runs"]:
         path = run["file"]
@@ -390,8 +405,8 @@ def build_cache(manifest):
         if night:
             check_audit(run["id"], night)  # whatever the run's date or client: its night is audited first
         elif CLIENT_KINDS.get(client) == "own_client" and data.get("own_since"):
-            raise SystemExit(f"{run['id']}: an own-client run is published only from results/own-clients-<date>/ (its "
-                             f"audited night); {path} is not there")
+            raise SystemExit(f"{run['id']}: an own-client run is published only from results/own-clients-<date>/ or "
+                             f"results/night-<date>/ (its audited night); {path} is not there")
         if CLIENT_KINDS.get(client) == "own_client" and data.get("own_since"):
             check_model_scan(run, data)
         # A run file that records its extra body fields: each must be in the manifest's options, as sent, or in
@@ -690,7 +705,7 @@ def build():
 
 
 def build_excluded(manifest):
-    """The manifest's excluded runs; an entry of an own-client night (its id or file names own-clients-<date>) only
+    """The manifest's excluded runs; an entry of a night (its id or file names own-clients-<date> or night-<date>) only
     once that night is audited: nothing of an unaudited night is published, not even why a run was left out."""
     for e in manifest["excluded"]:
         for value in (e.get("id"), e.get("file")):
@@ -707,9 +722,9 @@ def main():
         for p in problems:
             print(p, file=sys.stderr)
         if problems:
-            raise SystemExit("audit gate: refused: nothing under results/own-clients-* is committed before its night's "
-                             "audit (docs/own-clients-RUN.md, \"The morning\")")
-        print("audit gate: every own-client night in the tree is audited (or there is none)")
+            raise SystemExit("audit gate: refused: nothing under results/own-clients-* or results/night-* is committed "
+                             "before its night's audit (docs/own-clients-RUN.md, \"The morning\"; docs/weekly-night.md)")
+        print("audit gate: every night in the tree is audited (or there is none)")
         return
     text = json.dumps(build(), indent=1, ensure_ascii=False) + "\n"
     target = os.path.join(ROOT, OUT)
