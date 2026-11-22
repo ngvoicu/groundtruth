@@ -690,6 +690,8 @@ def pi_setup(run=None, user_home=None, out=print):
             raise SystemExit("pi-setup: <client-home>/pi-provimux/cliproxyapi.json holds a key: remove it (the key "
                              "comes from the Keychain at the night's go)")
     env = {k: os.environ[k] for k in C.ALLOW if k in os.environ}
+    # pi's own HOME, as every pi run has it: `pi install` writes nothing under the owner's home folder.
+    env["HOME"] = C.prepare_home("pi-setup", folder, base, ROOT, user_home)
     env.update({"PI_CODING_AGENT_DIR": folder, "PI_SKIP_VERSION_CHECK": "1", "PI_OFFLINE": "1", "PI_TELEMETRY": "0"})
     if not pi_ready(folder, src):
         p = run(["pi", "install", src], env=env, cwd=folder, capture_output=True, text=True, timeout=300)

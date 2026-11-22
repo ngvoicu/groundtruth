@@ -292,7 +292,8 @@ def parser():
 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ISOLATION = {"home": "dedicated", "work": "temporary"}
+# home: the state folder; HOME: a throwaway home beside it (clients.throwaway_home); work: the working folder.
+ISOLATION = {"home": "dedicated", "HOME": "throwaway", "work": "temporary"}
 
 
 def settings_of(pairs):

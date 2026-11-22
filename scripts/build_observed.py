@@ -57,9 +57,9 @@ OWN_CLIENT_ROUTE = {"claude-code": "claude-subscription", "codex-cli": "codex-su
                     "muse-code": "meta-subscription", "antigravity-cli": "antigravity"}
 # Own-client limits rows: refused until harness/client_limits.py is trusted (the first night measures none).
 OWN_CLIENT_LIMITS = False
-# From this design on, an own-client run must record its state folder and empty working folder.
+# From this design on, an own-client run must record its state folder, its throwaway HOME and its empty working folder.
 OWN_CLIENTS_SINCE = "2026-11-22"
-ISOLATION = {"home": "dedicated", "work": "temporary"}
+ISOLATION = {"home": "dedicated", "HOME": "throwaway", "work": "temporary"}
 UNIT = {"s": 1, "m": 60, "h": 3600}
 
 
@@ -207,7 +207,7 @@ def check_own_run(run, client, data, options):
                          f"and goes in excluded, not in runs")
     if data["date"] >= OWN_CLIENTS_SINCE and data.get("isolation") != ISOLATION:
         raise SystemExit(f"{run['id']}: an own-client run from {OWN_CLIENTS_SINCE} on must record its dedicated state "
-                         f"folder and temporary working folder (isolation {json.dumps(ISOLATION)})")
+                         f"folder, throwaway HOME and temporary working folder (isolation {json.dumps(ISOLATION)})")
     return written
 
 

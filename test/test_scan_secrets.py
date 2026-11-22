@@ -137,7 +137,7 @@ class OwnClients(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             tree = os.path.join(tmp, "tree")
             write(os.path.join(tree, "results", "run", "CC1.jsonl"),
-                  '{"event": "start", "client": "claude-code", "isolation": {"home": "dedicated", "work": "temporary"}}\n')
+                  '{"event": "start", "client": "claude-code", "isolation": {"home": "dedicated", "HOME": "throwaway", "work": "temporary"}}\n')
             r = scan(tree, tmp)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 

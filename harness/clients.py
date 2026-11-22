@@ -27,8 +27,18 @@ import uuid
 from dataclasses import dataclass
 
 # What a client's process gets of the caller's environment; everything else (API keys, base URLs, proxy settings,
-# cache switches) never reaches it. A client adds the variables of its state folder and what the run sets.
-ALLOW = ("PATH", "HOME", "USER", "LANG", "TERM", "TMPDIR")
+# cache switches) never reaches it. A client adds the variables of its state folder and what the run sets. HOME is
+# never the caller's: every client process gets a throwaway one (throwaway_home), so a client that ignores its state
+# folder's variable writes under it, never under the owner's home folder.
+ALLOW = ("PATH", "USER", "LANG", "TERM", "TMPDIR")
+
+
+def throwaway_home(state):
+    """The HOME of every process of a client: <client-home>/home/<the state folder's name>, beside the state folder,
+    the same for the owner's login and for every run of the night. On macOS the Keychain is found through HOME too
+    (`security list-keychains` is empty under it): a client cannot reach the owner's Keychain from there, and Claude
+    Code keeps its login in <state folder>/.credentials.json instead."""
+    return os.path.join(os.path.dirname(state.rstrip(os.sep)), "home", os.path.basename(state.rstrip(os.sep)))
 
 OK_PROMPT = "Reply with OK only. Do not use any tools."
 
@@ -127,6 +137,7 @@ class Client:
     def environment(self, home, base=None):
         base = os.environ if base is None else base
         env = {k: base[k] for k in ALLOW if k in base}
+        env["HOME"] = throwaway_home(home)
         env.update(self.home_vars(home))
         env.update(self.run_vars())
         env.update(self.settings)
@@ -176,7 +187,8 @@ class Client:
 
 
 class Claude(Client):
-    """Claude Code, on a Claude login (claude-subscription)."""
+    """Claude Code, on a Claude login (claude-subscription). Its secure storage is the Keychain with a plaintext
+    fallback; under its throwaway HOME `security` finds no Keychain, so the login is <state folder>/.credentials.json."""
     harness, client_id, binary = "claude", "claude-code", "claude"
     prompt_mode = "stdin"
     settable = ("CLAUDE_CODE_PROMPT_CACHE_TTL",)
@@ -617,6 +629,25 @@ def check_folder(what, path, root, user_home):
         raise SystemExit(f"{what} is inside a Git checkout")
 
 
+def prepare_home(what, state, base, root, user_home):
+    """The client's throwaway HOME (throwaway_home), made when missing: under <client-home>, never a link out of it,
+    outside the repository, every Git checkout and every everyday folder, holding no link that leaves it."""
+    home = throwaway_home(state)
+    if os.path.islink(home) or os.path.islink(os.path.dirname(home)) or (os.path.lexists(home) and not os.path.isdir(home)):
+        raise SystemExit(f"{what}: its HOME <client-home>/home/{os.path.basename(state)} is not under <client-home> "
+                         "(a link out of it, or not a folder): refused")
+    os.makedirs(home, mode=0o700, exist_ok=True)
+    real, real_base = os.path.realpath(home), os.path.realpath(base)
+    if not inside(real, real_base) or real == real_base:
+        raise SystemExit(f"{what}: its HOME <client-home>/home/{os.path.basename(state)} is not under <client-home> "
+                         "(a link out of it): refused")
+    check_folder(f"{what}: its HOME", home, root, user_home)
+    out = links_out(home)
+    if out:
+        raise SystemExit(f"{what}: its HOME holds links that leave it: {', '.join(out[:5])}")
+    return home
+
+
 def login_ok(client, code, out, err):
     """None when the status output shows the login the route needs (a subscription, never an API key), else why not."""
     text = f"{out or ''}\n{err or ''}"
@@ -662,6 +693,7 @@ def state_folder(client, base, root, user_home=None, env=None, run=None, check_l
     out = links_out(home)
     if out:
         raise SystemExit(f"{client.client_id}: the state folder holds links that leave it: {', '.join(out[:5])}")
+    prepare_home(f"{client.client_id}", home, base, root, user_home)
     if check_login:
         cmd = client.login_command()
         e = env if env is not None else client.environment(home)

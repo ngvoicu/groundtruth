@@ -205,7 +205,7 @@ class Main(unittest.TestCase):
             probe.main(["--harness", "claude", "--model", "m", "--label", "X", "--out", "/nonexistent/out", "--dry-run",
                         "--client-env", "CLAUDE_CODE_PROMPT_CACHE_TTL=5m"])
         start = json.loads(buf.getvalue().splitlines()[0])
-        self.assertEqual(start["isolation"], {"home": "dedicated", "work": "temporary"})
+        self.assertEqual(start["isolation"], {"home": "dedicated", "HOME": "throwaway", "work": "temporary"})
         self.assertEqual(start["client_env"], {"CLAUDE_CODE_PROMPT_CACHE_TTL": "5m"})
         self.assertNotIn("/", "".join(start["command"]["prime"]).replace("<", "").replace(">", ""))
         self.assertIn("nothing sent", buf.getvalue())

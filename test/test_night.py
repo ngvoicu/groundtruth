@@ -277,6 +277,8 @@ class PiSetup(unittest.TestCase):
         self.assertEqual(argv, ["pi", "install", os.path.realpath(self.src)])
         self.assertEqual(env["PI_CODING_AGENT_DIR"], folder)
         self.assertEqual(env["PI_OFFLINE"], "1")
+        self.assertEqual(env["HOME"], os.path.join(self.home, "home", "pi-provimux"))  # pi's throwaway HOME
+        self.assertTrue(os.path.isdir(env["HOME"]))
         for k in env:
             self.assertNotIn("KEY", k)
         with open(os.path.join(folder, "cliproxyapi.json")) as f:

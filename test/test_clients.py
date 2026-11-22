@@ -147,7 +147,16 @@ class Environment(unittest.TestCase):
             for harness in OWN:
                 with self.subTest(harness=harness):
                     env = C.CLIENTS[harness]("m").environment(home, base=BASE)
-                    self.assertEqual(env, {**allowed, **expected[harness]})
+                    self.assertEqual(env, {**allowed, "HOME": C.throwaway_home(home), **expected[harness]})
+
+    def test_every_client_gets_a_throwaway_home_beside_its_state_folder_never_the_callers(self):
+        for harness, client in C.CLIENTS.items():
+            with self.subTest(harness=harness):
+                name = getattr(client, "state_name", None) or client.client_id
+                env = client("m").environment("/campaign/" + name, base=BASE)
+                self.assertEqual(env["HOME"], "/campaign/home/" + name)
+                self.assertNotIn(env["HOME"], ("/h", "/campaign/" + name))
+        self.assertNotIn("HOME", C.ALLOW)
 
     def test_muse_gets_its_key_and_nothing_else(self):
         env = C.Muse("m").environment("/s", base={**BASE, "META_API_KEY": "k"})
@@ -196,6 +205,14 @@ class StateFolder(unittest.TestCase):
         argv, env = self.calls[0]
         self.assertEqual(argv, ["claude", "auth", "status", "--json"])
         self.assertEqual(env["CLAUDE_CONFIG_DIR"], home)
+        self.assertEqual(env["HOME"], os.path.join(os.path.realpath(self.base), "home", "claude-code"))
+        self.assertTrue(os.path.isdir(env["HOME"]), "the throwaway HOME is made with the checks")
+
+    def test_a_throwaway_home_that_leaves_the_client_home_is_refused(self):
+        os.makedirs(os.path.join(self.base, "home"))
+        os.symlink(os.path.join(self.user, ".claude"), os.path.join(self.base, "home", "claude-code"))
+        with self.assertRaisesRegex(SystemExit, "not under <client-home>"):
+            self.folder(C.Claude("m"), self.base)
 
     def test_required_and_must_exist(self):
         with self.assertRaisesRegex(SystemExit, "required"):
@@ -281,6 +298,48 @@ class StateFolderReview(StateFolder):
             self.folder(C.Codex("m"), self.base, out="")
         self.assertTrue(self.folder(C.Codex("m"), self.base))
         self.assertTrue(self.folder(C.Claude("m"), self.base))
+
+
+class IgnoredStateVariable(unittest.TestCase):
+    """A client that ignores its state folder's variable writes under its throwaway HOME, never under the caller's home
+    folder: a real child process (a stand-in `claude` on PATH that writes ~/.claude/ and ~/.claude.json from HOME, as
+    Node, Bun and Rust resolve `~`), driven as a night's run is (state_folder, environment, Session)."""
+
+    FAKE = """#!{python}
+import json, os, sys
+home = os.path.expanduser("~")  # HOME, as os.homedir() and dirs::home_dir() read it; CLAUDE_CONFIG_DIR ignored
+os.makedirs(os.path.join(home, ".claude", "projects"), exist_ok=True)
+with open(os.path.join(home, ".claude", "projects", "session.jsonl"), "a") as f:
+    f.write(sys.stdin.read() + "\\n")
+with open(os.path.join(home, ".claude.json"), "w") as f:
+    f.write("{{}}")
+print(json.dumps({{"type": "result", "is_error": False, "num_turns": 1, "session_id": "s-1",
+                  "modelUsage": {{"claude-haiku-5-5": {{}}}},
+                  "usage": {{"input_tokens": 10, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0}}}}))
+"""
+
+    def test_it_writes_only_under_the_throwaway_home(self):
+        with tempfile.TemporaryDirectory() as t:
+            user, repo, base, bin_ = (os.path.join(t, n) for n in ("user", "repo", "client-home", "bin"))
+            for d in (user, repo, os.path.join(base, "claude-code"), bin_):
+                os.makedirs(d)
+            with open(os.path.join(bin_, "claude"), "w") as f:
+                f.write(self.FAKE.format(python=sys.executable))
+            os.chmod(os.path.join(bin_, "claude"), 0o755)
+            client = C.Claude("claude-haiku-5-5")
+            status = '{"loggedIn": true, "authMethod": "claude.ai", "apiProvider": "firstParty"}'
+            state = C.state_folder(client, base, repo, user_home=user, run=lambda *a, **k: (0, status, ""))
+            env = client.environment(state, base={"PATH": bin_ + os.pathsep + "/usr/bin:/bin", "HOME": user,
+                                                  "USER": "someone", "TMPDIR": t})
+            s = C.Session(client, env=env, io=os.path.join(t, "io"), work=os.path.join(t, "work"), home=state)
+            handle, usage = s.start("the prompt")
+            self.assertEqual((handle, usage.total), ("s-1", 10))
+            throwaway = os.path.join(os.path.realpath(base), "home", "claude-code")
+            written = sorted(os.path.relpath(os.path.join(d, n), throwaway)
+                             for d, dirs, files in os.walk(throwaway) for n in dirs + files)
+            self.assertEqual(written, [".claude", ".claude.json", ".claude/projects", ".claude/projects/session.jsonl"])
+            self.assertEqual(os.listdir(user), [], "nothing under the caller's home folder")
+            self.assertEqual(os.listdir(state), [], "the state folder is what the client ignored")
 
 
 class SessionRuns(unittest.TestCase):
