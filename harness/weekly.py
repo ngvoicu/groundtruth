@@ -157,7 +157,8 @@ def login_runs(plan, part, late=False, values=None):
 
 
 def key_items(plan, late=False, values=None, routes=None):
-    """The API-key values of the night, in the plan's order: window requests, then cache runs."""
+    """The API-key values of the night (window checks and cache runs), in the plan's order: newest first inside
+    each state."""
     out = []
     for i in plan["planned"]:
         if i["route"] not in P.KEY_ROUTES or (routes is not None and i["route"] not in routes):
@@ -171,8 +172,7 @@ def key_items(plan, late=False, values=None, routes=None):
                     "part": "keys", "route": i["route"], "model": i["model"], "quantity": i["quantity"],
                     "schedule": i.get("schedule"), "key": i["key"], "estimate": i.get("estimate_usd"),
                     "words": i.get("words"), "prices": i.get("prices") or {}, "state_before": i["state"]})
-    windows = [x for x in out if x["quantity"] == "window"]
-    return windows, [x for x in out if x["quantity"] == "cache"]
+    return out
 
 
 # --- the night ---------------------------------------------------------------------------------------------------------
@@ -255,14 +255,14 @@ class Night:
                 runs, left = login_runs(plan, part, late, self.values)
                 login[part], self.left[part] = runs, left
                 self.parts[part]["planned"] = len(runs)
-        windows, caches = key_items(plan, late, self.values) if "keys" in self.only else ([], [])
+        keyed = key_items(plan, late, self.values) if "keys" in self.only else []
         if "keys" in self.only:
-            self.parts["keys"]["planned"] = len(windows) + len(caches)
-        self.checks(login, windows + caches)
+            self.parts["keys"]["planned"] = len(keyed)
+        self.checks(login, keyed)
         self.flush()
         if self.dry:
-            return self.dry_report(login, windows, caches)
-        self.go(login, windows, caches)
+            return self.dry_report(login, keyed)
+        self.go(login, keyed)
         return self.finish()
 
     def take_lock(self, now):
@@ -367,13 +367,58 @@ class Night:
         self.parts["keys"]["status"] = "checked" if any(r not in self.routes_stopped for r in routes) else \
             "not started: every key refused"
 
-    def money_spent(self, left_unmeasured):
+    def money_spent(self, left_unmeasured, stop=True):
+        """The week's money is spent: an ask, and the API-key part stops (`stop`: at once; else after the runs
+        already admitted have run: money_ended)."""
         self.asks.open("money-spent", self.ledger.week, spent=self.ledger.used() + self.ledger.reserved(),
                        cap=self.ledger.week_cap, left_unmeasured=left_unmeasured)
-        self.stop_part("keys", "the week's money is spent")
+        if stop:
+            self.stop_part("keys", "the week's money is spent")
+        else:
+            self.money_ended = True
+
+    # -- the money: one pass over the API-key values, before anything is sent
+    def admit_keys(self, values):
+        """Decides, in the plan's order (newest first), which window checks are sent and which cache runs start, and
+        reserves each one's worst case in the ledger for the night:
+        - a window check: only when its worst case (answered instead of refused) fits what the week has left; never
+          held to the run ceiling (the owner's decision of 2026-11-22, "A"). One that does not fit is an ask, and the
+          pass goes on;
+        - a cache run: at most the run ceiling (else an ask, and the pass goes on) and fitting what is left (else the
+          week's money is spent: an ask, and the API-key part stops there).
+        Returns (window checks, cache runs, [(value, why not)], the value the money ended at or None)."""
+        windows, caches, not_sent, stopped = [], [], [], None
+        for n, v in enumerate(values):
+            if v["route"] in self.routes_stopped:
+                continue
+            est = self.priced(v)
+            window = v["quantity"] == "window"
+            left = self.ledger.left()
+            verdict = self.ledger.admit(v["label"], v["route"], v["model"], est, window=window)
+            if verdict == "ok":
+                (windows if window else caches).append(v)
+                self.asks.passed("window-over-week" if window else "run-over-cap", v["key"])
+            elif verdict == "no-price":
+                v["outcome"] = "not sent: no price" if window else "not started: no price"
+                not_sent.append((v, "no price on providers.dev: no worst case"))
+            elif window:
+                self.asks.open("window-over-week", v["key"], route=v["route"], model=v["model"], estimate=est,
+                               left=max(left, 0.0), cap=self.ledger.week_cap)
+                v["outcome"] = "not sent: its worst case does not fit the week"
+                not_sent.append((v, f"worst case ${est:.2f} does not fit the ${max(left, 0.0):.2f} left this week"))
+            elif verdict == "over-run-cap":
+                self.asks.open("run-over-cap", v["key"], route=v["route"], model=v["model"], quantity="cache",
+                               estimate=est, cap=self.ledger.run_cap)
+                v["outcome"] = "not started: over the run ceiling"
+                not_sent.append((v, f"worst case ${est:.2f}, above the run ceiling"))
+            else:
+                stopped = v
+                self.money_spent(len(values) - n, stop=False)
+                break
+        return windows, caches, not_sent, stopped
 
     # -- the dry run
-    def dry_report(self, login, windows, caches):
+    def dry_report(self, login, keyed):
         lines = [f"# Dry run of the night of {self.date}", "",
                  f"providers.dev dataset `{self.plan['dataset']}`. Nothing was sent to any vendor, login, key or proxy;"
                  " nothing was written.", ""]
@@ -392,34 +437,22 @@ class Night:
         if "keys" in self.parts:
             lines += [f"## API keys: ${self.ledger.week_cap:.2f} a week, ${self.ledger.run_cap:.2f} a run "
                       f"(left this week ${self.ledger.left():.2f})", ""]
-            sent, refused_runs, stopped = [], [], None
-            for v in windows + caches:
-                if stopped:
-                    break
-                verdict = self.ledger.admit(v["label"], v["route"], v["model"], v["estimate"])
-                if verdict == "ok":
-                    if v["quantity"] == "window":
-                        self.ledger.release(v["label"])  # a refusal costs nothing: the reservation comes back
-                    sent.append(v)
-                elif verdict == "over-week":
-                    stopped = v
-                else:
-                    refused_runs.append((v, verdict))
+            windows, caches, not_sent, stopped = self.admit_keys(keyed)
+            sent = windows + caches
             lines += ["| # | Route | Model | Value | Run | Worst case |", "|---|---|---|---|---|---|"]
             lines += [f"| {n} | {v['route']} | `{v['model']}` | {v['quantity']} | "
-                      f"{'window request' if v['quantity'] == 'window' else v['schedule']} | "
+                      f"{'window check' if v['quantity'] == 'window' else v['schedule']} | "
                       f"${v['estimate']:.2f} |" for n, v in enumerate(sent, 1)] or ["| | | nothing | | | |"]
-            spend = sum(v["estimate"] for v in sent if v["quantity"] == "cache")
-            lines += ["", f"{sum(1 for v in sent if v['quantity'] == 'window')} window requests (each should be "
-                      f"refused: nothing billed), {sum(1 for v in sent if v['quantity'] == 'cache')} cache runs, "
-                      f"worst case ${spend:.2f} in all."]
-            if refused_runs:
-                lines += ["", "Not started, each an ask:"]
-                lines += [f"- {v['route']} `{v['model']}` {v['quantity']}: "
-                          + ("worst case ${:.2f}, above the run ceiling".format(v["estimate"]) if why == "over-run-cap"
-                             else "no price on providers.dev: no worst case") for v, why in refused_runs]
+            wsum = sum(v["estimate"] for v in windows)
+            csum = sum(v["estimate"] for v in caches)
+            lines += ["", f"{len(windows)} window checks (worst case ${wsum:.2f} if every one were answered; "
+                      f"each refused one is charged $0), {len(caches)} cache runs (worst case ${csum:.2f}): the "
+                      f"week's worst case ${wsum + csum:.2f} of ${self.ledger.week_cap:.2f}."]
+            if not_sent:
+                lines += ["", "Not sent or not started, each an ask:"]
+                lines += [f"- {v['route']} `{v['model']}` {v['quantity']}: {why}" for v, why in not_sent]
             if stopped:
-                rest = (windows + caches)[(windows + caches).index(stopped):]
+                rest = keyed[keyed.index(stopped):]
                 lines += ["", f"The week's money ends at {stopped['route']} `{stopped['model']}` (worst case "
                           f"${stopped['estimate']:.2f}): {len(rest)} values left for later, an ask."]
             lines.append("")
@@ -431,12 +464,13 @@ class Night:
         return self.state
 
     # -- the runs
-    def go(self, login, windows, caches):
+    def go(self, login, keyed):
         for part, runs in login.items():
             if self.parts[part]["status"] == "checked":
                 self.start_login_part(part, runs)
         pending = []
         if "keys" in self.parts and self.parts["keys"]["status"] == "checked":
+            windows, caches, _, _ = self.admit_keys(keyed)
             self.run_windows(windows)
             self.flush()
             pending = [c for c in caches if c["route"] not in self.routes_stopped]
@@ -464,28 +498,18 @@ class Night:
             self.started_runs.append(run)
 
     def run_windows(self, windows):
-        """One request per value, one after the other, before the cache runs: each should be refused (not billed). An
-        answered one was billed: the window list ends, and an ask."""
-        for v in windows:
-            if v["route"] in self.routes_stopped or self.parts["keys"]["status"].startswith("stopped"):
+        """The admitted window checks (admit_keys), one after the other, before the cache runs. Each should be refused:
+        its worst case stays reserved for the night and it is charged $0 at the end (finish). An answered one is
+        charged what it cost: the window list ends, and an ask."""
+        for n, v in enumerate(windows):
+            if v["route"] in self.routes_stopped:
+                v["outcome"] = "not sent: its route stopped"
                 continue
-            verdict = self.ledger.admit(v["label"], v["route"], v["model"], self.priced(v))
-            if verdict == "over-run-cap":
-                self.asks.open("run-over-cap", v["key"], route=v["route"], model=v["model"], quantity="window",
-                               estimate=v["estimate"], cap=self.ledger.run_cap)
-                continue
-            if verdict == "no-price":
-                v["outcome"] = "no price"
-                self.windows.append(v)
-                continue
-            if verdict == "over-week":
-                self.money_spent(len(windows))
-                return
-            self.asks.passed("run-over-cap", v["key"])
             v["date"] = self.date
             res = self.w.window(v, self.keys[v["route"]], self.date)
             v["outcome"], v["status"] = res["outcome"], res.get("status")
             v["file"] = f"{results_dir(self.date)}/windows.jsonl"
+            v["sent"] = True
             self.windows.append(v)
             self.parts["keys"]["started"] += 1
             if res["outcome"] == "answered":
@@ -493,16 +517,17 @@ class Night:
                                    res.get("reported"))
                 self.asks.open("window-answered", v["key"], route=v["route"], model=v["model"], words=v["words"],
                                usd=res.get("usd") or v["estimate"])
-                self.windows_ended = True
+                for rest in windows[n + 1:]:
+                    rest["outcome"] = "not sent: the window list ended"
+                    self.ledger.release(rest["label"])
                 return
-            self.ledger.release(v["label"])
             if res["outcome"] == "key":
                 self.asks.open("key-refused", v["route"], route=v["route"], variable=KEY_VARS[v["route"]],
                                status=f"HTTP {res.get('status')}", when="on a window request")
                 self.stop_route(v["route"], "key refused")
             # Any other answer ("error": a model the route does not serve, a format it refuses) is recorded in
             # windows.jsonl and the report; it never stops the route's cache runs.
-        if windows and not any(v.get("outcome") == "answered" for v in self.windows):
+        if windows:
             for subject in self.asks.subjects("window-answered"):
                 self.asks.passed("window-answered", subject)
 
@@ -527,18 +552,7 @@ class Night:
                 self.w.stop_part(self.date, part)
 
     def start_key_run(self, v):
-        verdict = self.ledger.admit(v["label"], v["route"], v["model"], self.priced(v))
-        if verdict == "over-run-cap":
-            self.asks.open("run-over-cap", v["key"], route=v["route"], model=v["model"], quantity="cache",
-                           estimate=v["estimate"], cap=self.ledger.run_cap)
-            v["outcome"] = "not started: over the run ceiling"
-            return "skip"
-        if verdict == "no-price":
-            v["outcome"] = "not started: no price"
-            return "skip"
-        if verdict == "over-week":
-            return "stop"
-        self.asks.passed("run-over-cap", v["key"])
+        """A cache run admitted by admit_keys (its worst case reserved): started."""
         v["date"] = self.date
         v["handle"] = self.w.start(v, self.date, None, None, key=self.keys[v["route"]])
         v["started_at"] = self.w.now().isoformat()
@@ -562,11 +576,7 @@ class Night:
                 if v["route"] in self.routes_stopped:
                     queue.pop(0)
                     continue
-                verdict = self.start_key_run(v)
-                if verdict == "stop":
-                    self.money_spent(len(queue))
-                    queue = []
-                    break
+                self.start_key_run(v)
                 queue.pop(0)
             alive = [r for r in self.started_runs if "outcome" not in r]
             if not alive and not (queue and self.parts.get("keys", {}).get("status") == "running"):
@@ -593,6 +603,8 @@ class Night:
         for part, p in self.parts.items():
             if p["status"] in ("running", "checked"):
                 p["status"] = "done"
+        if getattr(self, "money_ended", False) and "keys" in self.parts and self.parts["keys"]["status"] == "done":
+            self.parts["keys"]["status"] = "stopped: the week's money is spent"
         # The checks that passed again tonight close their asks: a login's part that ran to its end without a quota
         # refusal; a route that ran without being stopped.
         for part in ("codex", "devin"):
@@ -638,6 +650,14 @@ class Night:
 
     # -- the end
     def finish(self):
+        # A window check refused is charged $0; whatever else is still reserved (a run never started) is released.
+        sent = {v["label"] for v in self.windows if v.get("sent")}
+        for label in self.ledger.open_reservations():
+            if label in sent:
+                v = next(x for x in self.windows if x["label"] == label)
+                self.ledger.settle(label, v["route"], v["model"], 0.0)
+            else:
+                self.ledger.release(label)
         self.w.untouched(self.date, "report")
         draft = self.w.audit(self.date)
         self.state["audit_draft"] = bool(draft)

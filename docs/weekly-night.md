@@ -47,10 +47,17 @@ method is named in the plan, never left out without a word.
 - **owner**: the API keys share one pot of **$10 a week** with a ceiling of **$2 a run**, kept by the ledger
   (`$G/ledger/<monday>.jsonl`): each run's worst case (every request of 3,000 prompt tokens at the higher of the input
   and the cache-write price, plus 32 output tokens) is reserved before it starts, from the prices read just before
-  (OpenRouter's own list; providers.dev's elsewhere); a run starts only when it is at most $2 and fits what is left;
-  when it ends its real cost (the replies' usage at those prices, and OpenRouter's own `usage.cost`) replaces the
-  reservation. The part stops when either figure reaches the cap. A window request's worst case (answered instead of
-  refused: every word a token at the input price) is held to the same ceiling.
+  (OpenRouter's own list; providers.dev's elsewhere); a cache run starts only when it is at most $2 and fits what is
+  left; when it ends its real cost (the replies' usage at those prices, and OpenRouter's own `usage.cost`) replaces
+  the reservation. The part stops when either figure reaches the cap.
+- **owner** (2026-11-22, "A"): a **window check** is **not** held to the $2 a run. Its worst case (the vendor answers
+  instead of refusing: every word a token at the input price) counts toward the $10 a week: it is sent only when that
+  worst case fits what the week has left, and stays reserved for the night. One that does not fit (every one above
+  $10 among them) is not sent and is an ask; the pass goes on. A refused check is charged $0, an answered one what it
+  cost (and the window list ends).
+- The money's pass, before anything is sent: the API-key values in the plan's order (newest first inside each state),
+  window checks and cache runs together, each reserved as above; then the window checks are sent one by one, then
+  the cache runs start.
 - Reaching a cap stops that part and asks. A night that runs out of candidates ends early; it never fills a cap with
   repeats.
 
@@ -84,7 +91,7 @@ missed while the Mac slept runs when it wakes; `--uninstall --owner-ok` removes 
 |---|---|
 | Mon 23:00 | the lock (`$G/night-<date>/weekly.json`, exclusive: a second start of the night is refused); the everyday snapshot; the plan, `results/night-<date>/PLAN.md` |
 | | the checks before anything is spent: each login's status, each key's free request, one smoke run per client. A failure: that part does not start, and an ask |
-| Mon ~23:15 | the runs: each login's six, staggered; the window requests one by one; the key runs, twelve at a time, while the money lasts |
+| Mon ~23:15 | the runs: each login's six, staggered; the money's pass; the window checks one by one; the key runs, twelve at a time |
 | Tue ~01:30 | the `std` runs have ended |
 | Tue 11:30 at the latest | a run still alive gets its stop mark; `untouched --report`; the audit draft; `REPORT.md`, `runs.json` (public); `state.json` (private); one notification |
 
@@ -106,7 +113,8 @@ check keys|logins` runs a check again.
 | a key refused (401/403) or missing | that route | `python3 harness/weekly.py check keys` |
 | a plan's limit (quota) | that login's part | `python3 harness/weekly.py --date <today> --go night --only <client>` |
 | the week's money spent (or the provider's 402) | the API keys | the same with `--only keys --week-cap <dollars>` |
-| a run or window request over $2 | that one | the same with `--value <route>:<model>:<quantity> --run-cap <dollars>` |
+| a cache run over $2 | that one | the same with `--value <route>:<model>:cache --run-cap <dollars>` |
+| a window check whose worst case does not fit the week | that one | the same with `--value <route>:<model>:window --week-cap <dollars>` |
 | a vendor refusing twice in a row | that route | the same with `--only <part>`, after a look at the account |
 | a window request answered | the window list | none: a look first; the next night's requests close it |
 | discovery stale (over 3 days) | nothing | Provimux's status page, then discovery |

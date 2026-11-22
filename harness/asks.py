@@ -63,13 +63,24 @@ def _money_spent(f):
 
 
 def _run_over_cap(f):
-    return (f"{f['route']} {f['model']} ({f['quantity']}): worst case {_money(f['estimate'])}, above the "
+    return (f"{f['route']} {f['model']} (cache): worst case {_money(f['estimate'])}, above the "
             f"{_money(f['cap'])} per run",
-            f"The worst case of this {'window request' if f['quantity'] == 'window' else 'cache run'} is "
-            f"{_money(f['estimate'])}, above the ceiling of {_money(f['cap'])} a run: it was not started.",
-            f"{NIGHT} --date <today> --go night --only keys --value {f['route']}:{f['model']}:{f['quantity']} "
+            f"The worst case of this cache run is {_money(f['estimate'])}, above the ceiling of {_money(f['cap'])} a "
+            "run: it was not started.",
+            f"{NIGHT} --date <today> --go night --only keys --value {f['route']}:{f['model']}:cache "
             f"--run-cap {f['estimate'] + 0.01:.2f}   # runs it with your go",
             "This one value was not measured; the rest of the API-key part went on.")
+
+
+def _window_over_week(f):
+    return (f"{f['route']} {f['model']} window check: worst case {_money(f['estimate'])} does not fit the "
+            f"{_money(f['left'])} left this week",
+            f"A window check is expected to be refused (and costs nothing then), but if the vendor answered it would "
+            f"cost up to {_money(f['estimate'])}. That worst case counts toward the week's {_money(f['cap'])}, and "
+            f"only {_money(f['left'])} was left when its turn came: it was not sent.",
+            f"{NIGHT} --date <today> --go night --only keys --value {f['route']}:{f['model']}:window "
+            f"--week-cap <dollars>   # sends it with your go, with room for its worst case",
+            "This one window check was not sent; the rest of the API-key part went on.")
 
 
 def _vendor_refuses(f):
@@ -135,6 +146,7 @@ KINDS = {
     "plan-limit": ("that login's part", _plan_limit),
     "money-spent": ("the API-key part", _money_spent),
     "run-over-cap": ("that run", _run_over_cap),
+    "window-over-week": ("that window check", _window_over_week),
     "vendor-refuses": ("that route's part", _vendor_refuses),
     "window-answered": ("the window list", _window_answered),
     "discovery-stale": ("nothing", _discovery_stale),
@@ -144,7 +156,8 @@ KINDS = {
     "folders-refused": ("that login's part", _folders_refused),
 }
 # The rows of the design's table 9.5 (smoke-failed and folders-refused come from 9.4: the checks before spending).
-TABLE_ROWS = tuple(k for k in KINDS if k not in ("smoke-failed", "folders-refused"))
+# window-over-week is the week's money row for one window check (the owner's decision of 2026-11-22, "A").
+TABLE_ROWS = tuple(k for k in KINDS if k not in ("smoke-failed", "folders-refused", "window-over-week"))
 
 
 def ask_id(kind, subject):

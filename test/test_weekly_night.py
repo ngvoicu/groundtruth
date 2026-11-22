@@ -212,8 +212,8 @@ class Caps(NightCase):
         self.assertNotIn("or-a-dear", fake.started())
         self.assertIn("or-a-cheap", fake.started())
         subjects = {a["subject"] for a in self.asks("run-over-cap")}
-        self.assertIn("openrouter|a/dear|cache", subjects)
-        self.assertIn("openrouter|a/dear|window", subjects)  # its window request's worst case is above it too
+        self.assertEqual(subjects, {"openrouter|a/dear|cache"})  # a window check is never held to the run ceiling
+        self.assertEqual([a["subject"] for a in self.asks("window-over-week")], ["openrouter|a/dear|window"])
         ask = next(a for a in self.asks("run-over-cap") if a["subject"] == "openrouter|a/dear|cache")
         self.assertIn("--value openrouter:a/dear:cache --run-cap", ask["command"])
 
@@ -245,6 +245,69 @@ class Caps(NightCase):
         self.assertNotIn(("smoke", "codex"), fake.calls)
 
 
+class WindowChecks(NightCase):
+    """The owner's decision of 2026-11-22, "A": a window check is not held to the $2 a run; its worst case (answered
+    instead of refused) must fit what the week has left, newest model first; a refused one is charged $0."""
+
+    def site(self, *checks):
+        # A window check of 1.2 million words: its worst case is 1.2 x the input price.
+        return fixture_site(0, 0, ()) | {"entries": {f"openrouter/{m}": entry("openrouter", m, release=r, price_in=p)
+                                                     for m, r, p in checks}}
+
+    def run_windows(self, checks, **kw):
+        fake = Fake(bucharest(0, 23), self.site(*checks), **kw)
+        self.night(fake, only=["keys"], values={f"openrouter|{m}|window" for m, _, _ in checks})
+        return fake, [c[1] for c in fake.calls if c[0] == "window"]
+
+    def test_a_check_of_five_dollars_is_sent_while_the_week_has_ten_left(self):
+        fake, sent = self.run_windows([("a/five", "2026-11-20", 5 / 1.2)])
+        self.assertEqual(sent, ["or-a-five-window"])
+        self.assertEqual(self.asks(), [])
+
+    def test_a_check_of_twelve_dollars_is_never_sent(self):
+        fake, sent = self.run_windows([("a/twelve", "2026-11-20", 10.0)])
+        self.assertEqual(sent, [])
+        ask = self.asks("window-over-week")[0]
+        self.assertIn("worst case $12.00 does not fit the $10.00 left this week", ask["first_line"])
+        self.assertIn("--value openrouter:a/twelve:window --week-cap", ask["command"])
+        self.assertEqual(self.asks("run-over-cap"), [])
+
+    def test_two_that_together_pass_ten_only_the_first_newest_is_sent(self):
+        fake, sent = self.run_windows([("a/older", "2026-11-10", 5 / 1.2), ("a/newer", "2026-11-20", 6 / 1.2)])
+        self.assertEqual(sent, ["or-a-newer-window"])
+        ask = self.asks("window-over-week")[0]
+        self.assertEqual(ask["subject"], "openrouter|a/older|window")
+        self.assertIn("does not fit the $4.00 left", ask["first_line"])
+
+    def test_a_refused_check_is_charged_nothing_an_answered_one_what_it_cost(self):
+        self.run_windows([("a/five", "2026-11-20", 5 / 1.2)])
+        led = L.Ledger(os.path.join(self.home, "ledger"), DATE)
+        self.assertEqual(led.used(), 0.0)
+        self.assertEqual(led.reserved(), 0.0)
+        self.assertEqual(led.left(), 10.0)
+        spent = [r for r in led.rows if r["kind"] == "spent"]
+        self.assertEqual([(r["label"], r["usd"]) for r in spent], [("or-a-five-window", 0.0)])
+        self.tearDown()
+        self.setUp()
+        self.run_windows([("a/five", "2026-11-20", 5 / 1.2)],
+                         windows={"openrouter|a/five|window": {"outcome": "answered", "status": 200, "usd": 4.2}})
+        self.assertAlmostEqual(L.Ledger(os.path.join(self.home, "ledger"), DATE).used(), 4.2)
+
+    def test_the_worst_case_of_a_sent_check_holds_room_for_the_night_s_cache_runs(self):
+        site = self.site(("a/five", "2026-11-20", 7 / 1.2))
+        site["entries"]["openrouter/a/cheap"] = entry("openrouter", "a/cheap", release="2026-11-01", price_in=0.1)
+        fake = Fake(bucharest(0, 23), site)
+        self.night(fake, only=["keys"], week_cap=7.01,
+                   values={"openrouter|a/five|window", "openrouter|a/cheap|cache"})
+        self.assertIn(("window", "or-a-five-window"), fake.calls)
+        self.assertNotIn("or-a-cheap", fake.started())  # $7 of $7.01 held by the check: the run does not fit
+        self.assertEqual(len(self.asks("money-spent")), 1)
+
+    def test_a_cache_run_keeps_the_two_dollar_ceiling(self):
+        self.assertEqual(L.Ledger(self.home, DATE, dry=True).admit("x", "openrouter", "m", 2.5), "over-run-cap")
+        self.assertEqual(L.Ledger(self.home, DATE, dry=True).admit("x", "openrouter", "m", 2.5, window=True), "ok")
+
+
 class TheAsks(NightCase):
     def test_an_expired_login_stops_only_its_part(self):
         fake = Fake(bucharest(0, 23), fixture_site(codex=2, devin=2), logins={"devin": ["expired"]})
@@ -262,9 +325,10 @@ class TheAsks(NightCase):
         keys = tuple(("openrouter", f"a/dear{n}", 10.0) for n in range(3))
         fake = Fake(bucharest(0, 23), fixture_site(0, 0, keys))
         self.night(fake, only=["keys"])
-        self.assertEqual(len(self.asks("run-over-cap")), 6)
-        self.assertTrue(fake.notes[0].startswith("3 new asks; the first: "), fake.notes)  # the windows, at once
-        self.assertTrue(fake.notes[1].startswith("3 new asks; the first: "), fake.notes)  # the cache runs
+        self.assertEqual(len(self.asks("run-over-cap")), 3)
+        self.assertEqual(len(self.asks("window-over-week")), 3)
+        self.assertTrue(fake.notes[0].startswith("6 new asks; the first: "), fake.notes)  # the money's pass, at once
+        self.assertEqual(len(fake.notes), 2)
         self.assertIn("6 new", fake.notes[-1])
 
     def test_a_login_that_expires_between_two_runs(self):
@@ -477,7 +541,7 @@ class AsksOverNights(NightCase):
                  "status": "HTTP 401", "ran": 2, "planned": 6, "spent": 10.0, "cap": 10.0, "left_unmeasured": 3,
                  "model": "a/x", "quantity": "cache", "estimate": 2.5, "refusal": "HTTP 400", "usd": 3.0,
                  "words": 1200000, "provider": "devin", "days": 4, "reason": "late", "values": [1, 2, 3],
-                 "problems": ["x"]}
+                 "problems": ["x"], "left": 4.0}
         asks = A.Asks(os.path.join(self.home, "asks"), today=DATE)
         self.assertEqual(len(A.TABLE_ROWS), 10)
         for kind in A.KINDS:

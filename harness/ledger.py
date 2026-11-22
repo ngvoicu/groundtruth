@@ -7,8 +7,11 @@ One file per week, `$G/ledger/<monday>.jsonl` (mode 600), one line per event:
 - `spent`: when it ends, what the replies' usage cost at those prices (the reservation is then released);
 - `reported`: the provider's own figure for it, where the provider gives one (OpenRouter's `usage.cost`).
 
-A run starts only when its worst case is at most the run ceiling and fits what is left of the week:
-    left = week cap - max(spent, reported) - reserved (of the runs still under way).
+A cache run starts only when its worst case is at most the run ceiling and fits what is left of the week:
+    left = week cap - max(spent, reported) - reserved (of the runs and window checks of the night).
+A window check (the owner's decision of 2026-11-22, "A") is not held to the run ceiling: it is sent only when its
+worst case (the cost if the vendor answers instead of refusing) fits what is left, and that worst case stays
+reserved for the rest of the night; a refused check is then charged $0, an answered one what it cost.
 The API-key part stops when the spent or the reported figure reaches the week's cap.
 
     python3 harness/ledger.py [--week <monday>]       # the week's sums
@@ -129,12 +132,13 @@ class Ledger:
         """The week's cap is reached by the ledger's own figure or by the provider's."""
         return self.used() >= self.week_cap
 
-    def admit(self, label, route, model, estimate):
+    def admit(self, label, route, model, estimate, window=False):
         """'ok' (and the worst case reserved), 'no-price' (no worst case can be worked out: not started),
-        'over-run-cap' (above the run ceiling: not started) or 'over-week' (does not fit what is left)."""
+        'over-run-cap' (a cache run above the run ceiling: not started) or 'over-week' (does not fit what is left).
+        A window check (`window`) is held to the week only, never to the run ceiling."""
         if estimate is None:
             return "no-price"
-        if estimate > self.run_cap:
+        if not window and estimate > self.run_cap:
             return "over-run-cap"
         if estimate > self.left():
             return "over-week"
@@ -146,6 +150,16 @@ class Ledger:
         self._add({"kind": "spent", "label": label, "route": route, "model": model, "usd": round(usd, 6)})
         if reported:
             self._add({"kind": "reported", "label": label, "route": route, "model": model, "usd": round(reported, 6)})
+
+    def open_reservations(self):
+        """The labels reserved and neither settled nor released."""
+        out = {}
+        for r in self.rows:
+            if r["kind"] == "reserve":
+                out[r["label"]] = r
+            elif r["kind"] in ("spent", "release"):
+                out.pop(r["label"], None)
+        return list(out)
 
     def release(self, label):
         """A reservation given back with nothing spent (a window request refused: refusals are not billed)."""
