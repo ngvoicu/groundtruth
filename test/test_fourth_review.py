@@ -319,7 +319,7 @@ class Point5RunDocument(unittest.TestCase):
         self.assertTrue("login codex" in owner and "login devin" in owner)
         self.assertFalse("login claude" in owner or "META_API_KEY" in owner or "security add-generic-password" in owner)
         self.assertTrue("**2. The two logins**" in owner)
-        self.assertTrue("Up to about 820 Devin sessions" in owner)  # the fifth review's wording
+        self.assertTrue("Up to about 870 Devin sessions" in owner)  # the fifth review's wording
 
 
 if __name__ == "__main__":

@@ -40,10 +40,10 @@ These are the only steps that need the owner. Do them in this order, in one term
 So you can use your computer and your tools as usual during the night, Codex and the Devin CLI included.
 
 **What it costs the accounts.** The night uses the ChatGPT plan used with Codex (about 630 requests) and the Devin
-subscription (about 1,620 requests), each through its own client. A login's quota is the account's own: start when
+subscription (about 1,710 requests), each through its own client. A login's quota is the account's own: start when
 the plans' meters are low.
 
-**Devin's account history.** Up to about 820 Devin sessions from the night (819 if every run goes to its end, 4 in
+**Devin's account history.** Up to about 870 Devin sessions from the night (863 if every run goes to its end, 4 in
 the smoke runs) will appear in the owner's Devin account history: fewer if a control misses (that run ends after its
 control), and up to one extra session per priming retry. Each one's first line is `groundtruth cache
 measurement <salt> (an automated test, not a task).` (the Devin CLI cannot name a session). Nothing deletes them.

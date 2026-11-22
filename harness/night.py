@@ -13,7 +13,7 @@ are docs/own-clients-RUN.md.
     python3 harness/night.py --date 2026-11-23 status                      # which runs are alive (by their process)
     python3 harness/night.py --date 2026-11-23 stop codex|devin|all        # the launcher, then exactly its runs
 
-Parts: smoke (S2, S3, S3b), codex (CX1 - CX6), devin (DV1 - DV17, DV9d). `all`, for --go and stop: the two clients.
+Parts: smoke (S2, S3, S3b), codex (CX1 - CX6), devin (DV1 - DV18, DV9d). `all`, for --go and stop: the two clients.
 
 Not in the first night: no Claude Code or Muse Code run, login or key (and so no overage logic and no key read from the
 Keychain),
@@ -90,7 +90,8 @@ DEVIN = [("DV1", "claude-opus-5-5-low", "std"), ("DV2", "claude-sonnet-5-5-low",
          ("DV8", "deepseek-v4-1-flash-1017-low", "long"), ("DV9", "glm-5-3-low", "std"), ("DV10", "kimi-k3-1-pro-low", "long"),
          ("DV11", "nemotron-3-5-super-none", "long"),
          ("DV12", "deepseek-v4-pro-low", "std"), ("DV13", "gemini-4-argon-low", "std"), ("DV14", "grok-4-7-low", "std"),
-         ("DV15", "kimi-k3-low", "std"), ("DV16", "muse-wonder-1-0-low", "std"), ("DV17", "swe-2-medium", "std")]
+         ("DV15", "kimi-k3-low", "std"), ("DV16", "muse-wonder-1-0-low", "std"), ("DV17", "swe-2-medium", "std"),
+         ("DV18", "gemini-4-neon-low", "std")]
 # DV9d: DV9 again with Devin's own process model and keepalive (pair DV-5 compares the two; both are Devin runs).
 DV = [probe(i, "devin", m, schedule=s) for i, m, s in DEVIN] + [
     probe("DV9d", "devin", "glm-5-3-low", schedule="std", extra=["--devin-daemon"], pair="DV-5")]

@@ -23,7 +23,7 @@ def ids(prefix, n, start=1):
 
 class Plan(unittest.TestCase):
     def test_every_run_of_the_first_night_is_in_the_plan_and_nothing_else(self):
-        want = (["S2", "S3", "S3b"] + ids("CX", 6) + ids("DV", 17) + ["DV9d"])
+        want = (["S2", "S3", "S3b"] + ids("CX", 6) + ids("DV", 18) + ["DV9d"])
         self.assertEqual(sorted(night.ALL_STEPS), sorted(want))
 
     def test_no_pi_no_provimux_no_openrouter_no_window_no_supervisor(self):

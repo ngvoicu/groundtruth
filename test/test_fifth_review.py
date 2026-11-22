@@ -400,7 +400,7 @@ class RunWording(unittest.TestCase):
     def test_the_two_notes(self):
         with open(os.path.join(ROOT, "docs", "own-clients-RUN.md")) as f:
             text = " ".join(f.read().split())
-        self.assertIn("Up to about 820 Devin sessions", text)
+        self.assertIn("Up to about 870 Devin sessions", text)
         self.assertIn("fewer if a control misses", text)
         self.assertNotIn("823", text)
         self.assertIn("It cannot prove that no key was written", text)

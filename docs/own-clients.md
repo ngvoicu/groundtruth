@@ -42,7 +42,7 @@ It supersedes what the list below says of pi, Provimux, OpenRouter and the super
 - **Out of the first night**: every pi run, `pi-setup` and the reading of Provimux's configuration (the parity pairs
   of section 7 come in a later night; `harness/clients.py` has no pi client any more); every OpenRouter run and window
   request of 4.1, with the money stop and its reservations; the supervisor. What stays is S1 – S4 and S3b, CC1 – CC8,
-  CX1 – CX6, DV1 – DV17 with DV9d (pair DV-5 compares two Devin runs) and MC1 – MC3. The TypeScript probe (`src/`)
+  CX1 – CX6, DV1 – DV18 with DV9d (pair DV-5 compares two Devin runs) and MC1 – MC3. The TypeScript probe (`src/`)
   stays as it is, shared and reached by no night command.
 - **A launcher, not a supervisor**: `night.py --go <client>` (or `--go all`) starts each of that client's runs as its
   own background process, staggered by `--delay`, and returns; one lock file per client and night, created
@@ -439,7 +439,7 @@ before its smoke run; the table assumes Codex's.
 |---|---|---|---|
 | `claude-subscription` | 4 `std` + 4 short | 500 | 15 million |
 | `codex-subscription` | 6 `long` | 630 | 18 million |
-| `devin` | 13 `std` + 4 `long`, fewer where the control misses | 1,630 | 47 million |
+| `devin` | 14 `std` + 4 `long`, fewer where the control misses | 1,720 | 50 million |
 | `meta-subscription` | 3 `std`, or 3 controls | 280 | 8 million |
 | `antigravity` | 1 `std` | 93 | 2.7 million |
 
@@ -473,7 +473,7 @@ at $4, the prices read again before each run, as on 18 November.
 | OpenRouter, 9 window requests | 10 minutes | |
 | Claude Code, 4 runs together | 2 h 10 min | then the 4 short runs, 25 minutes |
 | Codex CLI, 6 runs together | 12 h 10 min | |
-| Devin CLI, 17 runs together | 2 h 10 min for 13, 12 h 10 min for 4 | started 20 seconds apart, as on 8 November |
+| Devin CLI, 18 runs together | 2 h 10 min for 14, 12 h 10 min for 4 | started 20 seconds apart, as on 8 November |
 | Muse Code, 3 runs together | 2 h 10 min | minutes if the control misses |
 | Limits walks | 10 to 20 minutes per model, one after the other per login | a request of a million tokens takes minutes |
 
@@ -626,7 +626,7 @@ answered requests and one refused. They settle every *(open)* of section 1 and g
 | DV1 – DV3 | `devin` | `devin-cli` | `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` | `std` | default |
 | DV4 – DV7 | | | `gpt-6-1-sol`, `gpt-6-1-terra`, `gpt-6-astra`, `gpt-6-luna` | `std` | |
 | DV8 – DV11 | | | `deepseek-v4-1-flash-1017`, `glm-5-3`, `kimi-k3-1-pro`, `nemotron-3-5-super` | `long` | warm at 2 h in November's runs |
-| DV12 – DV17 | | | `deepseek-v4-pro`, `gemini-4-argon`, `grok-4-7`, `kimi-k3`, `muse-wonder-1-0`, `swe-2` | `std` | |
+| DV12 – DV18 | | | `deepseek-v4-pro`, `gemini-4-argon`, `grok-4-7`, `kimi-k3`, `muse-wonder-1-0`, `swe-2`, `gemini-4-neon` | `std` | |
 | MC1 – MC3 | `meta-subscription` | `muse-code` | `muse-wonder-1.0`, `muse-ember-1.0`, `muse-spark-1.3` | `std` | default |
 | AG1 | `antigravity` | `antigravity-cli` | `gemini-3.8-flash-high` | `std` | only if S5 settles 1.5 |
 
