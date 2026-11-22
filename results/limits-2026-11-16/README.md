@@ -1,6 +1,6 @@
 # Input limits, 2026-11-16
 
-Requests through a local CLIProxyAPI that serves every model under its own name (no plugin, no pools, no aliases):
+Requests through the local Provimux that serves every model under its own name (no plugin, no pools, no aliases):
 `"Reply with just OK." + " hello" × N`, a 16-token reply. A refusal is free, so each model starts above the window
 its vendor lists, then just below it; only accepted requests cost quota. Each id below is served by one login only
 (Meta's `muse-…` ids by the Meta login, `devin/…` ids by the Devin login), so no pinning was needed. Rows:

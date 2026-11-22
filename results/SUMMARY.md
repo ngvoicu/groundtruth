@@ -8,15 +8,15 @@ the OpenAI Responses format with a per-sample `prompt_cache_key`, the way pi and
 the same age) are ages at which the checks gave both outcomes; the records do not show why. Treat the lower bound as the
 safe value.
 
-- `cpa-8.0.53/`: through a local [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 8.0.53, each row pinned to
+- `cpa-8.0.53/`: through the local [Provimux](https://github.com/ngvoicu/provimux) (then CLIProxyAPI 8.0.53), each row pinned to
   one account by a temporary alias (removed afterwards).
 - `openrouter-direct/`: straight to OpenRouter, no proxy. This is the baseline for what the upstream itself does.
 - `openrouter-direct-v0.2/`: R1 measured again with probe 0.2.0 (R1b).
 
-Known values were not measured: Claude subscription through CLIProxyAPI (CPA sets a 1 h cache) and a Claude API key
+Known values were not measured: Claude subscription through Provimux (it sets a 1 h cache) and a Claude API key
 (5 min default).
 
-## Through CLIProxyAPI 8.0.53
+## Through Provimux (CLIProxyAPI 8.0.53)
 
 | Row | Route | Model | Lifetime | Notes |
 |---|---|---|---|---|
@@ -32,7 +32,7 @@ Known values were not measured: Claude subscription through CLIProxyAPI (CPA set
 | M1 | Meta (Muse Code login) | `muse-wonder-1.0` | 2.5 min – 2 h | reliable to ~25 min, mixed after |
 | M3 | Meta | `muse-spark-1.3` | 7.5 – 40 min | |
 | A3 | Antigravity | `gemini-3.8-flash-high` | 2.5 – 15 min | |
-| O1 | OpenRouter via `openai-compatibility` | `anthropic/claude-opus-5.5` | **no cache** | CPA sends no cache markers on this route |
+| O1 | OpenRouter via `openai-compatibility` | `anthropic/claude-opus-5.5` | **no cache** | Provimux sends no cache markers on this route |
 | O2, O3 | same | `openai/gpt-6.1-sol`, `-terra` | 30 – 40 min | same as direct |
 | O4 | same | `google/gemini-4-argon` | < 2.5 – 10 min | |
 | O5 | same | `google/gemini-3.8-flash` | no observable cache | |
@@ -42,27 +42,27 @@ Known values were not measured: Claude subscription through CLIProxyAPI (CPA set
 | O9 | same | `z-ai/glm-5.3` | 5 – 15 min | mixed |
 | O10 | same | `meta/muse-wonder` | 2.5 – 7.5 min | |
 | O11 | same | `mistralai/mistral-large-4-0` | ≥ 10 min | short run |
-| K1 | Claude API key, Messages format, explicit `ttl: "1h"` | `claude-opus-5-5` | **30 – 65 min** | CPA passes an explicit 1 h through; the beta header is not needed |
+| K1 | Claude API key, Messages format, explicit `ttl: "1h"` | `claude-opus-5-5` | **30 – 65 min** | Provimux passes an explicit 1 h through; the beta header is not needed |
 
 Not measured: A1/A2 (not offered on the Antigravity account), M2 (404).
 
-## OpenRouter through CLIProxyAPI with built-in OpenRouter support
+## OpenRouter through Provimux with built-in OpenRouter support
 
-CLIProxyAPI 8.0.53 plus router-for-me/CLIProxyAPI#7284 (cache markers, session id, reasoning levels), 2026-11-06,
+Provimux (CLIProxyAPI 8.0.53 plus router-for-me/CLIProxyAPI#7284: cache markers, session id, reasoning levels), 2026-11-06,
 real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa-8.0.53-or/`.
 
 | Row | Model | Request | Lifetime | Notes |
 |---|---|---|---|---|
 | P1 | `anthropic/claude-haiku-5.5` | messages, no ttl | **5 – 7.5 min** | was "no cache" (O1) before #7284 |
 | P2 | same | messages, `ttl: "1h"` | **30 – 65 min** | the client's 1-hour request reaches Anthropic |
-| P3 | `openai/gpt-6.1-sol` | responses, `prompt_cache_options.ttl: "12h"` | warm at 30 min, cold at 1 h | the 12 h request is dropped: CPA's Responses → Chat Completions translation doesn't carry `prompt_cache_options`, so this is the 30-min default |
+| P3 | `openai/gpt-6.1-sol` | responses, `prompt_cache_options.ttl: "12h"` | warm at 30 min, cold at 1 h | the 12 h request is dropped: Provimux's Responses → Chat Completions translation doesn't carry `prompt_cache_options`, so this is the 30-min default |
 
 ## Straight to OpenRouter
 
 | Row | Model | Lifetime | Notes |
 |---|---|---|---|
 | R1 | `anthropic/claude-opus-5.5`, top-level `cache_control` + `session_id` | ~~cold at 2.5 min~~ | **probe error**: priming stalled ~6 min on retries, so the "2.5 min" and "5 min" checks ran at 6.6 and 6.7 min. Replaced by R1b |
-| R1b | `anthropic/claude-haiku-5.5`, same request, probe 0.2.0 | **5 – 7.5 min** | every check within 3 s of its age; Anthropic's 5-minute tier, as through CPA (P1) |
+| R1b | `anthropic/claude-haiku-5.5`, same request, probe 0.2.0 | **5 – 7.5 min** | every check within 3 s of its age; Anthropic's 5-minute tier, as through Provimux (P1) |
 | R1h | same, explicit `ttl: "1h"` | 30 – 65 min | |
 | R2, R3 | `openai/gpt-6.1-sol`, `-terra` | 30 – 40 min | |
 | R4 | `google/gemini-4-argon` | 5 – 7.5 min | |
@@ -76,13 +76,13 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
 
 ## Later runs (pi and vendor harnesses, one folder each)
 
-- `harness-2026-11-07/`: vendor CLIs (Codex CLI, Muse Code, Devin CLI) vs pi through CLIProxyAPI, same accounts.
-  Muse Wonder 1.0 through pi → CLIProxyAPI → Meta (H6) was warm in every check to 2 h.
+- `harness-2026-11-07/`: vendor CLIs (Codex CLI, Muse Code, Devin CLI) vs pi through Provimux, same accounts.
+  Muse Wonder 1.0 through pi → Provimux → Meta (H6) was warm in every check to 2 h.
 - `devin-harness-2026-11-08/`, `devin-cache-investigation-2026-11-09/`: Devin models.
-- `ember-2026-11-10/`: Muse Ember 1.0 through pi → CLIProxyAPI → Meta. At default retention (E1): 5 min 2/2, 30 min
+- `ember-2026-11-10/`: Muse Ember 1.0 through pi → Provimux → Meta. At default retention (E1): 5 min 2/2, 30 min
   1/2, 1 h 0/2, 2 h 1/2 (random eviction). With `prompt_cache_retention: "24h"` (E2): 16/16 warm, 5 min to 4 h. See
   its README.
-- `devin-repeat-2026-11-10/`: four Devin open-weight routes again, 5 samples per age (5 min – 2 h), pi → CLIProxyAPI →
+- `devin-repeat-2026-11-10/`: four Devin open-weight routes again, 5 samples per age (5 min – 2 h), pi → Provimux →
   Devin. DeepSeek V4.1 Flash 25/25 warm (≥ 2 h); GLM-5.3 warm at 5 min, 30 min and 1 h, cold at 15 min and 2 h (whole
   batches); Gemini 4 Argon 3/5 at 5 min, then cold; Grok 4.7 4/10 through 15 min, then cold. See its README.
 - `gpt6-2026-11-11/`: GPT-6 Astra and Luna on a ChatGPT plan, Devin, OpenRouter and an OpenAI API key (plus GPT-6.1 Sol
@@ -106,9 +106,9 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   Claude Haiku, Sonnet and Opus 5.5 accept 999,072 and refuse about 1,004,000; GPT-6.1 Terra, GPT-6 Astra and GPT-6
   Luna accept 911,390 and refuse 923,500 although Devin lists 1,000,000. `swe-2` read both ends of a 300K input (above
   its listed 262K), no edge: in `observed.json` as read to 300,499 tokens, with no refusal. See its README.
-- `claude-login-2026-11-16/`: Claude Opus 5.5 and Sonnet 5.5 on one Claude login, plain probe through CLIProxyAPI,
+- `claude-login-2026-11-16/`: Claude Opus 5.5 and Sonnet 5.5 on one Claude login, plain probe through Provimux,
   Messages format, 3 samples per age (CS1 – CS4). With no ttl and with `ttl: "1h"` alike: 3/3 warm at every age from
-  2.5 minutes to 1 hour, 0/3 at 65 and 75 minutes. This is the 1-hour cache that CLIProxyAPI asks for on Claude logins,
+  2.5 minutes to 1 hour, 0/3 at 65 and 75 minutes. This is the 1-hour cache that Provimux asks for on Claude logins,
   now measured; the usage of single writes (`tier.jsonl`) puts every cached token in the 1-hour tier. Claude Haiku 5.5
   (CS7, CS8) gives the same, measured with the probe's `--filler list`: Anthropic refused the default filler of random
   words on this model (category "bio"; CS5 and CS6 kept as records, not in `observed.json`). The filler does not change
@@ -125,7 +125,7 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   minutes with no ttl, 1 hour – 65 minutes with `ttl: "1h"`, as documented; Haiku with `--filler list` (it refused
   the default filler again). `gpt-audio-1.5` takes no text request, and the key cannot call `gpt-6-cyber` or the two
   Daybreak models: nothing measured. Cost $10.01 (`ledger.md`). See its README.
-- `logins-2026-11-17/`: the subscription logins through CLIProxyAPI, probe 0.3.1 with `--stop-on-refusal`. Codex
+- `logins-2026-11-17/`: the subscription logins through Provimux, probe 0.3.1 with `--stop-on-refusal`. Codex
   login (LC1 – LC4), checked from 2.5 minutes: GPT-6.1 Sol and GPT-6 Astra hit 2 of 3 at 2.5 minutes, GPT-6 Luna 1 of 3,
   all three 3 of 3 at 5 minutes, then some later ages miss (Sol 0 of 3 at 1 hour, 2 of 3 at 2 hours). Their published
   value is 0: no tested age through which every check hit, which does not mean the route does not cache; a first look
@@ -133,7 +133,7 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   comparison that shows a change. Early misses also occurred without a preceding large request or overlapping model
   priming (GS1 and GA1, `logins-gpt-6-2-2026-11-17/`); their cause is not established. The runs continuing them (CL1, CL3, CL4,
   `logins-long-2026-11-17/`) are published with them.
-  Meta login with the 24-hour retention CLIProxyAPI adds: Muse Spark 1.3 warm through 10 minutes, cold at 30 (LM2);
+  Meta login with the 24-hour retention Provimux adds: Muse Spark 1.3 warm through 10 minutes, cold at 30 (LM2);
   Ember and Wonder (LM1, LM3) completed the standard schedule warm in all 42 checks to 2 hours, where that schedule
   ends; each is published with the run continuing it at 4, 8, 12 and 24 hours (ML1, ML3, `logins-long-2026-11-17/`),
   as one evaluation, whatever it showed. Antigravity Gemini 3.8 Flash: safe to 2.5 minutes, as
@@ -144,14 +144,14 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   key, plain probe, 3 samples per age: both warm 3/3 through 30 minutes, 0/3 at 40 and 50 (30 – 40 minutes; OpenAI
   documents a 30-minute minimum). One window request each at 1,100,000 tokens, refused naming no figure: no limits row.
   See its README.
-- `logins-gpt-6-2-2026-11-17/`: the same two models on the Codex login through CLIProxyAPI, made as LC1 and LC3 but
+- `logins-gpt-6-2-2026-11-17/`: the same two models on the Codex login through Provimux, made as LC1 and LC3 but
   with no large request before the priming, the models primed one after the other, and nothing else using the login.
   Sol (GS1): 2 of 3 at 2.5 minutes, cold from 5. Astra (GA1): 2 of 3 at 2.5 minutes, 3 of 3 from 5 to 30, cold from
   75. Both published as 0 (no tested age through which every check hit); early misses also occurred here without a
   preceding large request or overlapping model priming; their cause is not established. Both refuse 930,000 tokens naming no limit: no limits row. See its
   README.
 - `logins-long-2026-11-17/`: the long cache setting on the logins, Antigravity's other models, and the 24-hour
-  continuations. Asking for the long cache does nothing on the Codex login through CLIProxyAPI or on Devin (the proxy
+  continuations. Asking for the long cache does nothing on the Codex login through Provimux or on Devin (the proxy
   removes the field, or Devin's protocol has none): no long run, an `excluded` entry with the proof. CL1 – CL4 are
   plain runs continuing LC1 – LC4 (`removed_by_proxy`); CL1 and CL3 add data to 2 hours only (the proxy refused their
   later checks), CL4's control missed. Antigravity: on Gemini 3.1 Flash Lite, 3.5 Flash Lite, 3 Flash and GPT-OSS 120B
@@ -238,19 +238,19 @@ here, the refused sizes in the paragraph above are those of the rows before this
 
 ## What this means
 
-- **Claude through CLIProxyAPI caches** on every route except OpenRouter via `openai-compatibility`: subscriptions (1 h,
-  set by CPA), API keys (5 min, or 1 h when the client asks), Devin (≥ 2 h). A client that warms every ~4.5 min keeps
+- **Claude through Provimux caches** on every route except OpenRouter via `openai-compatibility`: subscriptions (1 h,
+  set by Provimux), API keys (5 min, or 1 h when the client asks), Devin (≥ 2 h). A client that warms every ~4.5 min keeps
   any of them warm.
-- **OpenRouter via `openai-compatibility` never caches Claude** on CPA without #7284, because CPA adds no
+- **OpenRouter via `openai-compatibility` never caches Claude** on Provimux without #7284, because Provimux adds no
   `cache_control`. Direct OpenRouter does (R1h). With #7284 it does: 5 – 7.5 min by default (P1), 30 – 65 min when the
   client asks for 1 h (P2).
-- **OpenAI's 12-hour lifetime doesn't pass through CPA to OpenRouter** yet (P3): the option is dropped when CPA
+- **OpenAI's 12-hour lifetime doesn't pass through Provimux to OpenRouter** yet (P3): the option is dropped when Provimux
   translates Responses to Chat Completions.
 - **Codex keeps the cache for hours when a cache key is sent** (C1). Without a key (C2) checks land on other cache
   nodes and look cold within minutes. Checked from 2.5 minutes with a key (C1 and `logins-2026-11-17`, LC1 – LC4), the
   same route misses some checks in the first minutes and at some later ages, with fully warm ages between (all of
   LC1 – LC4 3 of 3 at 5 minutes): no age through which every check hit, in today's runs.
-- **GPT-6.1 elsewhere lasts 30–40 min**, matching OpenAI's documented ≥ 30 min, through CPA or not; so do the GPT-6
+- **GPT-6.1 elsewhere lasts 30–40 min**, matching OpenAI's documented ≥ 30 min, through Provimux or not; so do the GPT-6
   models on an OpenAI key (`direct-2026-11-17`).
 - Many open-weight routes (GLM, Kimi, Grok, Gemini) are mixed or short: a client should not assume they cache, and
   should stop warming when a warm-up reads nothing from cache.

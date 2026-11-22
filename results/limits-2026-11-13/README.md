@@ -1,6 +1,6 @@
 # Input limits, 2026-11-13
 
-Requests through a local CLIProxyAPI, Responses format, `"Reply with just OK." + " hello" × N`, a 16-token reply,
+Requests through the local Provimux, Responses format, `"Reply with just OK." + " hello" × N`, a 16-token reply,
 low effort. `limits_walk.py` goes down a list of sizes: a refusal is free, so only the accepted requests cost quota.
 
 ## GPT-6.1 Sol on the ChatGPT plan (Codex login): about 922K of input

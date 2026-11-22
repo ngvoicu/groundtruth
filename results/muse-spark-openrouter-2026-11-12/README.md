@@ -1,6 +1,6 @@
 # Muse Spark 1.3 on OpenRouter, 2026-11-12
 
-Route: plain HTTP → CLIProxyAPI 8.0.67 (with router-for-me/CLIProxyAPI#7284: cache markers and a session id for
+Route: plain HTTP → Provimux (CLIProxyAPI 8.0.67, with router-for-me/CLIProxyAPI#7284: cache markers and a session id for
 OpenRouter) → OpenRouter, model `meta/muse-spark-1.3`. The TypeScript probe 0.2.0, Responses format, a
 `prompt_cache_key` per sample, ~2,600-token prompt; warm = at least half the prompt reported as cached. 3 samples per
 age. The control (immediate re-send) was warm; no check ran late. The run stopped after 40 minutes, cold for the

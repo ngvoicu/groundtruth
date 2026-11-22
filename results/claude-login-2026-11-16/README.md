@@ -1,7 +1,7 @@
 # Claude login: cache lifetime of Opus, Sonnet and Haiku 5.5, 2026-11-16
 
-Plain probe (`src/cli.ts`, 0.2.0) through a local CLIProxyAPI, Anthropic Messages format, the way the Claude API key
-(K1) and OpenRouter (P1, P2) runs were made. The CLIProxyAPI has no plugin, no pools and no aliases; two Claude logins
+Plain probe (`src/cli.ts`, 0.2.0) through the local Provimux, Anthropic Messages format, the way the Claude API key
+(K1) and OpenRouter (P1, P2) runs were made. Provimux has no plugin, no pools and no aliases; two Claude logins
 and two Claude API keys serve the same Claude ids. Every request here went to **Claude login A** (one of the two
 logins; the other is not used): each model got a temporary alias on that login only (`probe/<model>`, made with
 `harness/pool.py`, removed afterwards). No other login and no API key serves such an id: the API keys serve only the
@@ -25,7 +25,7 @@ them.
 Every check ran within 4 s of its age (one at 18 s), none late. The 1-hour checks ran at 3,600.0 – 3,601.9 s and all hit;
 every 65-minute check missed completely.
 
-**Without a ttl the login gets the 1-hour cache.** CLIProxyAPI asks Anthropic for it on Claude logins, and the
+**Without a ttl the login gets the 1-hour cache.** Provimux asks Anthropic for it on Claude logins, and the
 measurement shows it: a request that only marks the prompt lives exactly as long as one that asks for an hour.
 `tier.jsonl` shows the same from the other side: one request per model and setting (a plain numbered list of about
 7,650 tokens, `tier_check.py`), and Anthropic's usage puts every written token under `ephemeral_1h_input_tokens`, with
@@ -33,7 +33,7 @@ or without `ttl: "1h"`, for Opus, Sonnet and Haiku alike.
 
 **Claude Haiku 5.5 refuses the probe's default filler, so it was measured with another one.** Every prompt with the
 default filler (sentences of random words) was answered with a refusal (`stop_details` category `bio`), which
-CLIProxyAPI returns as HTTP 400 `claude refusal (bio)`: the controls of CS5 and CS6, a second CS5 with a new salt, and
+Provimux returns as HTTP 400 `claude refusal (bio)`: the controls of CS5 and CS6, a second CS5 with a new salt, and
 by hand a third salt and prefixes of 3,000 and 5,000 tokens. Short prompts and the numbered list of `tier.jsonl` were
 answered normally. CS7 and CS8 therefore use the probe's `--filler list` (plain numbered sentences about shop opening
 hours, added for this; the default filler is unchanged, so earlier runs stay comparable). The filler changes only the

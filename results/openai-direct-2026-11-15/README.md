@@ -17,6 +17,6 @@ agrees with it: the default run, started in the same minute, was cold at 40 minu
 12 hours. OpenAI documents `prompt_cache_options.ttl` (`30m` by default, or `12h`) for the Responses API of GPT-5.6
 and later.
 
-The default run matches OpenAI's documented 30 minutes and the GPT-6 runs on an API key through CLIProxyAPI
+The default run matches OpenAI's documented 30 minutes and the GPT-6 runs on an API key through Provimux
 (`../gpt6-2026-11-11`, G5 – G7: warm at 30 min, cold at 40). With the 12-hour setting the cache held every check to
 12 hours and was gone at 24.

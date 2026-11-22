@@ -1,6 +1,6 @@
 # Devin open-weight routes, measured again with 5 samples, 2026-11-10
 
-Route: pi → CLIProxyAPI → Devin, one Devin login, each model reached through a pool with Devin as its only member.
+Route: pi → Provimux → Devin, one Devin login, each model reached through a pool with Devin as its only member.
 Method as in `../devin-harness-2026-11-08` (the `p` runs): `harness/probe.py`, a new pi session per sample with a unique
 ~7k-token block, resumed once after the age; warm = the reported cached tokens cover the harness prompt and at least half
 the block. Effort low. These four routes gave random or contradictory rows there with 2 samples per age.

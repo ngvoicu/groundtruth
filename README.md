@@ -9,7 +9,7 @@ that keep caches warm (or that decide when a pause will cost a full re-write) ne
 
 - Chat Completions, Responses and Anthropic Messages formats
 - Optional explicit Anthropic `cache_control` ttl (`5m` / `1h`), extra headers and body fields
-- Works against any base URL: vendor APIs, OpenRouter, or a local proxy such as CLIProxyAPI
+- Works against any base URL: vendor APIs, OpenRouter, or a local proxy such as Provimux (a distribution of CLIProxyAPI)
 - No runtime dependencies, Node ≥ 22.19, MIT (TypeScript is a build-time dependency only)
 
 ## Quick start
@@ -217,7 +217,7 @@ subscription routes that have no public API (a ChatGPT plan through Codex, Devin
   `input_read` above `input_accepted`, a count that is not a whole number of 0 or more, a number its raw rows don't
   show, or a conversion that the accepted requests don't fit.
 - **`known`**: lifetimes that were **not measured** but follow from how a client or proxy builds its requests
-  (for example CLIProxyAPI asking Anthropic for the 1-hour cache on Claude logins). Each has `ttl_s`, a `basis` in
+  (for example Provimux asking Anthropic for the 1-hour cache on Claude logins). Each has `ttl_s`, a `basis` in
   words and a `source`; `model` is `*` when it holds for every model of the route, and `when` narrows it to a
   setting.
 - **`excluded`**: runs left out, and why.
@@ -257,7 +257,7 @@ One maintainer, no promised response time. For anything that does not fit an iss
   the model). The default 2,500-token prefix plus whatever the proxy adds clears most minimums; raise
   `--prefix-tokens` if the control round fails.
 - **A model may refuse the filler.** The default filler is sentences of random words; Anthropic refused it on Claude
-  Haiku 5.5 through a Claude login (`stop_details` category `bio`, returned by CLIProxyAPI as HTTP 400
+  Haiku 5.5 through a Claude login (`stop_details` category `bio`, returned by Provimux as HTTP 400
   `claude refusal (bio)`). `--filler list` uses plain numbered sentences instead. The filler does not change caching,
   and the default stays as it was, so earlier runs remain comparable; a result file names the filler when it is not
   the default.

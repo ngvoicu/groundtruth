@@ -1,13 +1,13 @@
 # The long cache setting on the Codex and Devin logins, the Antigravity login's other models, Meta to 24 h (2026-11-17)
 
-Requests through the owner's local CLIProxyAPI (his build of 8.0.75, `ngvoicu-local-c52243ab`, process of 18:09:07
+Requests through the owner's local Provimux (his build of CLIProxyAPI 8.0.75, `ngvoicu-local-c52243ab`, process of 18:09:07
 local; he restarted it at 18:38:51 on `ngvoicu-local-4c071f30`, the same plus one commit for the WebSocket auth-kind
 event, nothing in these request paths). Probe 0.3.3, which records CLIProxyAPI's `X-CPA-AUTH-KIND` of every reply
 (`oauth` = a login, `apikey` = an API key). Plan quota only; `ledger.md` has what each request or run used.
 
 **Findings.**
 
-- **Asking for the long cache does nothing on the Codex login through CLIProxyAPI, and on Devin: the setting does not
+- **Asking for the long cache does nothing on the Codex login through Provimux, and on Devin: the setting does not
   exist on these routes.** The proxy deletes `prompt_cache_retention` and `prompt_cache_options` from every Codex
   request to the login, and rebuilds every Devin request in a protocol that has no such field. Neither route gets a
   long-profile run; each has an `excluded` entry with the proof.
@@ -44,11 +44,11 @@ reject prompt_cache_options, so they keep the translator's removal" (only an Ope
 cache on the second send (2,816 tokens), and the login reported no cache write in either tier (`ttl_30m_tokens` and
 `ttl_12h_tokens` both 0): the backend does not show which tier it keeps.
 
-What a real client sends: pi through CLIProxyAPI sends neither field for any Codex-format model (its Codex-format
+What a real client sends: pi through Provimux sends neither field for any Codex-format model (its Codex-format
 client ignores `PI_CACHE_RETENTION`); pi's direct OpenAI client and OpenAI's SDKs send `prompt_cache_retention: "24h"`.
 The runs sent that.
 
-**Devin.** CLIProxyAPI turns every request into Devin's protobuf (`internal/runtime/executor/helps/devin_wire.go`,
+**Devin.** Provimux turns every request into Devin's protobuf (`internal/runtime/executor/helps/devin_wire.go`,
 `BuildDevinGetChatMessageRequest`): system prompt, messages, tools, max tokens, temperature, session id, the cascade id
 (the cache key) and the model. No field carries a cache lifetime, and `cache_control` markers are skipped when the
 content is read. `devin/swe-2` (Responses) answered 200 with the same 471 input tokens to no field,
@@ -81,7 +81,7 @@ is 2 of 6 with CL1), and no data after 2 h. The safe values the site derives are
 of the merged checks; LC1 – LC4 already had misses at 2.5 minutes.
 
 **The checks from 4 hours on were refused by the proxy; CL1's and CL3's data end at 2 hours.** At 20:50 local the
-owner's other session rewrote CLIProxyAPI's configuration with `oauth.excluded-models`, which among much else excludes
+owner's other session rewrote Provimux's configuration with `oauth.excluded-models`, which among much else excludes
 `gpt-6.1-sol`, `gpt-6-astra` and `gpt-6-luna` from the Codex login (the login now serves `gpt-6.2-sol`,
 `gpt-6.2-astra`, `gpt-6.1-terra`, `codex-auto-review` and image models; the plain old ids are left to the OpenAI API
 key). The login file was rewritten by a token refresh at 20:48:49 and holds no alias since; whether the refresh or the
@@ -117,7 +117,7 @@ it shows neither a cache that expired nor that there is none, so AG1 – AG3 and
 (they were entered as runs in the first assembly and moved to `excluded` after its review).
 
 AG4 (`AG4-2026-11-17T16-28-48.not-primed.log`, times in UTC): Google answered 503 "No capacity available for model
-gemini-3.8-flash-tiered on the server" (then CLIProxyAPI's `auth_unavailable` while it paused the model) from 18:28:54
+gemini-3.8-flash-tiered on the server" (then Provimux's `auth_unavailable` while it paused the model) from 18:28:54
 local; after five retries the control was answered at 18:30:48 local, warm (2,620 of 4,659 read from cache). The
 priming of its 42 samples then did not complete (the same 503s and one TLS handshake timeout, answered 500 by the
 proxy), and the run was ended by the 10-minute rule at 18:38:48 local. It left no run file and no timed evidence.
@@ -133,7 +133,7 @@ The website has no entry for these ids under `antigravity` (only `gemini-3.8-fla
 
 ## 4. Meta login: Ember and Wonder to 24 hours (ML1, ML3)
 
-Made as LM1 and LM3: plain probe, no body extra, 2 primes at a time; CLIProxyAPI's payload rule for `muse-*` adds
+Made as LM1 and LM3: plain probe, no body extra, 2 primes at a time; Provimux's payload rule for `muse-*` adds
 `prompt_cache_retention: "24h"` to every request, so they are recorded with that option (long profile). Ages 4, 8,
 12 and 24 h (the probe always adds 2.5, 5 and 7.5 min, which add samples to those ages of LM1 / LM3). `muse-*` ids
 have one account, the Meta login; every answer `oauth`; its counter was 0 before the runs.
@@ -143,7 +143,7 @@ have one account, the Meta login; every answer `oauth`; its counter was 0 before
 | ML1 | LM1 (`muse-ember-1.0`) | hit (2,548 / 2,649) | 3/3 at 2.5, 5, 7.5 min; 4 h 0/3; 8 h no data (3 errors); 12 h 0/3; 24 h never ran | cut off |
 | ML3 | LM3 (`muse-wonder-1.0`) | hit (2,548 / 2,618) | 3/3 at 2.5, 5, 7.5 min; 4 h 3/3; 8 h no data (3 errors); 12 h 0/3; 24 h never ran | cut off |
 
-**8 hours: no data.** All three 8-hour checks of each run failed after their retries: CLIProxyAPI answered HTTP 504
+**8 hours: no data.** All three 8-hour checks of each run failed after their retries: Provimux answered HTTP 504
 between 02:32 and 02:58 local on 2026-11-18, its lookup of Meta's API host having timed out (the run logs, local). The
 Mac was awake. An errored check counts neither warm nor cold, so 8 h is an age without data, not a cold age.
 

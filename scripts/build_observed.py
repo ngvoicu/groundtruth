@@ -30,8 +30,8 @@ ROUTES = {
     "antigravity": "Google Antigravity login",
 }
 CLIENTS = {
-    "pi+cliproxyapi": "the pi coding agent through CLIProxyAPI: real sessions, resumed once (harness/probe.py)",
-    "cliproxyapi": "plain HTTP requests through CLIProxyAPI (the TypeScript probe)",
+    "pi+cliproxyapi": "the pi coding agent through Provimux (CLIProxyAPI 8.0.53 before 22 November 2026): real sessions, resumed once (harness/probe.py)",
+    "cliproxyapi": "plain HTTP requests through Provimux (CLIProxyAPI 8.0.53 before 22 November 2026) (the TypeScript probe)",
     "direct": "plain HTTP requests straight to the vendor (the TypeScript probe)",
     "codex-cli": "OpenAI's Codex CLI (harness/probe.py)",
     "devin-cli": "the Devin CLI (harness/probe.py)",

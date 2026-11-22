@@ -4,7 +4,7 @@ OpenAI released GPT-6.2 Sol and GPT-6.2 Astra on 2026-11-17; the owner's API key
 20:48 UTC). Both were measured the way `../direct-2026-11-17` measured `gpt-6-sol`, `gpt-6-astra`, `gpt-6-luna` and
 `gpt-6.1-terra`: plain probe (`src/cli.ts`, 0.3.2 with `--usage-log`) straight to `https://api.openai.com/v1`, no proxy
 in between (route `openai-api`, client `direct`). One OpenAI API key (the owner's, read by `key.py` from his
-CLIProxyAPI configuration into the probe's environment, never written). Responses format, a `prompt_cache_key` per
+Provimux configuration into the probe's environment, never written). Responses format, a `prompt_cache_key` per
 sample, about 2,400-token prompts, nothing asked about caching, the standard schedule (to 2 hours, stopping after two
 fully cold ages), 3 samples per age, a control first. `run.sh` holds both commands; Sol was started at 20:49:21 UTC,
 Astra at 20:49:26.

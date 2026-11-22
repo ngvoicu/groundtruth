@@ -228,6 +228,21 @@ class OwnClients(unittest.TestCase):
             bo.CLIENTS.clear()
             bo.CLIENTS.update(saved)
 
+    def test_proxy_client_texts_keep_the_existing_ids(self):
+        expected = {
+            "pi+cliproxyapi": "the pi coding agent through Provimux (CLIProxyAPI 8.0.53 before 22 November 2026): "
+                             "real sessions, resumed once (harness/probe.py)",
+            "cliproxyapi": "plain HTTP requests through Provimux (CLIProxyAPI 8.0.53 before 22 November 2026) "
+                           "(the TypeScript probe)",
+        }
+        with open(os.path.join(HERE, "..", "observed.json")) as f:
+            published = json.load(f)["clients"]
+        for client, description in expected.items():
+            self.assertEqual(bo.CLIENTS[client], description)
+            self.assertEqual(published[client], description)
+            self.assertEqual(bo.CLIENT_KINDS[client], "proxy")
+        self.assertEqual(bo.HARNESS_CLIENT["pi"], "pi+cliproxyapi")
+
     def test_an_own_client_on_another_vendors_route_is_refused(self):
         with self.assertRaisesRegex(SystemExit, "own client of claude-subscription"):
             self.build(own_file(w1=11000), route="devin")

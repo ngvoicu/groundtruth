@@ -1,6 +1,6 @@
 # GLM 5.3 Flash and DeepSeek V4.1 Flash on OpenRouter, 2026-11-12
 
-Route: plain HTTP → CLIProxyAPI 8.0.67 (with router-for-me/CLIProxyAPI#7284: cache markers and a session id for
+Route: plain HTTP → Provimux (CLIProxyAPI 8.0.67, with router-for-me/CLIProxyAPI#7284: cache markers and a session id for
 OpenRouter) → OpenRouter, models `z-ai/glm-5.3-flash` and `deepseek/deepseek-v4.1-flash`. The TypeScript probe
 0.2.0, Responses format, a `prompt_cache_key` per sample, ~6,000-token prompt; warm = at least half the prompt
 reported as cached. The immediate re-send (control) was warm in every run.

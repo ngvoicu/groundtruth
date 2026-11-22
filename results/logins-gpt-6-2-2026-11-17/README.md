@@ -1,6 +1,6 @@
 # GPT-6.2 Sol and Astra on the Codex login, 2026-11-17: the cache lifetime, and the window from a refusal
 
-OpenAI released GPT-6.2 Sol and GPT-6.2 Astra on 2026-11-17. Requests through the owner's local CLIProxyAPI (his
+OpenAI released GPT-6.2 Sol and GPT-6.2 Astra on 2026-11-17. Requests through the owner's local Provimux (his
 build `ngvoicu-local-4c071f30`, process of 18:38:51 local, configuration of 20:50 with `oauth.excluded-models`), on
 the plan of the Codex login (ChatGPT plan). No money was spent; `ledger.md` has what each run used.
 
@@ -21,7 +21,7 @@ the plan of the Codex login (ChatGPT plan). No money was spent; `ledger.md` has 
 
 `gpt-6.2-sol` and `gpt-6.2-astra` are served by the Codex login (`oauth`, priority −17) and by an OpenAI API key
 (`apikey`, −25). Every request here used a temporary alias on the Codex login only, `probe/gpt-6.2-sol` and
-`probe/gpt-6.2-astra`, set at 23:26:31 local through CLIProxyAPI's management API (`PATCH
+`probe/gpt-6.2-astra`, set at 23:26:31 local through Provimux's management API (`PATCH
 /v8/management/credentials/fields`, `model_aliases` with `fork: true`) after a backup of the configuration and the
 login folder; `/v1/models?include=accounts` listed only the Codex login for each, and every answer of both runs said
 `X-CPA-AUTH-KIND: oauth` (53 and 83, `spent.replyHeaders` in the run files). The aliases were removed at 01:04:50 local

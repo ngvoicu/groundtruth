@@ -2,7 +2,7 @@
 
 Plain probe (`src/cli.ts`, 0.3.0 with `--usage-log`) straight to `https://api.openai.com/v1` and
 `https://api.anthropic.com/v1`, no proxy in between (route `openai-api` / `anthropic-api`, client `direct`). One OpenAI
-API key, one Anthropic API key (the owner's, read by `key.py` from his CLIProxyAPI configuration into the probe's
+API key, one Anthropic API key (the owner's, read by `key.py` from his Provimux configuration into the probe's
 environment, never written). 3 samples per age, every run starting with the control and 2.5, 5 and 7.5 minutes.
 `run.sh` holds every run's command; all were started between 12:19 and 12:24 UTC.
 

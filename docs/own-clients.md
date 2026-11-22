@@ -114,7 +114,7 @@ providers.dev publishes, for each value, the most direct measurement that exists
 - **An API-key route** (`anthropic-api`, `openai-api`, `openrouter`): only `direct` runs. A proxy run on such a
   route stays in the records and feeds no value.
 - **A login** (`claude-subscription`, `codex-subscription`, `devin`, `meta-subscription`, `antigravity`): the
-  vendor's own client first; a proxy (CLIProxyAPI, Provimux) only where no own client can be scripted.
+  vendor's own client first; a proxy such as Provimux (a distribution of CLIProxyAPI) only where no own client can be scripted.
 
 What the records hold today (`observed.json` at `72e0c29`):
 

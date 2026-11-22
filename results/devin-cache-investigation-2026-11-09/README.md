@@ -1,7 +1,7 @@
-# Why some Devin models cached worse through CPA (2026-11-09)
+# Why some Devin models cached worse through Provimux (2026-11-09)
 
-Run D (2026-11-08) suggested Devin CLI caches better than pi through CPA on Argon, GLM, Grok, Nemotron and SWE-2.
-Checked with temporary per-account aliases `probe-devin-*` and CPA's request log.
+Run D (2026-11-08) suggested Devin CLI caches better than pi through Provimux on Argon, GLM, Grok, Nemotron and SWE-2.
+Checked with temporary per-account aliases `probe-devin-*` and Provimux's request log.
 
 | Test | Result |
 |---|---|
@@ -17,11 +17,11 @@ Checked with temporary per-account aliases `probe-devin-*` and CPA's request log
 
 Conclusions:
 
-- **Nemotron 3.5 Super is not a CPA problem.** D11c used `nemotron-3-5-super-none`; pi's `low` maps to
+- **Nemotron 3.5 Super is not a Provimux problem.** D11c used `nemotron-3-5-super-none`; pi's `low` maps to
   `-medium` (Devin has none / medium / high). With reasoning on, turn 1's reasoning is not part of turn 2's prompt, so
   this hybrid (Mamba) model resumes only from an earlier cache checkpoint, in Devin CLI too. Use thinking off for cache.
-- **GLM, Grok, Argon cache normally through CPA** turn to turn. Run D's long-age differences come from 2 samples per
+- **GLM, Grok, Argon cache normally through Provimux** turn to turn. Run D's long-age differences come from 2 samples per
   age: Grok was 4/10 (CLI) vs 5/10 (pi) overall; GLM 10/10 vs 6/10 (misses at 30 min and 2 h, warm at 1 h) looks like
   random node misses; Argon was poor on both (2/10 vs 0/10).
 - **SWE-2:** no usable cache on either route (D12).
-- Not changed: CPA sends a new random id per prompt message on every request; harmless (identical bodies cache).
+- Not changed: Provimux sends a new random id per prompt message on every request; harmless (identical bodies cache).

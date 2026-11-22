@@ -1,6 +1,6 @@
-# Subscription logins through CLIProxyAPI, 2026-11-17: narrower input windows, and the cache lifetimes again
+# Subscription logins through Provimux, 2026-11-17: narrower input windows, and the cache lifetimes again
 
-Requests through the owner's local CLIProxyAPI (a build of 8.0.75 with his patches, no plugin, no pools, no aliases),
+Requests through the owner's local Provimux (a build of CLIProxyAPI 8.0.75 with his patches, no plugin, no pools, no aliases),
 on the plans of four logins: Codex (ChatGPT plan), Devin, Meta (Muse Code) and Antigravity. No money was spent; every
 request counts against a plan. `ledger.md` has what each request or run used.
 
@@ -27,7 +27,7 @@ request counts against a plan. `ledger.md` has what each request or run used.
 
 - **Codex login.** The GPT ids are served by the Codex login and, at a lower priority, by an OpenAI API key. Every
   Codex request here used a temporary alias on the Codex login only (`probe/gpt-6.1-sol`, `probe/gpt-6.1-terra`,
-  `probe/gpt-6-astra`, `probe/gpt-6-luna`, set and removed through CLIProxyAPI's management API, as `harness/pool.py`
+  `probe/gpt-6-astra`, `probe/gpt-6-luna`, set and removed through Provimux's management API, as `harness/pool.py`
   does); no API key serves a `probe/…` name. During the window walk the login's request counter rose by exactly its
   3 accepted and 3 refused requests and the API key's stayed at 0; it was still 0 at 14:39 and, after the restart
   below, at the end.
@@ -98,7 +98,7 @@ GPT-6.1 Terra on the Codex login (its walk of 2026-11-08 already has 920,870 / 9
 
 ## 2. Cache lifetimes (`run-lifetimes.sh`, `supervise.py`)
 
-The plain probe, 0.3.1, through CLIProxyAPI: the Responses format with a per-sample `prompt_cache_key`, as every earlier
+The plain probe, 0.3.1, through Provimux: the Responses format with a per-sample `prompt_cache_key`, as every earlier
 run of these routes, the standard schedule (2.5 minutes to 2 hours, stopping after two fully cold ages), 3 samples per
 age, a control first, and `--stop-on-refusal` (new in 0.3.1: a quota or rate refusal ends the run instead of being
 retried). One supervisor per login started that login's runs side by side, 15 s apart, and ended them all at the
@@ -106,7 +106,7 @@ login's first refusal. Gemini 4 Argon and Gemini 3.8 Flash used a 5,000-token pr
 Every check ran on time (the latest one 119.5 s after its 20-minute age on LA1, inside the probe's allowance; none was
 left out as late).
 
-**The Meta runs carry the 24-hour retention.** The probe does not send `prompt_cache_retention`, but CLIProxyAPI's
+**The Meta runs carry the 24-hour retention.** The probe does not send `prompt_cache_retention`, but Provimux's
 payload rule for `muse-*` (in the configuration since 2026-11-10) adds `"24h"` to every request to the Meta login. So
 these runs are entered with that option, beside the earlier 24-hour runs (`meta-24h-2026-11-10`, through pi), and not
 as successors of the plain runs of 4 and 6 November, which were made before the rule.
@@ -145,7 +145,7 @@ over the published evaluations of the entry and profile (`site/design/safe-cache
   no large request before the priming and the two models primed one after the other (the login's request counter rose
   by exactly their own requests). That does not rule out every kind of load, and it says nothing certain about the
   misses here. The cause of the misses is not established. The missing
-  `session_id` in the request record is not the cause: CLIProxyAPI copies the request's `prompt_cache_key` into the
+  `session_id` in the request record is not the cause: Provimux copies the request's `prompt_cache_key` into the
   upstream session id. CL1, CL3 and CL4 (`../logins-long-2026-11-17`) continue LC1, LC3 and LC4 and are published
   with them: primed about four hours after these, with no window request before them, Sol and Astra missed again
   (their data end at 2 hours: the proxy refused their later checks, and a restart of the Mac cut them off before
@@ -159,7 +159,7 @@ over the published evaluations of the entry and profile (`site/design/safe-cache
   warm through 4 hours and all cold at 12. Before them the published long lifetime of 4 hours was that of
   `meta-24h-2026-11-10` (through pi).
 - **Antigravity.** Google answered `MODEL_CAPACITY_EXHAUSTED` (HTTP 503, "No capacity available for model … on the
-  server") to many requests between 12:27 and 12:59 UTC, which CLIProxyAPI turned into short pauses of the model; the
+  server") to many requests between 12:27 and 12:59 UTC, which Provimux turned into short pauses of the model; the
   probe retried them as transient errors (71 retries in all). That is the server's capacity, not the account's quota.
   The priming took 12 minutes, and the 15 samples overdue by then were primed again, so each was checked at its age.
   Same safe value as A3 (2.5 minutes).
@@ -205,7 +205,7 @@ providers.dev has no entry `claude-subscription/claude-fable-5-2` yet: these run
 
 The login's own model list (management API, `/credentials/models` for that login), as the login names them:
 
-| Id | Name the login gives | Kind | CPA's local catalog says (not the login, not measured) | Run |
+| Id | Name the login gives | Kind | Provimux's local catalog says (not the login, not measured) | Run |
 |---|---|---|---|---|
 | `claude-opus-4-6-thinking` | Claude Opus 4.6 (Thinking) | chat | 200,000 / 64,000 output | LA2: control hit, refused while priming |
 | `claude-sonnet-4-6` | Claude Sonnet 4.6 (Thinking) | chat | 200,000 / 64,000 | LA3: control hit, then ended |
@@ -217,7 +217,7 @@ The login's own model list (management API, `/credentials/models` for that login
 | `gemini-3.5-flash-lite` | Gemini 3.5 Flash Lite | chat | 1,048,576 / 65,535 | not started |
 | `gemini-3.1-flash-image` | Gemini 3.1 Flash Image | image | none | not a chat model |
 
-The login's list gives no window; the figures beside are CPA's local catalog (`models-local.json`). `owned_by` in
+The login's list gives no window; the figures beside are Provimux's local catalog (`models-local.json`). `owned_by` in
 `/v1/models` is not the login: there `claude-sonnet-4-6` showed `antigravity` at 14:16 and `anthropic` after the
 restart.
 

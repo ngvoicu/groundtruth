@@ -1,12 +1,12 @@
 # GPT-6 Astra and Luna on four routes, and an OpenAI API key, 2026-11-11
 
-Every route of a local CLIProxyAPI that serves GPT-6 Astra and GPT-6 Luna, plus GPT-6.1 Sol on an OpenAI API key.
+Every route of the local Provimux that serves GPT-6 Astra and GPT-6 Luna, plus GPT-6.1 Sol on an OpenAI API key.
 3 samples per age; a control (immediate re-send) was warm on all nine runs; no check ran late.
 
-- **G1 – G4**: pi → CLIProxyAPI (`harness/probe.py`, a new pi session per sample with a unique ~7k-token block, resumed
+- **G1 – G4**: pi → Provimux (`harness/probe.py`, a new pi session per sample with a unique ~7k-token block, resumed
   once after the age; warm = the reported cached tokens cover the harness prompt and at least half the block), pinned
   with temporary single-member pools (`harness/pool.py`).
-- **G5 – G9**: plain HTTP through CLIProxyAPI (the TypeScript probe 0.2.0, Responses format, a `prompt_cache_key` per
+- **G5 – G9**: plain HTTP through Provimux (the TypeScript probe 0.2.0, Responses format, a `prompt_cache_key` per
   sample, ~2,700-token prompt; warm = at least half the prompt reported as cached). These five stopped after the
   1-hour checks, cold for the second age in a row, so they have no 2-hour row.
 

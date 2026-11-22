@@ -1,7 +1,7 @@
 # Meta's "24h" cache retention, measured to 24 hours, 2026-11-10 / 11
 
-Route: pi → CLIProxyAPI → Meta Model API with a Muse Code subscription login, as in `../ember-2026-11-10`. Every
-request carried `prompt_cache_retention: "24h"`, added by the CLIProxyAPI config rule described there (run E2).
+Route: pi → Provimux → Meta Model API with a Muse Code subscription login, as in `../ember-2026-11-10`. Every
+request carried `prompt_cache_retention: "24h"`, added by the Provimux config rule described there (run E2).
 Method: `harness/probe.py`, a new pi session per sample with a unique ~7k-token block, resumed once after the age;
 warm = the reported cached tokens cover the harness prompt and at least half the block. Effort low. 3 samples per age;
 the control (immediate re-send) was warm in all three runs; no check ran late.
@@ -35,8 +35,8 @@ the control (immediate re-send) was warm in all three runs; no check ran late.
 Compared with the default retention, where Ember misses at random from 30 minutes on (E1), the setting is worth
 having for Ember and Wonder: a reliable 4 hours. It is not a 24-hour cache.
 
-One note on M2's last age: by then the Muse Wonder pool had gained a second member (a Devin login). CLIProxyAPI
-tried it first for two of the three 24-hour checks, it failed, and CLIProxyAPI retried on the Meta login; all three
+One note on M2's last age: by then the Muse Wonder pool had gained a second member (a Devin login). Provimux
+tried it first for two of the three 24-hour checks, it failed, and Provimux retried on the Meta login; all three
 answers came from Meta, with 0 cached tokens. The 4-hour and 12-hour checks ran while Meta was the only member.
 
 Files: `M1.jsonl`, `M2.jsonl`, `M3.jsonl` (events), `run.sh`. The logs and pi session files stay local.
