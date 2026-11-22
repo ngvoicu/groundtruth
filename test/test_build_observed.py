@@ -155,11 +155,11 @@ class MixedControlLadder(unittest.TestCase):
 
     def build(self, controls, ages):
         with tempfile.TemporaryDirectory() as root:
-            os.makedirs(os.path.join(root, "results"))
-            with open(os.path.join(root, "results", "H.jsonl"), "w") as out:
+            audited(root)
+            with open(os.path.join(root, NIGHT, "H.jsonl"), "w") as out:
                 out.write(harness_file(controls, ages))
             bo.ROOT = root
-            return bo.build_cache({"runs": [{"id": "x/H", "file": "results/H.jsonl", "route": "antigravity",
+            return bo.build_cache({"runs": [{"id": "x/H", "file": NIGHT + "/H.jsonl", "route": "antigravity",
                                              "model": "m"}]})[0]
 
     def test_mixed_control_without_ages_is_refused(self):
@@ -175,9 +175,19 @@ class MixedControlLadder(unittest.TestCase):
         self.assertEqual(e["control"], {"warm": 0, "total": 2})
 
 
-def own_file(harness="claude", date="2026-11-23", cached=18000, w1=0, w5=0, client_env=None, isolation=True, version="2.1.330"):
+NIGHT = "results/own-clients-2026-11-23"
+
+
+def audited(root):
+    """An own-client night folder whose audit is passed (the publication gate: scripts/build_observed.py, check_audit)."""
+    os.makedirs(os.path.join(root, NIGHT))
+    with open(os.path.join(root, NIGHT, "AUDIT.md"), "w") as f:
+        f.write(bo.AUDIT_FIRST_LINE + "\nfixture\n")
+
+
+def own_file(harness="claude", date="2026-11-23", cached=18000, w1=0, w5=0, client_env=None, isolation=True):
     start = {"event": "start", "harness": harness, "client": bo.HARNESS_CLIENT[harness], "at": f"{date}T10:00:00Z",
-             "effort": "low", "client_version": version}
+             "effort": "low"}
     if isolation:
         start["isolation"] = {"home": "dedicated", "HOME": "throwaway", "work": "temporary"}
     if client_env:
@@ -195,11 +205,11 @@ class OwnClients(unittest.TestCase):
 
     def build(self, text, route="claude-subscription", **run):
         with tempfile.TemporaryDirectory() as root:
-            os.makedirs(os.path.join(root, "results"))
-            with open(os.path.join(root, "results", "H.jsonl"), "w") as out:
+            audited(root)
+            with open(os.path.join(root, NIGHT, "H.jsonl"), "w") as out:
                 out.write(text)
             bo.ROOT = root
-            return bo.build_cache({"runs": [{"id": "x/H", "file": "results/H.jsonl", "route": route, "model": "m", **run}]})[0]
+            return bo.build_cache({"runs": [{"id": "x/H", "file": NIGHT + "/H.jsonl", "route": route, "model": "m", **run}]})[0]
 
     def test_every_client_and_route_has_a_kind(self):
         bo.check_kinds()
@@ -235,7 +245,8 @@ class OwnClients(unittest.TestCase):
 
     def test_the_written_ttl_is_recorded_and_checked_against_the_options(self):
         e = self.build(own_file(w1=11000))
-        self.assertEqual((e["written_ttl"], e["client_version"]), ("1h", "2.1.330"))
+        self.assertEqual(e["written_ttl"], "1h")
+        self.assertNotIn("client_version", e)  # never published for an own client
         self.assertNotIn("ttl", e["options"])
         with self.assertRaisesRegex(SystemExit, "replies wrote 1h"):
             self.build(own_file(w1=11000), options={"ttl": "5m"})
@@ -290,15 +301,15 @@ class Review(unittest.TestCase):
 
     def build(self, rows, route="claude-subscription", **run):
         with tempfile.TemporaryDirectory() as root:
-            os.makedirs(os.path.join(root, "results"))
-            with open(os.path.join(root, "results", "H.jsonl"), "w") as out:
+            audited(root)
+            with open(os.path.join(root, NIGHT, "H.jsonl"), "w") as out:
                 out.write("".join(json.dumps(r) + "\n" for r in rows))
             bo.ROOT = root
-            return bo.build_cache({"runs": [{"id": "x/H", "file": "results/H.jsonl", "route": route, "model": "m", **run}]})[0]
+            return bo.build_cache({"runs": [{"id": "x/H", "file": NIGHT + "/H.jsonl", "route": route, "model": "m", **run}]})[0]
 
     def rows(self, control_late=False, stop=None):
         start = {"event": "start", "harness": "claude", "at": "2026-11-23T10:00:00Z", "effort": "low",
-                 "client_version": "2.1.330", "isolation": {"home": "dedicated", "HOME": "throwaway", "work": "temporary"}}
+                 "isolation": {"home": "dedicated", "HOME": "throwaway", "work": "temporary"}}
         u = {"total": 29000, "cached": 28000, "write": 100, "calls": 1, "write_1h": 100, "model": "m"}
         rows = [start, {"event": "baseline", "usage": u},
                 {"event": "check", "age": "control", "ageSec": 30, "realAgeSec": 600 if control_late else 31,

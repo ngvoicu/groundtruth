@@ -360,10 +360,11 @@ night.go_clients(["codex"], {DATE!r}, out=out)
         self.assertEqual(night.process_command(orphan), "")
 
     def test_a_lock_left_empty_and_a_group_that_ended_meanwhile(self):
-        # A launch interrupted before its lock had a launch id; and a group that ends between lookup and signal.
-        os.makedirs(os.path.dirname(night.lock_path(DATE, "devin")), exist_ok=True)
-        write(night.lock_path(DATE, "devin"), "")
+        # A launch interrupted before it recorded any run; and a group that ends between lookup and signal. (Since the
+        # sixth review a lock without a launch id names nothing to signal: an empty lock is test_sixth_review's.)
         lid = f"{DATE}-devin-0123456789ab"
+        os.makedirs(os.path.dirname(night.lock_path(DATE, "devin")), exist_ok=True)
+        write(night.lock_path(DATE, "devin"), json.dumps({"launch_id": lid, "runs": {}}))
         p = subprocess.Popen([sys.executable, "-B", self.worker, "--label", "DV1", "--launch-id", lid],
                              start_new_session=True)
         self.pids.append(p.pid)
@@ -435,7 +436,10 @@ class Point6Model(unittest.TestCase):
             for r in rows[2:4]:
                 r["usage"] = luna
             write(path, "".join(json.dumps(x) + "\n" for x in rows))
-            self.assertEqual(B.build_cache({"runs": [run]})[0]["model"], "gpt-6-luna")
+            # Since the sixth review nothing of an own-client night is built before its audit (AUDIT.md beside the
+            # night's results; test_sixth_review builds the same rows from an audited night).
+            with self.assertRaisesRegex(SystemExit, "own-clients-<date>"):
+                B.build_cache({"runs": [run]})
 
     def test_a_client_s_own_suffixes_are_the_same_model(self):
         self.assertTrue(B.same_model("nemotron-3-5-super-none", "nemotron-3-5-super"))

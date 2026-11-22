@@ -45,7 +45,7 @@ the plans' meters are low.
 
 **Devin's account history.** Up to about 820 Devin sessions from the night (819 if every run goes to its end, 4 in
 the smoke runs) will appear in the owner's Devin account history: fewer if a control misses (that run ends after its
-control), one more for each priming that is tried again. Each one's first line is `groundtruth cache
+control), and up to one extra session per priming retry. Each one's first line is `groundtruth cache
 measurement <salt> (an automated test, not a task).` (the Devin CLI cannot name a session). Nothing deletes them.
 
 **1. The folders and the snapshot, before any login** (1 minute). `$G` must be a local folder, outside the
@@ -127,18 +127,21 @@ its priming is left out, so a sleeping computer loses checks, not truth.
   its pid is alive and that process is that run of this launch. How a run ended is in its results file
   (`results/own-clients-$N/<id>.jsonl`), and its console output in `results/own-clients-$N/logs/<id>.log`.
 - **Stopping**: `python3 harness/night.py --date $N stop <client>` (or `stop all`) first writes the client's stop mark
-  (`$G/night-$N/launch/<client>.stop`), before it looks anything up: a launcher starts no run after it, and stops at
-  once a run it was just starting. Then it waits (a few seconds at most) for the night's launcher to end, signalling it
-  if it does not, and then signals exactly that client's runs that are alive: those its launch file records, and any
-  process carrying the night's launch id for that client, launch file or not. It needs `GROUNDTRUTH_CLIENT_HOME` set
-  as for the night (it refuses without it). Nothing more of that client starts that night. `--dry-run stop all` names them and does nothing. A
+  (`$G/night-$N/launch/<client>.stop`): a launcher starts no run after it, and stops at once a run it was just
+  starting. Then it reads that client's launch file and acts only on what it records: the launcher (its pid, checked
+  against the start time the launcher wrote there), given a few seconds to end by itself and signalled if it does
+  not; then each recorded run that is alive and is that run (its command line carries its label and the launch file's
+  exact launch id), and any process carrying that exact launch id. It never looks for processes by name or date, so
+  nothing of another night, another `$G` or another program is touched. It needs `GROUNDTRUTH_CLIENT_HOME` set as for
+  the night (it refuses without it). Nothing more of that client starts that night. `--dry-run stop all` names them and does nothing. A
   run also stops by itself on a quota refusal or a missed or late control.
 
 ### The smoke review (step 3)
 
 `--go smoke` runs S2 (Codex), S3 and S3b (Devin), one after the other, then checks them; `smoke-reviewed` checks them
-again and refuses to mark them while a check fails. The automatic checks, for each run: a first line with the client's
-version and the isolation; exactly one check, the control, made in time (not late), of a single model request and
+again and refuses to mark them while a check fails. The automatic checks, for each run: a first line with the
+isolation and no client version (a public result never carries one: it is in the console log and in
+`$G/private-runs/`); exactly one check, the control, made in time (not late), of a single model request and
 naming the model that answered; no failed, invalid, refused or retried request; the last line `done` with the control
 warm. S3b asks whether Devin still reports no cached token for `gpt-6-1-terra`: a cold control there, ending
 `stop`/`no-observable-cache`, is the expected answer and is noted, not refused. A late control is refused everywhere,
@@ -146,7 +149,8 @@ and so is a check whose answering model is not certain (`check-invalid`, `no-mod
 `other-model`). For Codex a check counts only when its session file shows exactly one new turn for that invocation,
 with a model record carrying that turn's id, naming the requested model, and no other model record since the
 invocation began. If S2 shows `no-model` or `ambiguous-model`, the Codex runs would measure nothing: hand it to whoever
-maintains `harness/clients.py`.
+maintains `harness/clients.py`. Codex runs also read each session's whole file after every check and at the end
+(`model-scan` lines): any model but the requested one anywhere stops the run (`stop`, `other-model`) and excludes it.
 
 Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each invocation's raw output, redacted, is in
 `$G/night-$N/raw/<id>/` (mode 700, files 600), never in the repository. If an item fails, do not run
@@ -154,9 +158,9 @@ Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each inv
 
 - [ ] `--go smoke` ended with "the smoke results pass the automatic checks".
 - [ ] Each file's first line shows `"confinement": "sandbox-exec: …"`.
-- [ ] `S2.jsonl`'s first line shows `model_provider="openai"` in both commands and a `"client_version"` that is a
-      version number (`unknown` means the client's `--version` printed something else: note it), and its check's
-      `"usage"` has `"model": "gpt-6-luna"` and `"model_evidence": "own-turn"`.
+- [ ] `S2.jsonl`'s first line shows `model_provider="openai"` in both commands and no `"client_version"`; its check's
+      `"usage"` has `"model": "gpt-6-luna"` and `"model_evidence": "own-turn"`; its last `model-scan` line has
+      `"final": true` and `"other_models": []`.
 - [ ] `S3.jsonl`'s first line shows `"process_model": "in-process"` and `"keepalive_max_pings": 0` under `"devin"`.
 - [ ] `ls -A "$G"/home/*` shows what each client wrote in its throwaway home. Note anything there for the
       maintainer; it needs no action.
@@ -180,11 +184,60 @@ Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each inv
    the report, not an error. A person reads it. Changes from the owner's own use (Codex refreshing
    `~/.codex/auth.json`, his agents' sessions) are expected. A change in a folder none of his tools used is a question
    for whoever maintains `harness/clients.py`, with the report.
-3. The build (whoever maintains the results):
+3. **The audit, before anything is built.** Nothing of the night enters `observed.json` until a person has audited
+   its raw results by hand. The code's checks are a first filter; the audit is what decides publication. The builder
+   refuses every run of the night until `results/own-clients-$N/AUDIT.md` exists and its first line is exactly
+   `# Own-client night audit: passed`. Write that line only when every item below is checked; otherwise write no
+   `AUDIT.md`, and put the runs that fail an item under `excluded` with the reason (or publish nothing of the night).
+4. The build (whoever maintains the results), after the audit:
    - give the new folder under `results/` its README;
-   - put the runs in `observed/manifest.json`, with the runs that ended early or measured nothing under `excluded`
-     with the reason;
+   - put the runs in `observed/manifest.json`, with the runs that ended early, measured nothing or failed an audit
+     item under `excluded` with the reason;
    - run `python3 scripts/build_observed.py`, then `python3 scripts/build_observed.py --check`. The builder refuses a
      check that was not one explicit model request, or that names no model of its own turn, or another model than
-     the manifest's, or (Codex) whose model is not bound to its own turn (`model_evidence` `own-turn`); a client
-     version is published only as a version number, anything else as `unknown`.
+     the manifest's, or (Codex) whose model is not bound to its own turn (`model_evidence` `own-turn`), and a Codex
+     run whose session files named another model anywhere (`model-scan`); it publishes no client version for an own
+     client, and nothing of a night without its `AUDIT.md`.
+
+### The audit checklist
+
+The auditor reads, on this computer, from the repository's root with `G` and `N` set as for the night. The session
+files and console logs stay where they are: nothing of them is copied into the repository or quoted in `AUDIT.md`.
+
+**A. The raw results** (`results/own-clients-$N/*.jsonl` and `smoke/*.jsonl`, the files that would be committed).
+- [ ] Every run has a file, and `python3 harness/night.py --date $N status` shows no run `alive`.
+- [ ] Read every line of every file. Nothing in them but the harness's own fields: no client version, no folder or
+      home path, no e-mail address, account, organisation or workspace name, no key or token, no client text in an
+      error event (an error is only a kind: `timeout`, `exit-nonzero`, …).
+- [ ] Every `check`'s `usage.model` is the run's model (Devin: the model id, or it with its effort or date suffix);
+      every Codex `check` has `"model_evidence": "own-turn"`.
+- [ ] Every Codex run ends with a `model-scan` line with `"final": true` and `"other_models": []`, and no line of it
+      is `stop` with `other-model`.
+- [ ] The `check-invalid`, `check-failed`, `retry` and `stop` lines are understood; a run whose checks are mostly
+      invalid goes under `excluded` with the reason.
+
+**B. Codex's session files, for reroutes** (`$G/codex-cli/sessions/`, private: read here, never copied).
+- [ ] For each Codex run, take the session ids from its `prime` lines (`"handle"`) and its baseline, find each file
+      (`ls "$G"/codex-cli/sessions/*/*/*/rollout-*-<id>.jsonl`), and list every model it names:
+      `grep -hoE '"(model|to_model|from_model)": ?"[^"]*"' <files> | sort | uniq -c`. Only the run's model may appear.
+- [ ] `grep -l model_reroute <files>` finds nothing. A run with any reroute, or any other model, is excluded whole.
+- [ ] A Codex run whose files cannot all be found is excluded.
+
+**C. The console logs and private records, for anything private** (`results/own-clients-$N/logs/*.log`, mode 600,
+and `$G/private-runs/*.json`, mode 600: never committed).
+- [ ] `git check-ignore -q results/own-clients-$N/logs/x.log` succeeds (the logs cannot be committed), and
+      `git status --short` lists nothing but the night's `*.jsonl` files and the files you write.
+- [ ] Read every log. Note anything private (paths outside `<folder>`/`<home>`, account or workspace names, e-mail
+      addresses, keys, tokens). The logs stay private either way; anything private there that also appears in a
+      `*.jsonl` file fails item A.
+- [ ] Each run's client version is in its log (`detail: client version: …`) and its private record. If the README
+      names a version, write only the version number, by hand.
+
+**D. The scans and the everyday report.**
+- [ ] `python3 harness/scan_secrets.py --own-clients --git .` and
+      `python3 harness/scan_secrets.py --own-clients results/own-clients-$N` both end with `CLEAN`.
+- [ ] The morning report (step 2) is read, and nothing in it points at the night.
+
+**E. The file.** `results/own-clients-$N/AUDIT.md`: the first line exactly `# Own-client night audit: passed`, then the
+date, who audited, the runs excluded and why, and one line per item A to D saying it was checked. No path, name or
+client text in it.

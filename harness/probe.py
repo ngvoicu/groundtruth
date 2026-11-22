@@ -133,6 +133,7 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
     the stop reason or None."""
     clock = clock or Clock()
     detail = detail or (lambda text: None)
+    sessions = []  # every session the run started (baseline, control, samples): read whole by the model scans
     cumulative = getattr(h, "cumulative", False) if cumulative is None else cumulative
     seen_ttl = [None]
 
@@ -168,11 +169,35 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
                 clock.sleep(RETRY_WAIT)
                 continue
             watch(usage)
+            if handle not in sessions:
+                sessions.append(handle)
             return handle, usage, t0
         log({"event": "prime-failed", "age": name})
         return None
 
+    def scan(handles, final=False):
+        """The run-level model check (Codex): each session's whole record, after every check and at the run's end. A
+        model other than the requested one anywhere excludes the whole run (scripts/build_observed.py), and a check
+        that finds one stops it (`stop`, `other-model`). Nothing for a client that keeps no such record."""
+        read = getattr(h, "other_models", None)
+        if read is None:
+            return
+        other = set()
+        for x in handles:
+            found = read(x)
+            if found is None:
+                return
+            other |= set(found)
+        log({"event": "model-scan", "final": final, "sessions": len(handles), "other_models": sorted(other)})
+        if other and not final:
+            raise Stop("other-model")
+
     def check(name, age, handle, primed, t0, baseline):
+        warm = check_once(name, age, handle, primed, t0, baseline)
+        scan([handle])
+        return warm
+
+    def check_once(name, age, handle, primed, t0, baseline):
         """True / False for a counted check, None for one that is not (failed, invalid). Sent once."""
         started = clock.now()
         real = started - t0
@@ -273,8 +298,10 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
     except Stop as s:
         if s.text:
             detail(f"stop {s.reason}: {s.text}")
+        scan(sessions, final=True)
         log({"event": "stop", "reason": s.reason})
         return s.reason
+    scan(sessions, final=True)
     log({"event": "done"})
     return None
 
@@ -291,6 +318,11 @@ class Harness:
 
     def resume(s, handle, prompt):
         return s.session.resume(handle, prompt).record()
+
+    def other_models(s, handle):
+        if handle is None:
+            return {"<no session>"}
+        return s.session.client.other_models(s.session.home, handle)
 
 
 HARNESSES = C.CLIENTS
@@ -377,6 +409,17 @@ def private_capture_folder(keep, client_home, root, user_home=None):
     return keep
 
 
+PRIVATE_RUNS = "private-runs"
+
+
+def private_record(client_home, label, salt, record):
+    """The run's private record, <client-home>/private-runs/<label>-<salt>.json (folder 700, file 600; checked as the
+    raw-output folder is): what a public result never carries (the client's version as it printed it)."""
+    folder = private_capture_folder(os.path.join(client_home, PRIVATE_RUNS), client_home, ROOT)
+    record = dict(record, at=datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    C.write_private(os.path.join(folder, f"{label}-{salt}.json"), json.dumps(record) + "\n")
+
+
 def main(argv=None):
     """The probe; any failure before or outside the run's own log reaches the console redacted (the console log of a
     launched run is kept, mode 600, beside the results): never a traceback, a child-only value or a folder."""
@@ -459,8 +502,15 @@ def _main(argv=None):
             writable = [home, env.get("HOME"), env.get("TMPDIR"), tmp]  # what the client may write (confine)
         session = C.Session(client, env=env, io=os.path.join(tmp, "io"), work=os.path.join(tmp, "work"),
                             home=home, keep=keep, writable=writable)
-        start.update(client_version=client.version(env, writable=writable),
-                     command={"prime": session.plan(), "check": session.plan(resume="<session>")})
+        start.update(command={"prime": session.plan(), "check": session.plan(resume="<session>")})
+        # The client's version is its own text: never in a public result. It goes to the console log (mode 600) and to
+        # the run's private record under <client-home> (private_record), for the audit.
+        version = client.version(env, writable=writable)
+        print(f"detail: client version: {version}", file=sys.stderr, flush=True)
+        if a.client_home:
+            private_record(a.client_home, a.label, salt, {"label": a.label, "salt": salt, "client": client.client_id,
+                                                          "model": a.model, "launch_id": a.launch_id,
+                                                          "client_version": version, "results": a.out})
         os.makedirs(a.out, exist_ok=True)
         path = os.path.join(a.out, f"{a.label}.jsonl")
 

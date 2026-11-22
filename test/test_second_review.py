@@ -392,7 +392,7 @@ class Finding9Launcher(Owner):
                      "usage": {"calls": 1}, "realAgeSec": 600 if sid == late else 31}
             last = {"event": "stop", "reason": "no-observable-cache"} if cold else {"event": "done"}
             isolation = {"home": "dedicated", "HOME": "throwaway", "work": "temporary"}
-            rows = [{"event": "start", "client_version": "1", "isolation": isolation}, {"event": "baseline"},
+            rows = [{"event": "start", "isolation": isolation}, {"event": "baseline"},
                     {"event": "prime", "age": "control"}, check, last]
             write(os.path.join(folder, sid + ".jsonl"), "".join(json.dumps(r) + "\n" for r in rows))
 

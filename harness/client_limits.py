@@ -24,7 +24,7 @@ provider's refusal makes a row count (section 3). Codex CLI is refused up front:
 characters, so its route's input limit stays measured through the proxy.
 
 Every request is appended to --out as the rows scripts/build_observed.py reads (kind, model, n, status, promptTokens,
-message, at), plus client, client_version and exit (the client's exit code). status is 200 for an answered request;
+message, at), plus client and exit (the client's exit code; the client's version goes to the console only). status is 200 for an answered request;
 for a refused one the HTTP status the client printed, or "refused".
 """
 import argparse
@@ -83,7 +83,9 @@ def walk(session, model, client_id, version, record, hi=HI, small=SMALL, accepte
             raise End(f"{kind} N={n:,}: the client failed ({str(e)[:200]}): the walk ends, no row")
         else:
             row = {"kind": kind, "model": model, "n": n, "status": 200, "promptTokens": u.total, "message": None, "exit": 0}
-        row.update(at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), client=client_id, client_version=version)
+        row.update(at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), client=client_id)
+        if version is not None:
+            row["client_version"] = version
         rows.append(row)
         record(row)
         say(json.dumps(row)[:400])
@@ -173,7 +175,9 @@ def main(argv=None):
     tmp = tempfile.mkdtemp(prefix=f"groundtruth-limits-{a.harness}-")
     writable = [home, env.get("HOME"), tmp]
     try:
-        version = client.version(env, writable=writable)
+        # The client's version goes to the console only, never into a row (it is the client's own text).
+        print(f"client version: {client.version(env, writable=writable)}", file=sys.stderr)
+        version = None
         session = C.Session(client, env=env, io=os.path.join(tmp, "io"), work=os.path.join(tmp, "work"), timeout=1800,
                             home=home, writable=writable)
         os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)

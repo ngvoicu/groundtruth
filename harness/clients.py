@@ -49,24 +49,6 @@ def throwaway_home(state):
     return os.path.join(os.path.dirname(state.rstrip(os.sep)), "home", os.path.basename(state.rstrip(os.sep)))
 
 
-# A client's version as a public record may hold it: digits and dots (two to four numbers), and at most one simple
-# suffix after a hyphen, from letters, digits and dots (`0.171.0`, `3000.14.30821`, `1.2.0-beta.1`). Nothing else of
-# what the client printed is ever kept: scripts/build_observed.py applies the same pattern (VERSION_TOKEN there).
-VERSION_TOKEN = re.compile(r"[0-9]{1,6}(?:\.[0-9]{1,6}){1,3}(?:-[A-Za-z0-9][A-Za-z0-9.]{0,23})?")
-UNKNOWN_VERSION = "unknown"
-
-
-def version_text(text):
-    """The version token of a client's `--version` output: taken from its first line only, the one whitespace-separated
-    word there that matches VERSION_TOKEN exactly (`codex-cli 0.171.0` -> `0.171.0`, `devin 3000.14.30821 (a09c...)` ->
-    `3000.14.30821`). No such word, or more than one: `unknown`. Whatever else the client printed (a warning, a path)
-    is never recorded."""
-    lines = (text or "").strip().splitlines()
-    first = lines[0] if lines else ""
-    found = [w for w in first.split() if VERSION_TOKEN.fullmatch(w)]
-    return found[0] if len(found) == 1 else UNKNOWN_VERSION
-
-
 def throwaway_tmp(state):
     """The TMPDIR of every process of a client: <client-home>/tmp/<the state folder's name> (mode 700)."""
     return os.path.join(os.path.dirname(state.rstrip(os.sep)), "tmp", os.path.basename(state.rstrip(os.sep)))
@@ -249,6 +231,11 @@ class Client:
         """What the session's record holds before an invocation (Codex: its file, size and turn ids), or None."""
         return None
 
+    def other_models(self, state, handle):
+        """The models other than the requested one that the session's whole record names (Codex), or None where the
+        client keeps no such record (the run-level check does not apply)."""
+        return None
+
     def version_command(self):
         return [self.binary, "--version"]
 
@@ -267,8 +254,9 @@ class Client:
             # What the client printed is redacted whole, then clipped (never clipped first: a clipped key escapes its
             # redaction); it reaches only the console log.
             raise ClientError(f"{self.binary} --version failed: {redact(err or out)[-300:]}", kind="exit-nonzero")
-        # Only the version token of the first line (version_text); anything else the client printed is dropped.
-        return version_text((out or err).strip())
+        # What the client printed, redacted whole, then clipped: for the run's console log and its private record
+        # only (harness/probe.py). No public result carries a client version.
+        return redact((out or err).strip())[:300]
 
     # --- one invocation -----------------------------------------------------------------------------------------
     def new_session(self):
@@ -450,6 +438,39 @@ def codex_answer(path, mark, requested):
     return model, None, "own-turn"
 
 
+CODEX_MODEL_KEYS = ("model", "to_model", "from_model")
+
+
+def codex_models(path):
+    """Every model name any record of a Codex session file carries, read whole from its first byte (any `model`,
+    `to_model` or `from_model` string, at any depth of any record). A line that is not JSON, or a file that cannot be
+    read, gives `<unreadable>`: it cannot be shown to name only one model."""
+    found = set()
+
+    def walk(x):
+        if isinstance(x, dict):
+            for k, v in x.items():
+                if k in CODEX_MODEL_KEYS and isinstance(v, str):
+                    found.add(v)
+                else:
+                    walk(v)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v)
+    try:
+        with open(path, "rb") as f:
+            for raw in f.read().decode("utf-8", "replace").splitlines():
+                if not raw.strip():
+                    continue
+                try:
+                    walk(json.loads(raw))
+                except ValueError:
+                    found.add("<unreadable>")
+    except OSError:
+        found.add("<unreadable>")
+    return found
+
+
 # The item types of a Codex turn that are not a tool call: a turn with any other item made more than one request.
 CODEX_TEXT_ITEMS = {"agent_message", "reasoning"}
 # Codex refuses a message above MAX_USER_INPUT_TEXT_CHARS (1,048,576 characters) before it sends anything.
@@ -523,6 +544,15 @@ class Codex(Client):
         codex_answer; `after` is turn_mark before the invocation). Only that one string is read out; the file stays in
         the state folder."""
         return codex_answer(self.rollout(state, handle), after, self.model)
+
+    def other_models(self, state, handle):
+        """Every model but the requested one that the thread's session file names anywhere, read whole (codex_models);
+        `<no session file>` when there is none to read. Names a public record cannot hold become `<unrecognised>`."""
+        path = self.rollout(state, handle)
+        if not path:
+            return {"<no session file>"}
+        return {m if m.startswith("<") else (model_text(m) or "<unrecognised>")
+                for m in codex_models(path) if m != self.model}
 
     def command(self, prompt_file, resume=None, session=None, files=None):
         base = ["--json", "--skip-git-repo-check", "-m", self.model, *self._config()]
@@ -840,13 +870,15 @@ def login_ok(client, code, out, err):
             return "the status does not say 'Logged in using ChatGPT'"
         return None
     if client.harness == "devin":
-        # A positive login only: a line that says it is logged in, and nothing that says otherwise. The exit code alone
-        # (0 with `Not logged in`, or with nothing printed) is never a login.
-        if re.search(r"api[ _-]?key", text, re.I):
-            return "the status names an API key"
-        if DEVIN_NOT_LOGGED_IN.search(text):
-            return "the status does not show a login (it says it is not logged in, or that the login lapsed)"
-        if not any(DEVIN_LOGGED_IN.match(line.strip()) for line in text.splitlines()):
+        # A positive login only, read with the terminal's styling removed: a line that says it is logged in, nothing
+        # that says otherwise, and no mention at all of an API, a token or a key (whatever the wording, any such status
+        # may be another login than the subscription's). The exit code alone is never a login.
+        plain = strip_ansi(text)
+        if re.search(r"api|token|key", plain, re.I):
+            return "the status mentions an API, a token or a key: not the subscription login"
+        if DEVIN_NOT_LOGGED_IN.search(plain):
+            return "the status does not show a login (it says it is not, or no longer, logged in)"
+        if not any(DEVIN_LOGGED_IN.fullmatch(line.strip()) for line in plain.splitlines()):
             return "the status does not say 'Logged in'"
         return None
     if re.search(r"api[ _-]?key", text, re.I):
@@ -854,11 +886,17 @@ def login_ok(client, code, out, err):
     return None
 
 
-# The Devin CLI's status: a line `Logged in`, `Logged in.`, `Logged in as <who>` or `Logged in (via <how>)` (the wording
-# in its 3000.14 binary), and none of its negative wordings.
-DEVIN_LOGGED_IN = re.compile(r"logged in(?:\.?$|\s+as\s+\S|\s+\(via\s+\S)", re.I)
-DEVIN_NOT_LOGGED_IN = re.compile(r"not\s+(?:logged|signed)\s+in|logged\s+out|log\s*in\s+first|re-?authenticat"
-                                 r"|expired|not\s+authori[sz]ed|no\s+credentials|WINDSURF_", re.I)
+# The Devin CLI's status: a whole line `Logged in`, `Logged in.`, `Logged in as <who>` or `Logged in (via <how>)` (the
+# wording in its 3000.14 binary), and none of its negative wordings.
+DEVIN_LOGGED_IN = re.compile(r"logged in(?:\.|\s+as\s+\S.*|\s+\(via\s+[^)]+\)\.?)?", re.I)
+DEVIN_NOT_LOGGED_IN = re.compile(r"not\s+(?:logged|signed)\s+in|(?:logged|signed)\s+out|no\s+longer|log\s*in\s+first"
+                                 r"|re-?authenticat|expired|not\s+authori[sz]ed|no\s+credentials", re.I)
+# Terminal styling and control sequences (CSI, OSC, single escapes) and any other control character but a newline.
+ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)?|\x1b[@-Z\\-_]|[\x00-\x09\x0b-\x1f\x7f]")
+
+
+def strip_ansi(text):
+    return ANSI.sub("", text or "")
 
 
 def state_folder(client, base, root, user_home=None, env=None, run=None, check_login=True):

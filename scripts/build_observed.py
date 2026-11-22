@@ -79,17 +79,31 @@ def age_label(seconds):
     return f"{seconds}s"
 
 
-# The one form a client version takes in observed.json (harness/clients.py, VERSION_TOKEN: the same pattern): digits
-# and dots, with at most one simple suffix. Anything else a raw file records as a version is published as `unknown`.
-VERSION_TOKEN = re.compile(r"[0-9]{1,6}(?:\.[0-9]{1,6}){1,3}(?:-[A-Za-z0-9][A-Za-z0-9.]{0,23})?")
+# The publication gate of an own-client night (docs/own-clients-RUN.md, "The morning"): no run of the night is built
+# until a person has audited its raw results, the Codex session files and the console logs, and written
+# results/own-clients-<date>/AUDIT.md with exactly this first line.
+AUDIT_FIRST_LINE = "# Own-client night audit: passed"
+NIGHT_FOLDER = re.compile(r"^results/own-clients-(\d{4}-\d{2}-\d{2})/")
 
 
-def public_version(value):
-    """A recorded client version as observed.json may publish it: the value when it is exactly a version token, else
-    `unknown`; None when the run recorded none."""
-    if value is None:
-        return None
-    return value if isinstance(value, str) and VERSION_TOKEN.fullmatch(value) else "unknown"
+def check_audit(name, path):
+    """An own-client run of the new design is built only from results/own-clients-<date>/ and only when that night's
+    AUDIT.md exists with AUDIT_FIRST_LINE as its first line."""
+    rel = os.path.relpath(os.path.join(ROOT, path), ROOT).replace(os.sep, "/")
+    m = NIGHT_FOLDER.match(rel)
+    if not m:
+        raise SystemExit(f"{name}: an own-client run is published only from results/own-clients-<date>/ (its audited "
+                         f"night); {path} is not there")
+    audit = os.path.join(ROOT, "results", f"own-clients-{m.group(1)}", "AUDIT.md")
+    try:
+        with open(audit) as f:
+            first = f.readline().rstrip("\n")
+    except OSError:
+        raise SystemExit(f"{name}: the night own-clients-{m.group(1)} has no AUDIT.md: nothing of it is built before its "
+                         "audit (docs/own-clients-RUN.md, \"The morning\")") from None
+    if first != AUDIT_FIRST_LINE:
+        raise SystemExit(f"{name}: results/own-clients-{m.group(1)}/AUDIT.md does not begin with {AUDIT_FIRST_LINE!r}: "
+                         "the night's audit is not passed")
 
 
 def read_harness(path):
@@ -151,7 +165,6 @@ def read_harness(path):
         "checks": checks,
         "late": late,
         "effort": start.get("effort"),
-        "client_version": public_version(start.get("client_version")),
         "client_env": start.get("client_env") or {},
         "isolation": start.get("isolation"),
         "any_cached": any((u.get("cached") or 0) > 0 or (u.get("raw") or {}).get("cached") for u in usages),
@@ -160,6 +173,9 @@ def read_harness(path):
         "answered_models": sorted(answered),
         "requested_model": start.get("model"),
         "exact_model": start.get("harness") == "codex",
+        "model_scans": [r for r in rows if r["event"] == "model-scan"],
+        "harness": start.get("harness"),
+        "own_since": bool(start["at"][:10] >= OWN_CLIENTS_SINCE and start.get("isolation")),
     }
 
 
@@ -260,6 +276,23 @@ def check_answered_model(run, data):
                          "not published under that model; the run goes in excluded")
 
 
+def check_model_scan(run, data):
+    """Codex, at the run's level: the probe read every session file of the run whole, at each check and at the end
+    (model-scan events). A run whose files name any model but the requested one anywhere, or that ended on it, or
+    whose end scan is missing, is not published."""
+    if data.get("harness") != "codex":
+        return
+    if data.get("stop") == "other-model":
+        raise SystemExit(f"{run['id']}: the run stopped on another model in its session files: not published")
+    scans = data.get("model_scans") or []
+    if not any(s.get("final") for s in scans):
+        raise SystemExit(f"{run['id']}: no end-of-run scan of its Codex session files (model-scan): not published")
+    other = sorted({m for s in scans for m in (s.get("other_models") or [])})
+    if other or any(s.get("other_models") is None for s in scans):
+        raise SystemExit(f"{run['id']}: its Codex session files name {', '.join(map(str, other)) or 'an unreadable model'}"
+                         f", not only {run['model']}: the whole run is excluded")
+
+
 def check_own_run(run, client, data, options):
     """The refusals of docs/own-clients.md, section 3, for a run file of harness/probe.py. Returns the written ttl."""
     ttls = data.get("written_ttls") or []
@@ -304,6 +337,9 @@ def build_cache(manifest):
         options = dict(run.get("options") or {})
         written = check_own_run(run, client, data, options)
         check_answered_model(run, data)
+        if CLIENT_KINDS.get(client) == "own_client" and data.get("own_since"):
+            check_audit(run["id"], path)
+            check_model_scan(run, data)
         # A run file that records its extra body fields: each must be in the manifest's options, as sent, or in
         # removed_by_proxy: a field the client sent that is shown not to reach the provider on this route and build
         # (options are what the provider received; the proof goes in the run's note).
@@ -339,8 +375,6 @@ def build_cache(manifest):
             "late_excluded": data["late"],
             **summarize(data["checks"]),
         }
-        if data.get("client_version"):
-            entry["client_version"] = data["client_version"]
         if written:
             entry["written_ttl"] = written
         # From 14 November 2026 every evaluation starts the same way: a control (the prompt sent again at once), then

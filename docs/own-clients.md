@@ -49,6 +49,12 @@ It supersedes what the list below says of pi, Provimux, OpenRouter and the super
   `turn_context` carrying that turn's id and naming the requested model, and no other model record (a
   `model_reroute`, a context of another or an older turn); otherwise it is `check-invalid` (`no-model`,
   `ambiguous-model` or `other-model`), and the builder refuses a Codex check without `model_evidence` `own-turn`.
+  At the run's level, every session file of the run is read whole after each check and at its end (`model-scan`):
+  any model but the requested one anywhere stops and excludes the whole run.
+- **Publication** of a night waits for its audit: `scripts/build_observed.py` refuses every own-client run of the
+  new design until `results/own-clients-<date>/AUDIT.md` begins with `# Own-client night audit: passed`, which a
+  person writes after reading the raw results, the Codex session files and the console logs
+  (`own-clients-RUN.md`, the audit checklist).
 - **The smoke review** is checked by `night.py` itself: S3b's cold control (`stop`/`no-observable-cache`) is an
   expected answer; a late control is refused, and a probe whose control can only be checked late stops
   (`control-late`).
@@ -503,9 +509,9 @@ their own, with the three kind names the site's design uses.
 
 **New keys on a cache entry made by `harness/probe.py`** (computed from the raw file, absent on older runs):
 
-- `client_version`: the version number in the first line of `<client> --version` when the run started (digits and
-  dots, with at most one simple suffix: `0.171.0`), or `unknown`; nothing else the client printed is kept. What a
-  client decides changes with its version.
+- No client version: what `<client> --version` printed is the client's own text, so it goes only to the run's
+  console log (mode 600) and its private record (`<client-home>/private-runs/`), for the night's audit; a README may
+  name the version number, written by hand.
 - `written_ttl`, only where the client reports the lifetime of its cache writes (Claude Code): `"1h"` or `"5m"`.
   A run whose writes are mixed is refused.
 
@@ -660,21 +666,21 @@ Steps 1 to 5 send nothing and are tested without a network. Step 6 is the first 
    the client's default folder), the working folder under the temporary folder, the control first, no second try
    of a check, `check-invalid` for a turn of more than one request, `stop` events (`no-observable-cache`, `quota`,
    `tier-changed`), ages from the start of the priming, `--filler list`, and a `start` event that records
-   `client`, `client_version`, the command with `<prompt>` in the prompt's place, and `isolation`
+   `client` (never its version: console log and private record only), the command with `<prompt>` in the prompt's place, and `isolation`
    (`{"home": "dedicated", "HOME": "throwaway", "work": "temporary"}`; never a path). *Tests:* the loop against a fake client and a
    fake clock: a cache that lives 5 minutes gives warm, warm, cold in order; a control that misses ends after
    three requests; a failed check is not sent again; a quota refusal during priming ends the run and the primed
    samples are not checked; a two-request check is not counted; a late check is flagged.
 3. **`harness/client_limits.py`** (new; `harness/limits.py` stays the plain-request walk). It walks an input size
    through a client, with the adapters of step 1, and writes the rows `build_observed.py` reads today (`kind`,
-   `model`, `n`, `status`, `promptTokens`, `message`, `at`), plus `client`, `client_version` and the client's exit
-   code. `status` is 200 for an answered request; for a refused one it is the HTTP status the client printed, or
+   `model`, `n`, `status`, `promptTokens`, `message`, `at`), plus `client` and the client's exit
+   code (its version on the console only). `status` is 200 for an answered request; for a refused one it is the HTTP status the client printed, or
    the text `refused`. `--dry-run` prints the plan and sends nothing. *Tests:* the plan for a named window and
    for none; a refusal's window read by `limits.named_limit`; a client-side cap (Codex's message size) ends the
    walk with no refusal row.
 4. **`scripts/build_observed.py`.** `CLIENT_KINDS`, `ROUTE_KINDS` and the own client of each login; `client_kinds`
    and `route_kinds` in the output; the clients `claude-code` and `antigravity-cli` and their `--harness` names;
-   `client_version` and `written_ttl`; `check-invalid` rows ignored; the refusals of section 3. *Tests* in
+   `written_ttl` (no client version for an own client); `check-invalid` rows ignored; the refusals of section 3. *Tests* in
    `test/test_build_observed.py`: every client and route has a kind; an own client on another vendor's route is
    refused; a run with no cached token in any reply is refused; `ttl` in the options against `written_ttl`; an
    own-client limits row with `input_accepted` alone is refused. Rebuilding `observed.json` at this step adds the
