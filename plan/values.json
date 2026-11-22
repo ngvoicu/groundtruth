@@ -1,0 +1,1394 @@
+{
+ "about": "What the weekly night's plan knows of each measured value (harness/plan.py): how often it was measured, when, our last value, and what models.dev and pi.dev stated on the day we measured it; and the day each offered model was first seen. Written at each publication.",
+ "dataset": "0b47455c15b331fa",
+ "first_seen": {
+  "anthropic-api": {
+   "claude-fable-5-2": "2026-11-22",
+   "claude-haiku-5-5": "2026-11-22",
+   "claude-opus-5-5": "2026-11-22",
+   "claude-sonnet-5-5": "2026-11-22"
+  },
+  "codex-subscription": {
+   "gpt-6-astra": "2026-11-22",
+   "gpt-6-luna": "2026-11-22",
+   "gpt-6.1-sol": "2026-11-22",
+   "gpt-6.1-terra": "2026-11-22",
+   "gpt-6.2-astra": "2026-11-22",
+   "gpt-6.2-sol": "2026-11-22"
+  },
+  "devin": {
+   "claude-haiku-5-5": "2026-11-22",
+   "claude-opus-5-5": "2026-11-22",
+   "claude-sonnet-5-5": "2026-11-22",
+   "deepseek-v4-1-flash-1017": "2026-11-22",
+   "deepseek-v4-pro": "2026-11-22",
+   "gemini-4-argon": "2026-11-22",
+   "glm-5-3": "2026-11-22",
+   "gpt-6-1-sol": "2026-11-22",
+   "gpt-6-1-terra": "2026-11-22",
+   "gpt-6-astra": "2026-11-22",
+   "gpt-6-luna": "2026-11-22",
+   "grok-4-7": "2026-11-22",
+   "kimi-k3": "2026-11-22",
+   "kimi-k3-1-pro": "2026-11-22",
+   "muse-wonder-1-0": "2026-11-22",
+   "nemotron-3-5-super": "2026-11-22",
+   "swe-2": "2026-11-22"
+  },
+  "openai-api": {
+   "chat-latest": "2026-11-22",
+   "gpt-6-astra": "2026-11-22",
+   "gpt-6-cyber": "2026-11-22",
+   "gpt-6-luna": "2026-11-22",
+   "gpt-6-sol": "2026-11-22",
+   "gpt-6.1-sol": "2026-11-22",
+   "gpt-6.1-terra": "2026-11-22",
+   "gpt-6.2-astra": "2026-11-22",
+   "gpt-6.2-sol": "2026-11-22",
+   "gpt-audio-1.5": "2026-11-22",
+   "gpt-daybreak-blue-latest": "2026-11-22",
+   "gpt-daybreak-red-latest": "2026-11-22"
+  },
+  "openrouter": {
+   "aion-labs/aion-3.0": "2026-11-22",
+   "aion-labs/aion-3.0-mini": "2026-11-22",
+   "aion-labs/aion-3.5": "2026-11-22",
+   "aion-labs/aion-3.5-mini": "2026-11-22",
+   "anthropic/claude-fable-5.2": "2026-11-22",
+   "anthropic/claude-haiku-5.5": "2026-11-22",
+   "anthropic/claude-opus-5.5": "2026-11-22",
+   "anthropic/claude-sonnet-5.5": "2026-11-22",
+   "baidu/ernie-5.5-flash-preview:free": "2026-11-22",
+   "baidu/ernie-light-dt-1.0-intl": "2026-11-22",
+   "bytedance-seed/seed-2-1-turbo": "2026-11-22",
+   "bytedance-seed/seed-2.0-lite": "2026-11-22",
+   "bytedance-seed/seed-2.0-mini": "2026-11-22",
+   "cohere/command-a-plus": "2026-11-22",
+   "deepseek/deepseek-v4-flash": "2026-11-22",
+   "deepseek/deepseek-v4-flash-0731": "2026-11-22",
+   "deepseek/deepseek-v4-flash-vision-exp": "2026-11-22",
+   "deepseek/deepseek-v4-pro": "2026-11-22",
+   "deepseek/deepseek-v4-pro-0813": "2026-11-22",
+   "deepseek/deepseek-v4.1-flash": "2026-11-22",
+   "deepseek/deepseek-v4.1-flash-1017": "2026-11-22",
+   "elorian/glimpse": "2026-11-22",
+   "fireworks/ember-1": "2026-11-22",
+   "google/gemini-3.1-flash-lite": "2026-11-22",
+   "google/gemini-3.1-flash-lite-preview": "2026-11-22",
+   "google/gemini-3.1-pro-preview": "2026-11-22",
+   "google/gemini-3.1-pro-preview-customtools": "2026-11-22",
+   "google/gemini-3.5-flash": "2026-11-22",
+   "google/gemini-3.5-flash-lite": "2026-11-22",
+   "google/gemini-3.6-flash": "2026-11-22",
+   "google/gemini-3.7-flash": "2026-11-22",
+   "google/gemini-3.8-flash": "2026-11-22",
+   "google/gemini-4-argon": "2026-11-22",
+   "google/gemini-4-carbon": "2026-11-22",
+   "google/gemini-4-hydrogen": "2026-11-22",
+   "google/gemini-4-neon": "2026-11-22",
+   "google/gemma-4-26b-a4b-it": "2026-11-22",
+   "google/gemma-4-26b-a4b-it:free": "2026-11-22",
+   "google/gemma-4-31b-it": "2026-11-22",
+   "google/gemma-4-31b-it:free": "2026-11-22",
+   "ibm-granite/granite-4.2-8b": "2026-11-22",
+   "inclusionai/ling-3.0-flash": "2026-11-22",
+   "inclusionai/ling-3.0-flash-vl": "2026-11-22",
+   "inclusionai/ling-3.0-tiny": "2026-11-22",
+   "inclusionai/ling-3.1-flash": "2026-11-22",
+   "inclusionai/ling-3.2-flash:free": "2026-11-22",
+   "inference-net/schematron-v2-small": "2026-11-22",
+   "inference-net/schematron-v2-turbo": "2026-11-22",
+   "kt/midm-k-3.0-pro": "2026-11-22",
+   "liquid/lfm-2.5-24b-a2b": "2026-11-22",
+   "liquid/lfm-3-1.7b": "2026-11-22",
+   "liquid/lfm-3-1.7b:free": "2026-11-22",
+   "meta/muse-ember": "2026-11-22",
+   "meta/muse-glimmer-30b": "2026-11-22",
+   "meta/muse-spark-1.1": "2026-11-22",
+   "meta/muse-spark-1.2": "2026-11-22",
+   "meta/muse-spark-1.2-contributor": "2026-11-22",
+   "meta/muse-spark-1.3": "2026-11-22",
+   "meta/muse-spark-1.3-contributor": "2026-11-22",
+   "meta/muse-spark-open": "2026-11-22",
+   "meta/muse-wonder": "2026-11-22",
+   "minimax/minimax-m2.5": "2026-11-22",
+   "minimax/minimax-m2.7": "2026-11-22",
+   "minimax/minimax-m3": "2026-11-22",
+   "minimax/minimax-m3.1-flash": "2026-11-22",
+   "mistralai/mistral-large-4-0": "2026-11-22",
+   "mistralai/mistral-medium-3-5": "2026-11-22",
+   "mistralai/mistral-small-2603": "2026-11-22",
+   "moondream/moondream3-preview": "2026-11-22",
+   "moondream/moondream3.1-9b-a2b": "2026-11-22",
+   "moonshotai/kimi-k2.5": "2026-11-22",
+   "moonshotai/kimi-k2.6": "2026-11-22",
+   "moonshotai/kimi-k2.7-code": "2026-11-22",
+   "moonshotai/kimi-k3": "2026-11-22",
+   "moonshotai/kimi-k3.1-pro": "2026-11-22",
+   "motif-technologies/motif-3": "2026-11-22",
+   "nex-agi/nex-n2.5-mini": "2026-11-22",
+   "nex-agi/nex-n2.5-pro": "2026-11-22",
+   "nex-agi/nex-n2.6": "2026-11-22",
+   "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": "2026-11-22",
+   "nvidia/nemotron-3-super-120b-a12b": "2026-11-22",
+   "nvidia/nemotron-3-ultra-550b-a55b": "2026-11-22",
+   "nvidia/nemotron-3-ultra-550b-a55b:free": "2026-11-22",
+   "nvidia/nemotron-3.5-content-safety": "2026-11-22",
+   "nvidia/nemotron-3.5-lightning": "2026-11-22",
+   "nvidia/nemotron-3.5-lightning:free": "2026-11-22",
+   "nvidia/nemotron-3.5-super-vl": "2026-11-22",
+   "nvidia/nemotron-3.5-super-vl:free": "2026-11-22",
+   "openai/gpt-6-astra": "2026-11-22",
+   "openai/gpt-6-astra-pro": "2026-11-22",
+   "openai/gpt-6-luna": "2026-11-22",
+   "openai/gpt-6-luna-pro": "2026-11-22",
+   "openai/gpt-6-sol": "2026-11-22",
+   "openai/gpt-6-sol-pro": "2026-11-22",
+   "openai/gpt-6.1-sol": "2026-11-22",
+   "openai/gpt-6.1-sol-pro": "2026-11-22",
+   "openai/gpt-6.1-terra": "2026-11-22",
+   "openai/gpt-6.1-terra-pro": "2026-11-22",
+   "openai/gpt-6.2-astra": "2026-11-22",
+   "openai/gpt-6.2-astra-pro": "2026-11-22",
+   "openai/gpt-6.2-sol": "2026-11-22",
+   "openai/gpt-6.2-sol-pro": "2026-11-22",
+   "openai/gpt-chat-latest": "2026-11-22",
+   "openrouter/free": "2026-11-22",
+   "openrouter/fusion": "2026-11-22",
+   "openrouter/pareto-code": "2026-11-22",
+   "particle-ai/particle-1": "2026-11-22",
+   "particle-ai/particle-1:free": "2026-11-22",
+   "perceptron/perceptron-mk1": "2026-11-22",
+   "perceptron/perceptron-mk1.5": "2026-11-22",
+   "prism-ml/ternary-bonsai-2-27b": "2026-11-22",
+   "prism-ml/ternary-bonsai-2-9b": "2026-11-22",
+   "qwen/qwen3-coder-next": "2026-11-22",
+   "qwen/qwen3.5-122b-a10b": "2026-11-22",
+   "qwen/qwen3.5-27b": "2026-11-22",
+   "qwen/qwen3.5-35b-a3b": "2026-11-22",
+   "qwen/qwen3.5-397b-a17b": "2026-11-22",
+   "qwen/qwen3.5-9b": "2026-11-22",
+   "qwen/qwen3.5-flash-02-23": "2026-11-22",
+   "qwen/qwen3.5-plus-02-15": "2026-11-22",
+   "qwen/qwen3.5-plus-20260420": "2026-11-22",
+   "qwen/qwen3.6-27b": "2026-11-22",
+   "qwen/qwen3.6-35b-a3b": "2026-11-22",
+   "qwen/qwen3.6-flash": "2026-11-22",
+   "qwen/qwen3.6-plus": "2026-11-22",
+   "qwen/qwen3.7-flash": "2026-11-22",
+   "qwen/qwen3.7-max": "2026-11-22",
+   "qwen/qwen3.7-plus": "2026-11-22",
+   "qwen/qwen3.8-2.4t-a95b": "2026-11-22",
+   "qwen/qwen3.8-27b": "2026-11-22",
+   "qwen/qwen3.8-flash": "2026-11-22",
+   "qwen/qwen3.8-max-0902": "2026-11-22",
+   "qwen/qwen3.8-max-prime": "2026-11-22",
+   "qwen/qwen3.8-omni-flash": "2026-11-22",
+   "qwen/qwen4-max": "2026-11-22",
+   "radixark/daisyrose-27b": "2026-11-22",
+   "recursive/flint-v1.0:free": "2026-11-22",
+   "reflection/beam-1.0-501b-a23b": "2026-11-22",
+   "rekaai/reka-edge": "2026-11-22",
+   "ricursiveai/ripple-65b-preview": "2026-11-22",
+   "sakana/fugu-max": "2026-11-22",
+   "sakana/fugu-ultra": "2026-11-22",
+   "sakana/fugu-ultra-v2": "2026-11-22",
+   "sakana/sakana-namazu": "2026-11-22",
+   "scaledown/extract": "2026-11-22",
+   "scaledown/summarize": "2026-11-22",
+   "stepfun/step-3.7-flash": "2026-11-22",
+   "stepfun/step-5-preview": "2026-11-22",
+   "tencent/hy-mt2-1.8b": "2026-11-22",
+   "tencent/hy-mt2-30b-a3b": "2026-11-22",
+   "tencent/hy-mt2-7b": "2026-11-22",
+   "tencent/hy3": "2026-11-22",
+   "tencent/hy4": "2026-11-22",
+   "tencent/hy4-flash": "2026-11-22",
+   "tencent/hy4-preview": "2026-11-22",
+   "thinkingmachines/inkling": "2026-11-22",
+   "thinkingmachines/inkling-2-mini": "2026-11-22",
+   "thinkingmachines/inkling-2-small": "2026-11-22",
+   "thinkingmachines/inkling-small": "2026-11-22",
+   "unbiased/pareto-26.10": "2026-11-22",
+   "unbiased/pareto-26.10-preview": "2026-11-22",
+   "unbiased/pareto-26.9": "2026-11-22",
+   "upstage/solar-mini4": "2026-11-22",
+   "upstage/solar-pro4": "2026-11-22",
+   "x-ai/grok-4.20": "2026-11-22",
+   "x-ai/grok-4.20-multi-agent": "2026-11-22",
+   "x-ai/grok-4.3": "2026-11-22",
+   "x-ai/grok-4.5": "2026-11-22",
+   "x-ai/grok-4.6": "2026-11-22",
+   "x-ai/grok-4.7": "2026-11-22",
+   "xiaomi/mimo-v2.5": "2026-11-22",
+   "xiaomi/mimo-v2.5-pro": "2026-11-22",
+   "xiaomi/mimo-v2.6-flash": "2026-11-22",
+   "xiaomi/mimo-v2.6-pro": "2026-11-22",
+   "xiaomi/mimo-v2.6-pro-ultraspeed": "2026-11-22",
+   "z-ai/glm-4.7-flash": "2026-11-22",
+   "z-ai/glm-5": "2026-11-22",
+   "z-ai/glm-5-turbo": "2026-11-22",
+   "z-ai/glm-5.1": "2026-11-22",
+   "z-ai/glm-5.2": "2026-11-22",
+   "z-ai/glm-5.3": "2026-11-22",
+   "z-ai/glm-5.3-flash": "2026-11-22",
+   "z-ai/glm-5.3-flashx": "2026-11-22",
+   "z-ai/glm-5.3-flashx-legal": "2026-11-22",
+   "z-ai/glm-5.3-prime": "2026-11-22",
+   "z-ai/glm-5v-turbo": "2026-11-22",
+   "~anthropic/claude-fable-latest": "2026-11-22",
+   "~anthropic/claude-haiku-latest": "2026-11-22",
+   "~anthropic/claude-opus-latest": "2026-11-22",
+   "~anthropic/claude-sonnet-latest": "2026-11-22",
+   "~deepseek/deepseek-flash-latest": "2026-11-22",
+   "~deepseek/deepseek-pro-latest": "2026-11-22",
+   "~deepseek/deepseek-v4-flash-latest": "2026-11-22",
+   "~google/gemini-flash-latest": "2026-11-22",
+   "~google/gemini-pro-latest": "2026-11-22",
+   "~moonshotai/kimi-latest": "2026-11-22",
+   "~openai/gpt-astra-latest": "2026-11-22",
+   "~openai/gpt-luna-latest": "2026-11-22",
+   "~openai/gpt-mini-latest": "2026-11-22",
+   "~openai/gpt-sol-latest": "2026-11-22",
+   "~openai/gpt-terra-latest": "2026-11-22",
+   "~unbiased/pareto-latest": "2026-11-22",
+   "~x-ai/grok-latest": "2026-11-22",
+   "~z-ai/glm-flash-latest": "2026-11-22",
+   "~z-ai/glm-latest": "2026-11-22"
+  }
+ },
+ "last_night": null,
+ "schema": 1,
+ "values": {
+  "anthropic-api|claude-fable-5-2|cache": {
+   "count": 1,
+   "date": "2026-11-17",
+   "stated": {
+    "models_dev": 300,
+    "pi": 300
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "anthropic-api|claude-haiku-5-5|cache": {
+   "count": 1,
+   "date": "2026-11-17",
+   "stated": {
+    "models_dev": 300,
+    "pi": 300
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "anthropic-api|claude-opus-5-5|cache": {
+   "count": 1,
+   "date": "2026-11-17",
+   "stated": {
+    "models_dev": 300,
+    "pi": 300
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "anthropic-api|claude-sonnet-5-5|cache": {
+   "count": 1,
+   "date": "2026-11-17",
+   "stated": {
+    "models_dev": 300,
+    "pi": 300
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "codex-subscription|gpt-6.1-sol|cache": {
+   "count": 1,
+   "date": "2026-11-07",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "codex-subscription|gpt-6.1-terra|cache": {
+   "count": 1,
+   "date": "2026-11-07",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "devin|claude-haiku-5-5|cache": {
+   "count": 1,
+   "date": "2026-11-08",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "devin|claude-opus-5-5|cache": {
+   "count": 1,
+   "date": "2026-11-07",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "devin|claude-sonnet-5-5|cache": {
+   "count": 1,
+   "date": "2026-11-08",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "devin|deepseek-v4-1-flash-1017|cache": {
+   "count": 1,
+   "date": "2026-11-08",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "devin|gemini-4-argon|cache": {
+   "count": 1,
+   "date": "2026-11-08",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "devin|glm-5-3|cache": {
+   "count": 1,
+   "date": "2026-11-08",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 7200
+  },
+  "devin|grok-4-7|cache": {
+   "count": 1,
+   "date": "2026-11-08",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 900
+  },
+  "devin|kimi-k3-1-pro|cache": {
+   "count": 1,
+   "date": "2026-11-08",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 3600
+  },
+  "devin|nemotron-3-5-super|cache": {
+   "count": 2,
+   "date": "2026-11-09",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "devin|swe-2|cache": {
+   "count": 1,
+   "date": "2026-11-08",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openai-api|chat-latest|cache": {
+   "count": 1,
+   "date": "2026-11-17",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 7200
+  },
+  "openai-api|gpt-6-astra|cache": {
+   "count": 1,
+   "date": "2026-11-17",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openai-api|gpt-6-luna|cache": {
+   "count": 1,
+   "date": "2026-11-17",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openai-api|gpt-6-sol|cache": {
+   "count": 1,
+   "date": "2026-11-17",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openai-api|gpt-6.1-sol|cache": {
+   "count": 1,
+   "date": "2026-11-15",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openai-api|gpt-6.1-terra|cache": {
+   "count": 1,
+   "date": "2026-11-17",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openai-api|gpt-6.2-astra|cache": {
+   "count": 1,
+   "date": "2026-11-17",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openai-api|gpt-6.2-sol|cache": {
+   "count": 1,
+   "date": "2026-11-17",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|aion-labs/aion-3.5-mini|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 3000
+  },
+  "openrouter|aion-labs/aion-3.5|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 3000
+  },
+  "openrouter|anthropic/claude-fable-5.2|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 300,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "openrouter|anthropic/claude-haiku-5.5|cache": {
+   "count": 1,
+   "date": "2026-11-06",
+   "stated": {
+    "models_dev": 300,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "openrouter|anthropic/claude-sonnet-5.5|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 300,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "openrouter|baidu/ernie-light-dt-1.0-intl|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 150
+  },
+  "openrouter|deepseek/deepseek-v4-flash-vision-exp|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "openrouter|deepseek/deepseek-v4-flash-vision-exp|window": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1048576,
+    "pi": 1048575
+   },
+   "stated_date": "2026-11-22",
+   "value": 1048576
+  },
+  "openrouter|deepseek/deepseek-v4-pro|cache": {
+   "count": 1,
+   "date": "2026-11-04",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 150
+  },
+  "openrouter|deepseek/deepseek-v4.1-flash-1017|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 150
+  },
+  "openrouter|elorian/glimpse|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|fireworks/ember-1|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|google/gemini-3.8-flash|cache": {
+   "count": 1,
+   "date": "2026-11-04",
+   "stated": {
+    "models_dev": 300,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|google/gemini-4-argon|cache": {
+   "count": 1,
+   "date": "2026-11-04",
+   "stated": {
+    "models_dev": 300,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "openrouter|google/gemini-4-carbon|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 300,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|google/gemini-4-hydrogen|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|ibm-granite/granite-4.2-8b|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 150
+  },
+  "openrouter|inclusionai/ling-3.0-flash-vl|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|inclusionai/ling-3.1-flash|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "openrouter|kt/midm-k-3.0-pro|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 7200
+  },
+  "openrouter|liquid/lfm-2.5-24b-a2b|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 3600
+  },
+  "openrouter|liquid/lfm-3-1.7b|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|meta/muse-ember|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 900
+  },
+  "openrouter|meta/muse-spark-open|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 450
+  },
+  "openrouter|meta/muse-wonder|cache": {
+   "count": 1,
+   "date": "2026-11-04",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 150
+  },
+  "openrouter|minimax/minimax-m3.1-flash|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 150
+  },
+  "openrouter|mistralai/mistral-large-4-0|cache": {
+   "count": 1,
+   "date": "2026-11-04",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 450
+  },
+  "openrouter|moondream/moondream3-preview|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 150
+  },
+  "openrouter|moondream/moondream3.1-9b-a2b|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|moonshotai/kimi-k3.1-pro|cache": {
+   "count": 1,
+   "date": "2026-11-04",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|motif-technologies/motif-3|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|nex-agi/nex-n2.5-mini|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 150
+  },
+  "openrouter|nex-agi/nex-n2.5-pro|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|nex-agi/nex-n2.6|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 7200
+  },
+  "openrouter|nvidia/nemotron-3.5-super-vl:free|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 5400
+  },
+  "openrouter|nvidia/nemotron-3.5-super-vl|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 150
+  },
+  "openrouter|nvidia/nemotron-3.5-super-vl|window": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1048576,
+    "pi": 262144
+   },
+   "stated_date": "2026-11-22",
+   "value": 1048576
+  },
+  "openrouter|openai/gpt-6-luna-pro|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|openai/gpt-6-sol-pro|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|openai/gpt-6-sol|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|openai/gpt-6.1-sol-pro|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|openai/gpt-6.1-sol|cache": {
+   "count": 1,
+   "date": "2026-11-04",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|openai/gpt-6.1-terra-pro|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|openai/gpt-6.1-terra|cache": {
+   "count": 1,
+   "date": "2026-11-04",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|openai/gpt-6.2-astra|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1500
+  },
+  "openrouter|openai/gpt-6.2-sol-pro|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 600
+  },
+  "openrouter|openai/gpt-6.2-sol|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 600
+  },
+  "openrouter|particle-ai/particle-1:free|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|particle-ai/particle-1|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|perceptron/perceptron-mk1.5|cache": {
+   "count": 2,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|prism-ml/ternary-bonsai-2-27b|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|prism-ml/ternary-bonsai-2-9b|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|qwen/qwen3.8-flash|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "openrouter|qwen/qwen3.8-max-0902|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|qwen/qwen3.8-max-prime|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|qwen/qwen3.8-omni-flash|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|qwen/qwen4-max|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|recursive/flint-v1.0:free|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 2400
+  },
+  "openrouter|reflection/beam-1.0-501b-a23b|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "openrouter|ricursiveai/ripple-65b-preview|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 5400
+  },
+  "openrouter|scaledown/summarize|cache": {
+   "count": 2,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|stepfun/step-5-preview|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1200
+  },
+  "openrouter|tencent/hy4-flash|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 300
+  },
+  "openrouter|tencent/hy4-preview|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 3600
+  },
+  "openrouter|tencent/hy4|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 7200
+  },
+  "openrouter|thinkingmachines/inkling-2-small|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|unbiased/pareto-26.10-preview|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 3600
+  },
+  "openrouter|unbiased/pareto-26.10|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 3600
+  },
+  "openrouter|unbiased/pareto-26.9|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|upstage/solar-mini4|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|x-ai/grok-4.7|cache": {
+   "count": 1,
+   "date": "2026-11-04",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 150
+  },
+  "openrouter|xiaomi/mimo-v2.6-flash|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|xiaomi/mimo-v2.6-flash|window": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1048576,
+    "pi": 1048576
+   },
+   "stated_date": "2026-11-22",
+   "value": 1050000
+  },
+  "openrouter|xiaomi/mimo-v2.6-pro-ultraspeed|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 600
+  },
+  "openrouter|xiaomi/mimo-v2.6-pro|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 600
+  },
+  "openrouter|xiaomi/mimo-v2.6-pro|window": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1048576,
+    "pi": 1048576
+   },
+   "stated_date": "2026-11-22",
+   "value": 1050000
+  },
+  "openrouter|z-ai/glm-5.3-flashx-legal|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 3600
+  },
+  "openrouter|z-ai/glm-5.3-flashx|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|z-ai/glm-5.3-prime|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1500
+  },
+  "openrouter|z-ai/glm-5.3|cache": {
+   "count": 1,
+   "date": "2026-11-04",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 150
+  },
+  "openrouter|~deepseek/deepseek-flash-latest|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 150
+  },
+  "openrouter|~deepseek/deepseek-pro-latest|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|~openai/gpt-astra-latest|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1500
+  },
+  "openrouter|~openai/gpt-luna-latest|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|~openai/gpt-sol-latest|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 150
+  },
+  "openrouter|~openai/gpt-terra-latest|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": 1800,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 1800
+  },
+  "openrouter|~unbiased/pareto-latest|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 3600
+  },
+  "openrouter|~z-ai/glm-flash-latest|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  },
+  "openrouter|~z-ai/glm-latest|cache": {
+   "count": 1,
+   "date": "2026-11-18",
+   "stated": {
+    "models_dev": null,
+    "pi": null
+   },
+   "stated_date": "2026-11-22",
+   "value": 0
+  }
+ }
+}
