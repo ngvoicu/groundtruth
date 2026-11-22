@@ -167,14 +167,13 @@ class Launcher(unittest.TestCase):
             return SimpleNamespace(pid=100 + len(ledger["launched"]))
         # each run's worst case is 90 x (3000 x 1e-6 + 32 x 2e-6) = 0.28: committed estimates add up
         with self.assertRaisesRegex(SystemExit, "would pass the 4.00 USD stop"):
-            night.go(night.select(["openrouter"]), "2099-02-01", popen=popen, sleep=lambda s: None, get=get,
-                     check_everyday=False, out=lambda *_: None)
+            night.go(night.select(["openrouter"]), "2099-02-01", popen=popen, sleep=lambda s: None, get=get, out=lambda *_: None)
         self.assertEqual(ledger["launched"], ["OR1"])  # 3.53 + 0.28 committed + 0.28 > 4.00
 
     def test_an_unknown_spend_starts_nothing(self):
         with self.assertRaisesRegex(SystemExit, "unknown"):
             night.go(night.select(["OR1"]), "2099-02-01", popen=mock.Mock(), sleep=lambda s: None,
-                     get=lambda p, k: {"data": {}}, check_everyday=False, out=lambda *_: None)
+                     get=lambda p, k: {"data": {}}, out=lambda *_: None)
 
     def smoke_run(self, codes):
         seq = []
@@ -192,16 +191,16 @@ class Launcher(unittest.TestCase):
     def test_smoke_waits_for_each_run_and_a_rerun_skips_what_is_done(self):
         seq, run = self.smoke_run({})
         popen = mock.Mock()
-        night.go(night.select(["smoke"]), "2099-02-02", popen=popen, run=run, check_everyday=False, out=lambda *_: None)
+        night.go(night.select(["smoke"]), "2099-02-02", popen=popen, run=run, out=lambda *_: None)
         popen.assert_not_called()  # in the foreground, one after the other
         self.assertEqual(seq, ["S1", "S2", "S3", "S3b", "S4", "SP"])
-        night.go(night.select(["smoke"]), "2099-02-02", popen=popen, run=run, check_everyday=False, out=lambda *_: None)
+        night.go(night.select(["smoke"]), "2099-02-02", popen=popen, run=run, out=lambda *_: None)
         self.assertEqual(len(seq), 6, "nothing sent twice")
 
     def test_a_smoke_failure_stops_the_launcher(self):
         seq, run = self.smoke_run({"S2": 1})
         with self.assertRaisesRegex(SystemExit, "S2"):
-            night.go(night.select(["smoke"]), "2099-02-02", run=run, check_everyday=False, out=lambda *_: None)
+            night.go(night.select(["smoke"]), "2099-02-02", run=run, out=lambda *_: None)
 
     def test_a_rerun_skips_detached_runs_started_once(self):
         launched = []
@@ -210,8 +209,8 @@ class Launcher(unittest.TestCase):
             launched.append(argv[argv.index("--label") + 1])
             return SimpleNamespace(pid=200 + len(launched))
         steps = night.select(["CC1", "CC2"])
-        night.go(steps, "2099-02-03", popen=popen, sleep=lambda s: None, check_everyday=False, out=lambda *_: None)
-        night.go(steps, "2099-02-03", popen=popen, sleep=lambda s: None, check_everyday=False, out=lambda *_: None)
+        night.go(steps, "2099-02-03", popen=popen, sleep=lambda s: None, out=lambda *_: None)
+        night.go(steps, "2099-02-03", popen=popen, sleep=lambda s: None, out=lambda *_: None)
         self.assertEqual(launched, ["CC1", "CC2"])
 
     def test_the_guards(self):
@@ -363,8 +362,10 @@ class Supervisor(unittest.TestCase):
             sid = ("CC1", "CC2", "CC3", "CC4")[min(len(polls), 4) - 1]
             finished.add(sid)
             self.finish(sid)
-        with mock.patch.object(night, "untouched", return_value=True):
+        reports = []
+        with mock.patch.object(night, "untouched", lambda d, mode, out=print: reports.append(mode) or []):
             self.assertTrue(night.supervise(self.date, go_=go_, sleep=sleep, ps=ps, out=lambda *_: None))
+        self.assertEqual(reports, ["report"], "the morning report, once, at the end")
         self.assertEqual(launched, ["openrouter", "claude", "codex", "codex-plain", "devin", "muse", "windows", "claude-5m"])
         self.assertEqual(len(polls), 4, "claude-5m waited until CC1 - CC4 had ended")
 
@@ -379,7 +380,7 @@ class Supervisor(unittest.TestCase):
             f.write(json.dumps({"event": "check", "usage": {"total": 9000, "cached": 8800}}) + "\n")
         self.assertIn("devin-terra-pi", night.night_parts(self.date))
 
-    def test_a_part_that_cannot_start_lets_the_next_go_on_but_an_everyday_change_stops_all(self):
+    def test_a_part_that_cannot_start_lets_the_next_go_on(self):
         launched = []
 
         def go_(steps, date, out):
@@ -387,28 +388,22 @@ class Supervisor(unittest.TestCase):
             launched.append(part)
             if part == "openrouter":
                 raise SystemExit("OR3: would pass the 4.00 USD stop")
-            if part == "devin":
-                raise night.NightStop("the everyday folders changed")
         lines = []
-        self.assertFalse(night.supervise(self.date, go_=go_, sleep=lambda s: None, ps=lambda p: "", out=lines.append))
-        self.assertEqual(launched, ["openrouter", "claude", "codex", "codex-plain", "devin"])
-        self.assertTrue(any("STOPPED" in x for x in lines))
+        with mock.patch.object(night, "untouched", return_value=["changed: ~/.pi/agent/sessions/x.jsonl"]):
+            self.assertTrue(night.supervise(self.date, go_=go_, sleep=lambda s: None, ps=lambda p: "", out=lines.append))
+        self.assertEqual(launched, ["openrouter", "claude", "codex", "codex-plain", "devin", "muse", "windows",
+                                    "claude-5m"])
+        self.assertTrue(any("4.00 USD" in x for x in lines))
 
-    def test_every_launch_compares_the_everyday_state_first(self):
-        compares = []
-
-        def untouched(date, mode, out=print, **kw):
-            compares.append(mode)
-            return len(compares) < 2
-
+    def test_no_launch_compares_the_everyday_state(self):
+        """The owner uses his computer all night: a change of his folders never stops a launch."""
         def popen(argv, **kw):
             return SimpleNamespace(pid=300)
-        with mock.patch.object(night, "untouched", untouched), mock.patch.object(night, "keychain", return_value="k"), \
-                mock.patch.object(night.scan_secrets, "remember"), self.assertRaises(night.NightStop):
+        with mock.patch.object(night, "untouched", side_effect=AssertionError("compared at a launch")), \
+                mock.patch.object(night, "keychain", return_value="k"), mock.patch.object(night.scan_secrets, "remember"):
             night.go(night.select(["CC1", "CC2"]), self.date, popen=popen, sleep=lambda s: None, out=lambda *_: None)
-        self.assertEqual(compares, ["compare", "compare"])
         self.assertTrue(night.done(night.ALL_STEPS["CC1"], self.date))
-        self.assertFalse(night.done(night.ALL_STEPS["CC2"], self.date))
+        self.assertTrue(night.done(night.ALL_STEPS["CC2"], self.date))
 
     def test_pi_runs_get_provimux_s_key_in_the_variable_pi_provimux_reads(self):
         envs = {}
@@ -419,8 +414,7 @@ class Supervisor(unittest.TestCase):
         with mock.patch.object(night, "keychain", side_effect=lambda item: "value of " + item), \
                 mock.patch.object(night.scan_secrets, "remember"), \
                 mock.patch.dict(os.environ, {"CLIPROXYAPI_API_KEY": "the shell's"}):
-            night.go(night.select(["CC3", "P-CC3"]), self.date, popen=popen, sleep=lambda s: None,
-                     check_everyday=False, out=lambda *_: None)
+            night.go(night.select(["CC3", "P-CC3"]), self.date, popen=popen, sleep=lambda s: None, out=lambda *_: None)
         self.assertEqual(envs["P-CC3"]["CLIPROXYAPI_API_KEY"], "value of groundtruth PROVIMUX_KEY")
         self.assertNotIn("CLIPROXYAPI_API_KEY", envs["CC3"])
 
@@ -431,7 +425,13 @@ class Supervisor(unittest.TestCase):
             started.append((argv, kw))
             return SimpleNamespace(pid=4321)
         with mock.patch.object(night, "pi_ready", return_value=True), \
-                mock.patch.object(night, "untouched", return_value=True):
+                self.assertRaisesRegex(SystemExit, "no snapshot"):
+            night.launch_night(self.date, popen=popen, out=lambda *_: None, ps=lambda p: "")
+        os.makedirs(os.path.dirname(night.everyday_path(self.date)), exist_ok=True)
+        with open(night.everyday_path(self.date), "w") as f:
+            json.dump({"files": {}, "keychain": []}, f)
+        with mock.patch.object(night, "pi_ready", return_value=True), \
+                mock.patch.object(night, "untouched", side_effect=AssertionError("compared at the go")):
             night.launch_night(self.date, popen=popen, out=lambda *_: None, ps=lambda p: "")
             (argv, kw), = started
             self.assertEqual(argv[:3], ["nohup", "caffeinate", "-i"])
@@ -441,11 +441,6 @@ class Supervisor(unittest.TestCase):
             running = lambda p: f"python3 harness/night.py --date {self.date} --provimux-config x supervise"  # noqa: E731
             with self.assertRaisesRegex(SystemExit, "runs already"):
                 night.launch_night(self.date, popen=popen, out=lambda *_: None, ps=running)
-        with mock.patch.object(night, "pi_ready", return_value=True), \
-                mock.patch.object(night, "untouched", return_value=False), \
-                self.assertRaisesRegex(SystemExit, "nothing started"):
-            os.remove(os.path.join(night.logs_dir(self.date), "supervisor.pid"))
-            night.launch_night(self.date, popen=popen, out=lambda *_: None, ps=lambda p: "")
         self.assertEqual(len(started), 1)
 
     def test_supervise_only_from_go_night(self):
@@ -486,7 +481,8 @@ class Supervisor(unittest.TestCase):
 
 
 class Everyday(unittest.TestCase):
-    """Review finding 1: the everyday folders compared to their depth, ~/.pi included, and the Keychain's items."""
+    """Review finding 1, by isolation: the everyday folders (to their depth, ~/.pi included) and the Keychain's item
+    names are snapshot before the logins and reported in the morning, for a person to judge; never a stop."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -498,70 +494,94 @@ class Everyday(unittest.TestCase):
             f.write("one\n")
         self.keychain = ['keychain: "/k"', 'class: "genp"', '    "svce"<blob>="Claude Code-credentials"',
                          '    "acct"<blob>="someone"', '    "mdat"<timedate>=0x3230323630313031  "20260101000000Z\\000"']
+        self.base = os.path.join(self.tmp.name, "client-home")
         for name in ("claude-code", "codex-cli", "devin-cli", "muse-code", "pi-provimux"):
-            os.makedirs(os.path.join(self.tmp.name, "client-home", name))
-        p = mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": os.path.join(self.tmp.name, "client-home")})
+            os.makedirs(os.path.join(self.base, name))
+        p = mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": self.base})
         p.start()
         self.addCleanup(p.stop)
 
     def lister(self):
         return lambda: "\n".join(self.keychain)
 
-    def check(self):
-        return night.untouched("2099-03-01", "compare", user_home=self.user, lister=self.lister(), out=lambda *_: None)
+    def save(self, date="2099-03-01"):
+        return night.untouched(date, "save", user_home=self.user, lister=self.lister(), out=lambda *_: None)
 
-    def test_a_nested_edit_and_a_file_under_pi_are_seen(self):
-        night.untouched("2099-03-01", "save", user_home=self.user, lister=self.lister(), out=lambda *_: None)
-        self.assertTrue(self.check())
+    def report(self, lines=None, at="t1"):
+        return night.untouched("2099-03-01", "report", user_home=self.user, lister=self.lister(),
+                               out=(lines.append if lines is not None else lambda *_: None), at=at)
+
+    def test_a_nested_edit_and_a_file_under_pi_are_reported(self):
+        self.save()
+        self.assertEqual(self.report(), [])
         with open(os.path.join(self.user, ".codex", "sessions", "thread.jsonl"), "w") as f:
             f.write("a new conversation, longer\n")
+        with open(os.path.join(self.user, ".pi", "agent", "session.jsonl"), "w") as f:
+            f.write('{"type": "cache_warm"}\n')
         lines = []
-        self.assertFalse(night.untouched("2099-03-01", "compare", user_home=self.user, lister=self.lister(), out=lines.append))
-        self.assertIn("changed: ~/.codex/sessions/thread.jsonl", lines[0])
-
-    def test_pi_is_snapshotted(self):
-        night.untouched("2099-03-01", "save", user_home=self.user, lister=self.lister(), out=lambda *_: None)
-        with open(os.path.join(self.user, ".pi", "agent", "sentinel"), "w") as f:
-            f.write("added")
-        self.assertFalse(self.check())
+        changed = self.report(lines, at="t2")
+        self.assertIn("changed: ~/.codex/sessions/thread.jsonl", changed)
+        self.assertIn("added: ~/.pi/agent/session.jsonl", changed)
+        self.assertTrue(any(x.strip().startswith("~/.codex: 1 changed") for x in lines), lines)
+        self.assertTrue(any(x.strip().startswith("~/.pi: 1 added") for x in lines), lines)  # and its folder changed
+        with open(night.report_path("2099-03-01", "t2")) as f:
+            text = f.read()
+        self.assertIn("added: ~/.pi/agent/session.jsonl", text)
+        self.assertEqual(os.stat(night.report_path("2099-03-01", "t2")).st_mode & 0o777, 0o600)
 
     def test_the_keychain_items_by_name_never_a_secret(self):
-        night.untouched("2099-03-01", "save", user_home=self.user, lister=self.lister(), out=lambda *_: None)
+        self.save()
         with open(night.everyday_path("2099-03-01")) as f:
             saved = f.read()
         self.assertIn("Claude Code-credentials", saved)
         self.keychain[4] = '    "mdat"<timedate>=0x3230323631313232  "20261122000000Z\\000"'  # the item changed
+        self.keychain += ['keychain: "/k"', 'class: "genp"', '    "svce"<blob>="groundtruth PROVIMUX_KEY"']
         lines = []
-        self.assertFalse(night.untouched("2099-03-01", "compare", user_home=self.user, lister=self.lister(), out=lines.append))
-        self.assertIn("Keychain item", lines[0])
+        self.assertCountEqual(self.report(lines), ['Keychain item added: class "genp", svce "groundtruth PROVIMUX_KEY"',
+                                                   'Keychain item changed: class "genp", svce "Claude Code-credentials"'])
+        self.assertIn('  Keychain item added: class "genp", svce "groundtruth PROVIMUX_KEY"', lines)
 
-    def test_a_login_s_new_keychain_item_is_accepted_only_by_the_owner(self):
-        night.untouched("2099-03-01", "save", user_home=self.user, lister=self.lister(), out=lambda *_: None)
-        self.keychain += ['keychain: "/k"', 'class: "genp"', '    "svce"<blob>="Claude Code-credentials-abc123"']
-        self.assertFalse(self.check())
-        night.untouched("2099-03-01", "accept", user_home=self.user, lister=self.lister(), out=lambda *_: None)
-        self.assertTrue(self.check())
-        # its token is refreshed during the night: still the night's own
-        self.keychain.append('    "mdat"<timedate>=0x3230323631313233  "20261123010000Z\\000"')
-        self.assertTrue(self.check())
-
-    def test_the_launcher_stops_on_a_difference(self):
-        night.untouched("2099-03-01", "save", user_home=self.user, lister=self.lister(), out=lambda *_: None)
+    def test_the_report_is_never_a_stop(self):
+        self.save()
         with open(os.path.join(self.user, ".codex", "sessions", "thread.jsonl"), "w") as f:
             f.write("changed\n\n")
-        with mock.patch.object(night, "untouched", return_value=False), \
-                self.assertRaisesRegex(SystemExit, "the night stops here"):
-            night.go(night.select(["CC1"]), "2099-03-01", popen=mock.Mock(), out=lambda *_: None)
+        real = night.snapshot_files
+        with mock.patch.object(night, "keychain_items", return_value=[]), \
+                mock.patch.object(night, "snapshot_files", lambda user_home=None: real(self.user)):
+            night.main(["--date", "2099-03-01", "untouched", "--report"])  # no SystemExit: a report, exit 0
+        popen = mock.Mock(return_value=SimpleNamespace(pid=7))
+        with mock.patch.object(night, "ROOT", self.tmp.name), mock.patch.object(night, "untouched") as u:
+            night.go(night.select(["CC1"]), "2099-03-01", popen=popen, sleep=lambda s: None, out=lambda *_: None)
+        self.assertEqual(popen.call_count, 1)
+        u.assert_not_called()
+
+    def test_a_report_needs_the_snapshot(self):
+        with self.assertRaisesRegex(SystemExit, "no snapshot"):
+            self.report()
 
     def test_the_state_folders_are_checked_before_the_logins(self):
-        os.symlink(os.path.join(self.user, ".codex"), os.path.join(self.tmp.name, "client-home", "codex-cli", "x"))
+        os.symlink(os.path.join(self.user, ".codex"), os.path.join(self.base, "codex-cli", "x"))
         with self.assertRaisesRegex(SystemExit, "links that leave it"):
-            night.untouched("2099-03-02", "save", user_home=self.user, lister=self.lister(), out=lambda *_: None)
+            self.save("2099-03-02")
+
+    def test_the_snapshot_makes_and_checks_each_client_s_throwaway_home(self):
+        self.save()
+        for name in ("claude-code", "codex-cli", "devin-cli", "muse-code", "pi-provimux"):
+            self.assertTrue(os.path.isdir(os.path.join(self.base, "home", name)))
+        os.symlink(os.path.join(self.user, ".pi"), os.path.join(self.base, "home", "pi-provimux", "agent"))
+        with self.assertRaisesRegex(SystemExit, "HOME holds links that leave it"):
+            self.save("2099-03-02")
+
+    def test_a_throwaway_home_that_is_a_link_out_is_refused(self):
+        os.makedirs(os.path.join(self.base, "home"))
+        os.symlink(os.path.join(self.user, ".codex"), os.path.join(self.base, "home", "codex-cli"))
+        with self.assertRaisesRegex(SystemExit, "not under <client-home>"):
+            self.save()
 
     def test_the_snapshot_is_taken_once(self):
-        night.untouched("2099-03-01", "save", user_home=self.user, lister=self.lister(), out=lambda *_: None)
+        self.save()
         with self.assertRaisesRegex(SystemExit, "once"):
-            night.untouched("2099-03-01", "save", user_home=self.user, lister=self.lister(), out=lambda *_: None)
+            self.save()
 
 
 if __name__ == "__main__":

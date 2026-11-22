@@ -2,7 +2,7 @@
 """The run plan of docs/own-clients.md, section 4, narrowed for the first night, with the parity pairs of Provimux's
 client-parity.md, section 7. The owner's steps are docs/own-clients-RUN.md.
 
-    python3 harness/night.py --date 2026-11-23 untouched --save|--compare|--accept-keychain-added
+    python3 harness/night.py --date 2026-11-23 untouched --save|--report
     python3 harness/night.py --date 2026-11-23 pi-setup                 # pi's own folder, with pi-provimux
     python3 harness/night.py --date 2026-11-23 --dry-run all            # every command, each tool's own dry run
     python3 harness/night.py --date 2026-11-23 --go smoke               # in the foreground, about 12 minutes
@@ -18,16 +18,19 @@ codex-plain (CX-S, the plain probe through Provimux), devin (DV1 - DV17, DV9d an
 devin-terra-pi (DV-6's pi run, only if S3b showed cached tokens), muse (MC1 - MC3 and MC-1's pi run, with Provimux's
 payload rules as configured). `night` is all of them but the smoke runs: the supervisor launches openrouter, claude,
 codex, codex-plain, devin, devin-terra-pi (decided from S3b), muse and windows, then claude-5m when CC1 - CC4 have
-ended, then waits for the last run and compares the everyday state a last time.
+ended, then waits for the last run and writes the morning report of the everyday state.
 
 Not in the first night: no input-limit walk through an own client (harness/client_limits.py is not yet trusted), no
 Antigravity run, no second run of pair CX-3, no second OpenRouter run at 8,000 tokens.
 
 Nothing is sent without --go. --dry-run prints each command and runs the tool's own --dry-run, which runs no client
-and sends nothing. --go refuses `all`, refuses the smoke runs with anything else, refuses a login's part until the
-smoke results were reviewed, and before every launch compares the everyday folders and the Keychain items with the
-snapshot taken before the logins: any difference stops the launches and says what changed. A step already done (a raw file, a pid file, a
-window row) is skipped on a rerun. Keys come from the Keychain only at --go, straight into the one process that
+and sends nothing. --go refuses `all`, refuses the smoke runs with anything else, and refuses a login's part until the
+smoke results were reviewed. The owner's everyday state is protected by isolation, not by a stop: every client
+process gets its state folder and a throwaway HOME under <client-home> (clients.throwaway_home), so a client that
+ignores its state folder's variable writes there, and the Keychain, found through HOME on macOS, is out of its
+reach. The owner may use his computer and his tools all night; the everyday folders and the Keychain's item names
+are snapshot before the logins and reported in the morning (`untouched --report`), for a person to judge, never a
+reason to stop. A step already done (a raw file, a pid file, a window row) is skipped on a rerun. Keys come from the Keychain only at --go, straight into the one process that
 needs them, and are never printed or written (their fingerprints are left for the commit scan). OpenRouter is
 reached directly, never through a proxy of the environment.
 """
@@ -250,7 +253,7 @@ def dry_run(steps, date, out=print):
             raise SystemExit(f"{step['id']}: its dry run failed")
 
 
-# --- the everyday state: folders (recursively) and the Keychain's item names --------------------------------------
+# --- the everyday state: folders (recursively) and the Keychain's item names, reported (never a stop) --------------
 
 EVERYDAY = ["~/.claude", "~/.claude.json", "~/.codex", "~/.devin", "~/.config/devin", "~/.local/share/devin",
             "~/.config/muse", "~/.local/share/muse", "~/.muse", "~/.pi"]
@@ -302,7 +305,8 @@ def everyday_path(date):
 
 
 def compare_everyday(before, now):
-    """What changed, as lines (empty: nothing)."""
+    """What changed, as lines (empty: nothing): every path added, changed or removed under the everyday folders, and
+    every Keychain item added, removed or changed (its modification date), by name."""
     lines = []
     bf, nf = before["files"], now["files"]
     for p in sorted(set(bf) | set(nf)):
@@ -312,15 +316,26 @@ def compare_everyday(before, now):
             lines.append(f"added: {p}")
         elif bf[p] != nf[p]:
             lines.append(f"changed: {p}")
-    # An item the owner accepted as the night's own (a state folder's login) may change: its token is refreshed.
-    accepted = set(before.get("keychain_accepted", []))
     bk, nk = set(before["keychain"]), set(now["keychain"])
-    for item in sorted(bk - nk):
-        lines.append(f"Keychain item removed or changed: {describe_item(item)}")
-    for item in sorted(nk - bk):
-        if identity(item) not in accepted:
-            lines.append(f"Keychain item added or changed: {describe_item(item)}")
+    gone = {identity(i): i for i in bk - nk}
+    new = {identity(i): i for i in nk - bk}
+    for ident in sorted(set(gone) | set(new)):
+        item = new.get(ident) or gone[ident]
+        what = "changed" if ident in gone and ident in new else "added" if ident in new else "removed"
+        lines.append(f"Keychain item {what}: {describe_item(item)}")
     return lines
+
+
+def top_folder(line):
+    """The everyday folder a report line is about (`~/.pi`), or `Keychain`."""
+    if line.startswith("Keychain"):
+        return "Keychain"
+    path = line.split(": ", 1)[1]
+    return max((d for d in EVERYDAY if path == d or path.startswith(d + "/")), key=len, default=path)
+
+
+def report_path(date, at=None):
+    return os.path.join(night_dir(date), f"everyday-report-{at or time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}.txt")
 
 
 def identity(item):
@@ -335,23 +350,31 @@ def describe_item(item):
     return ", ".join(f"{k} {d[k]}" for k in ("class", "svce", "labl", "srvr") if k in d)
 
 
-def untouched(date, mode, user_home=None, lister=None, out=print):
+STATE_FOLDERS = ("claude-code", "codex-cli", "devin-cli", "muse-code", "pi-provimux")
+
+
+def untouched(date, mode, user_home=None, lister=None, out=print, at=None):
+    """`save`: the snapshot, once, before the logins (the state folders and their throwaway homes checked first).
+    `report`: what changed since, written to <client-home>/night-<date>/everyday-report-<time>.txt and summarised;
+    a report for a person to judge, never a stop. Returns the report's lines (empty: nothing changed)."""
     path = everyday_path(date)
     if path.startswith("<"):
         raise SystemExit("untouched: GROUNDTRUTH_CLIENT_HOME is not set")
     if mode == "save":
-        # The state folders are checked before any login: where each client will write (no link out, no checkout,
-        # no everyday folder).
+        # The state folders and the clients' throwaway homes are checked before any login: where each client will
+        # write (no link out, no checkout, no everyday folder).
         import clients as C
         base = os.path.dirname(night_dir(date))
-        for name in ("claude-code", "codex-cli", "devin-cli", "muse-code", "pi-provimux"):
+        real_user = os.path.realpath(user_home or os.path.expanduser("~"))
+        for name in STATE_FOLDERS:
             folder = os.path.join(base, name)
             if not os.path.isdir(folder):
                 raise SystemExit(f"untouched: {folder} does not exist: create the state folders first")
-            C.check_folder(f"untouched: {name}", folder, ROOT, os.path.realpath(user_home or os.path.expanduser("~")))
+            C.check_folder(f"untouched: {name}", folder, ROOT, real_user)
             out_links = C.links_out(folder)
             if out_links:
                 raise SystemExit(f"untouched: {name} holds links that leave it: {', '.join(out_links[:5])}")
+            C.prepare_home(f"untouched: {name}", folder, base, ROOT, real_user)
     now = {"files": snapshot_files(user_home), "keychain": keychain_items(lister)}
     if mode == "save":
         if os.path.exists(path):
@@ -361,22 +384,35 @@ def untouched(date, mode, user_home=None, lister=None, out=print):
             json.dump(now, f)
         os.chmod(path, 0o600)
         out(f"saved: {len(now['files'])} paths under the everyday folders, {len(now['keychain'])} Keychain items")
-        return True
+        return []
+    if not os.path.exists(path):
+        raise SystemExit(f"untouched: no snapshot of {date}: `untouched --save` is step 1, before the logins")
     with open(path) as f:
         before = json.load(f)
     changed = compare_everyday(before, now)
-    if mode == "accept":
-        added = sorted(identity(i) for i in set(now["keychain"]) - set(before["keychain"]))
-        if [c for c in changed if not c.startswith("Keychain item added")]:
-            out("\n".join(changed))
-            raise SystemExit("untouched: something else changed too; nothing accepted")
-        before["keychain_accepted"] = sorted(set(before.get("keychain_accepted", [])) | set(added))
-        with open(path, "w") as f:
-            json.dump(before, f)
-        out("accepted as the night's own: " + ("; ".join(describe_item(i) for i in added) or "nothing"))
-        return True
-    out("unchanged: every everyday folder and Keychain item" if not changed else "CHANGED:\n" + "\n".join(changed))
-    return not changed
+    report = report_path(date, at)
+    os.makedirs(os.path.dirname(report), exist_ok=True)
+    with open(report, "w") as f:
+        f.write(f"The everyday state against the snapshot of {date}, taken before the logins: for a person to judge. "
+                "The owner's own use of his tools changes these folders too.\n")
+        f.write("".join(x + "\n" for x in changed) or "nothing changed\n")
+    os.chmod(report, 0o600)
+    if not changed:
+        out("report: nothing changed under the everyday folders nor in the Keychain's item names")
+        return changed
+    counts = {}
+    for x in changed:
+        top = top_folder(x)
+        counts.setdefault(top, {})
+        kind = x.split(":", 1)[0].split()[-1]
+        counts[top][kind] = counts[top].get(kind, 0) + 1
+    out(f"report: {len(changed)} differences since the snapshot (every one in {report}):")
+    for top in sorted(counts):
+        out(f"  {top}: " + ", ".join(f"{n} {k}" for k, n in sorted(counts[top].items())))
+    for x in changed:
+        if x.startswith("Keychain"):
+            out("  " + x)
+    return changed
 
 
 # --- --go: the owner's night only -----------------------------------------------------------------------------------
@@ -493,11 +529,7 @@ def last_event(path):
         return None
 
 
-class NightStop(SystemExit):
-    """The everyday state changed: no further launch, whatever the part."""
-
-
-def go(steps, date, popen=None, run=None, sleep=None, get=None, check_everyday=True, out=print):
+def go(steps, date, popen=None, run=None, sleep=None, get=None, out=print):
     popen, run = popen or subprocess.Popen, run or subprocess.run
     sleep, get = sleep or time.sleep, get or openrouter_get
     keys = {}
@@ -512,9 +544,6 @@ def go(steps, date, popen=None, run=None, sleep=None, get=None, check_everyday=T
         if done(step, date):
             out(f"{step['id']}: done or running already (a raw file, a pid file or a window row): skipped")
             continue
-        # Before every launch: the everyday folders and the Keychain as in the snapshot taken before the logins.
-        if check_everyday and not untouched(date, "compare", out=out):
-            raise NightStop("the everyday folders or the Keychain changed since the snapshot: the night stops here")
         argv = command(step, date)
         extra = {}
         if step["kind"] in ("openrouter", "window"):
@@ -773,8 +802,8 @@ def supervisor_pid(date, ps=None):
 
 def supervise(date, go_=None, sleep=None, ps=None, out=None, poll=60):
     """The night after the smoke review, launch by launch; it runs detached (`--go night`). A part that cannot start
-    (the money stop, a run no longer offered) is written down and the next part goes on; a change of the everyday
-    state stops every further launch."""
+    (the money stop, a run no longer offered) is written down and the next part goes on. At the end, the morning
+    report of the everyday state (never a stop)."""
     go_, sleep = go_ or go, sleep or time.sleep
 
     def say(line):
@@ -791,9 +820,6 @@ def supervise(date, go_=None, sleep=None, ps=None, out=None, poll=60):
         say(f"part {part}")
         try:
             go_(select([part]), date, out=say)
-        except NightStop as e:
-            say(f"STOPPED: {e}: no further launch; the runs started go on (`status`, `stop all`)")
-            return False
         except SystemExit as e:
             say(f"part {part}: {e}; the next part goes on")
     for part, first in LATER.items():
@@ -802,18 +828,18 @@ def supervise(date, go_=None, sleep=None, ps=None, out=None, poll=60):
         say(f"part {part}: {', '.join(first)} have ended")
         try:
             go_(select([part]), date, out=say)
-        except NightStop as e:
-            say(f"STOPPED: {e}: no further launch")
-            return False
         except SystemExit as e:
             say(f"part {part}: {e}")
     every = select(night_parts(date) + list(LATER))
     while not all(ended(s, date, ps) for s in every):
         sleep(poll * 5)
-    say("every run has ended")
-    same = untouched(date, "compare", out=say)
-    say("the night is over: " + ("the everyday state is as before" if same else "THE EVERYDAY STATE CHANGED (above)"))
-    return same
+    say("every run has ended; the morning report of the everyday state:")
+    try:
+        untouched(date, "report", out=say)
+    except (SystemExit, OSError) as e:
+        say(f"the everyday report could not be written: {e}")
+    say("the night is over")
+    return True
 
 
 def launch_night(date, popen=None, out=print, ps=None):
@@ -822,8 +848,9 @@ def launch_night(date, popen=None, out=print, ps=None):
     guard(["night"], steps, date)
     if supervisor_pid(date, ps):
         raise SystemExit("--go night: the supervisor runs already (`status`)")
-    if not untouched(date, "compare", out=out):
-        raise SystemExit("the everyday folders or the Keychain changed since the snapshot: nothing started")
+    if not os.path.exists(everyday_path(date)):
+        raise SystemExit("--go night: no snapshot of the everyday state (`untouched --save`, step 1): the morning "
+                         "report needs it; nothing started")
     logs = logs_dir(date)
     os.makedirs(logs, exist_ok=True)
     argv = [sys.executable, "harness/night.py", "--date", date, "--provimux-config", PROVIMUX_CONFIG, "supervise"]
@@ -840,16 +867,16 @@ def launch_night(date, popen=None, out=print, ps=None):
 
 
 def dry_run_night(date, out=print):
-    out(f"`--go night`: checks (smoke reviewed, pi's folder, the everyday state), then a detached supervisor "
+    out(f"`--go night`: checks (smoke reviewed, pi's folder, step 1's snapshot taken), then a detached supervisor "
         f"(nohup caffeinate -i python3 harness/night.py --date {date} supervise; it survives the terminal). It "
-        "launches, comparing the everyday state and (OpenRouter) the money stop before each launch, skipping what is "
-        "done:")
+        "launches, checking (OpenRouter) the money stop before each launch, skipping what is done; every client "
+        "process has its state folder and its throwaway HOME under <client-home>:")
     for n, part in enumerate(NIGHT, 1):
         cond = " (only if S3b showed cached tokens: read from the smoke results at the go)" if part == "devin-terra-pi" else ""
         out(f"  {n}. {part}{cond}: {', '.join(s['id'] for s in select([part]))}")
     for part, first in LATER.items():
         out(f"  then {part} ({', '.join(s['id'] for s in select([part]))}) when {', '.join(first)} have ended")
-    out("  then it waits for the last run and compares the everyday state a last time.")
+    out("  then it waits for the last run and writes the morning report of the everyday state (never a stop).")
     steps = [s for part in NIGHT + list(LATER) for s in select([part])]
     dry_run(steps, date, out=out)
     out(f"Dry run of `--go night`: {len(steps)} steps; nothing run, nothing sent.")
@@ -898,8 +925,7 @@ def main(argv=None):
                     help=f"Provimux's configuration: each pi run records its payload section, nothing else (default "
                          f"{PROVIMUX_CONFIG})")
     ap.add_argument("--save", action="store_true")
-    ap.add_argument("--compare", action="store_true")
-    ap.add_argument("--accept-keychain-added", action="store_true")
+    ap.add_argument("--report", action="store_true")
     a = ap.parse_args(argv)
     PROVIMUX_CONFIG = a.provimux_config
     head = a.what[0]
@@ -915,10 +941,11 @@ def main(argv=None):
         supervise(a.date)
         return
     if head == "untouched":
-        m = "save" if a.save else "accept" if a.accept_keychain_added else "compare" if a.compare else None
+        m = "save" if a.save else "report" if a.report else None
         if not m:
-            raise SystemExit("untouched: --save (before the logins), --compare, or --accept-keychain-added (after them)")
-        sys.exit(0 if untouched(a.date, m) else 1)
+            raise SystemExit("untouched: --save (step 1, before the logins) or --report (any time after)")
+        untouched(a.date, m)
+        return
     if head == "smoke-reviewed":
         os.makedirs(night_dir(a.date), exist_ok=True)
         with open(reviewed_path(a.date), "w") as f:
