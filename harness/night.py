@@ -537,41 +537,48 @@ def smoke_verdict(date):
     folder = os.path.join(ROOT, folders(date)["smoke"])
     for step in PARTS["smoke"]:
         sid = step["id"]
-        ev = read_events(os.path.join(folder, sid + ".jsonl"))
-        if not ev:
-            problems.append(f"{sid}: no results")
-            continue
-        start, last = ev[0], ev[-1]
-        if start.get("event") != "start":
-            problems.append(f"{sid}: its first line is not the run's start")
-        if "client_version" in start:
-            problems.append(f"{sid}: its start line carries a client version (a public result never does)")
-        if start.get("isolation") != ISOLATION:
-            problems.append(f"{sid}: its start line does not show the isolation")
-        bad = sorted({e.get("event") for e in ev if e.get("event") in BAD_EVENTS})
-        if bad:
-            problems.append(f"{sid}: {', '.join(bad)}")
-        if last.get("event") == "stop" and last.get("reason") == "control-late":
-            problems.append(f"{sid}: the control could not be checked in time (control-late)")
-            continue
-        checks = [e for e in ev if e.get("event") == "check"]
-        if len(checks) != 1:
-            problems.append(f"{sid}: {len(checks)} checks, not the control alone")
-            continue
-        c = checks[0]
-        if c.get("age") != "control" or (c.get("usage") or {}).get("calls") != 1:
-            problems.append(f"{sid}: its check is not the control's single model request")
-        if c.get("late") is not False:
-            problems.append(f"{sid}: the control was checked late ({c.get('realAgeSec')} s after its priming)")
-            continue
-        if last.get("event") == "done" and c.get("warm") is True:
-            continue
-        if sid in COLD_EXPECTED and last.get("event") == "stop" and last.get("reason") == "no-observable-cache" \
-                and c.get("warm") is False:
-            notes.append(f"{sid}: the control was cold (stop/no-observable-cache): the expected answer, noted")
-            continue
-        problems.append(f"{sid}: ended {last.get('event')}{'/' + str(last.get('reason')) if last.get('reason') else ''}"
-                        f" with the control {'warm' if c.get('warm') else 'cold'}")
+        p, n = smoke_problems(sid, read_events(os.path.join(folder, sid + ".jsonl")), sid in COLD_EXPECTED)
+        problems += p
+        notes += n
+    return problems, notes
+
+
+def smoke_problems(sid, ev, cold_expected=False):
+    """(problems, notes) of one smoke run's public lines `ev` (smoke_verdict; harness/weekly.py's smoke)."""
+    problems, notes = [], []
+    if not ev:
+        return [f"{sid}: no results"], notes
+    start, last = ev[0], ev[-1]
+    if start.get("event") != "start":
+        problems.append(f"{sid}: its first line is not the run's start")
+    if "client_version" in start:
+        problems.append(f"{sid}: its start line carries a client version (a public result never does)")
+    if start.get("isolation") != ISOLATION:
+        problems.append(f"{sid}: its start line does not show the isolation")
+    bad = sorted({e.get("event") for e in ev if e.get("event") in BAD_EVENTS})
+    if bad:
+        problems.append(f"{sid}: {', '.join(bad)}")
+    if last.get("event") == "stop" and last.get("reason") == "control-late":
+        problems.append(f"{sid}: the control could not be checked in time (control-late)")
+        return problems, notes
+    checks = [e for e in ev if e.get("event") == "check"]
+    if len(checks) != 1:
+        problems.append(f"{sid}: {len(checks)} checks, not the control alone")
+        return problems, notes
+    c = checks[0]
+    if c.get("age") != "control" or (c.get("usage") or {}).get("calls") != 1:
+        problems.append(f"{sid}: its check is not the control's single model request")
+    if c.get("late") is not False:
+        problems.append(f"{sid}: the control was checked late ({c.get('realAgeSec')} s after its priming)")
+        return problems, notes
+    if last.get("event") == "done" and c.get("warm") is True:
+        return problems, notes
+    if cold_expected and last.get("event") == "stop" and last.get("reason") == "no-observable-cache" \
+            and c.get("warm") is False:
+        notes.append(f"{sid}: the control was cold (stop/no-observable-cache): the expected answer, noted")
+        return problems, notes
+    problems.append(f"{sid}: ended {last.get('event')}{'/' + str(last.get('reason')) if last.get('reason') else ''}"
+                    f" with the control {'warm' if c.get('warm') else 'cold'}")
     return problems, notes
 
 
@@ -916,6 +923,10 @@ def main(argv=None):
     ap.add_argument("--report", action="store_true")
     a = ap.parse_args(argv)
     head, dry = a.what[0], a.dry_run
+    if head in ("audit", "manifest"):
+        import weekly  # the Tuesday commands of every night folder (docs/weekly-night.md)
+        weekly.main(["--date", a.date, *(["--dry-run"] if dry else []), head])
+        return
     if head == "status":
         status(a.date)  # reads only
         return

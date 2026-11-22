@@ -263,6 +263,17 @@ def collect_own():
         value = os.environ.get(name)
         if isinstance(value, str) and len(value) >= 16 and " " not in value:
             secrets.setdefault(value, f"environment variable {name}")
+    # The weekly night's API keys (harness/weekly.py): `NAME=value` lines in $G/keys.env, never printed.
+    home = os.environ.get("GROUNDTRUTH_CLIENT_HOME")
+    try:
+        with open(os.path.join(home, "keys.env")) if home else open(os.devnull) as f:
+            for line in f:
+                name, _, value = line.strip().partition("=")
+                value = value.strip().strip('"')
+                if len(value) >= 16 and " " not in value:
+                    secrets.setdefault(value, f"the night's keys file, {name}")
+    except OSError:
+        pass
     return secrets
 
 
