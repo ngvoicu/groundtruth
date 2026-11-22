@@ -21,15 +21,19 @@ entries are measured again directly, what changes in `observed.json`, which runs
 - **No Meta rule switch**: MC-1's pi run goes through Provimux's payload rules as configured (Muse Code caches no
   conversation, so the pair's question is answered); there is no second MC-1 pi run.
 - **One go for the night**: after the smoke review, `night.py --go night` starts a detached supervisor that launches
-  every part, starts the 5-minute Claude runs when CC1 – CC4 have ended, and compares the everyday state at the end;
-  `status` and `stop all` watch and stop it. The owner's part is the one-time setup (the folders, the snapshot, three
-  logins, three keys, the compare).
+  every part, starts the 5-minute Claude runs when CC1 – CC4 have ended, and writes the morning report of the
+  everyday state at the end; `status` and `stop all` watch and stop it. The owner's part is the one-time setup (the
+  folders, the snapshot, three logins, three keys, a look at the report), and he uses his computer as usual all night.
 - **Claude Code's own retries** are switched off with `CLAUDE_CODE_MAX_RETRIES=0` (a variable of the 2.1.330
   binary); every Claude run records it and that a check may hide a retry if the client does not honour it.
 - **Every new session's first line** names the measurement (`groundtruth cache measurement <salt> (an automated test,
   not a task).`), so that sessions a vendor lists in the account (Devin) can be told apart from the owner's work.
-- **The everyday state** is compared to its depth: path, size and modification time of everything under the
-  clients' and pi's everyday folders, and the Keychain's item names, from a snapshot taken before the logins.
+- **The everyday state is protected by isolation, and reported, never a stop.** Every client process of the night
+  gets a throwaway home folder (`HOME=<client-home>/home/<client>`) beside its state folder, for the logins too; a
+  client that ignores its state folder's variable writes there. On macOS the Keychain is found through `HOME`, so no
+  client of the night reaches the owner's Keychain, and Claude Code keeps its login in its state folder
+  (`.credentials.json`). The everyday folders (to their depth: path, size and modification time) and the Keychain's
+  item names are snapshot before the logins and reported in the morning, for a person to judge (section 2.1).
 - **The TypeScript probe** (0.3.5) sends a check and the control's re-send once.
 
 ## Why
@@ -279,7 +283,7 @@ points are settled, `antigravity` stays on the proxy.
 
 ### 2.1 Running a client apart from everyday use
 
-Three things keep a run out of the owner's settings, history and projects.
+Four things keep a run out of the owner's settings, history and projects.
 
 **A state folder per client, used for nothing else.** One folder outside the repository and outside the client's
 default folder, named by `GROUNDTRUTH_CLIENT_HOME`; each client gets a subfolder. The client is pointed at it by
@@ -288,9 +292,9 @@ is not logged in, or is the client's default folder.
 
 | Client | Pointed at the folder by | Login in that folder | Never |
 |---|---|---|---|
-| Claude Code | `CLAUDE_CONFIG_DIR`: settings, session history and plugins live under it, and a different folder reads a different Keychain entry *(doc, env-vars, authentication)* | `claude auth login` with the variable set, once. The everyday login is another Keychain entry and is not touched | `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` in the environment: with `-p` a key is always used when present, and the run would be on the API, not the login *(doc)* |
+| Claude Code | `CLAUDE_CONFIG_DIR`: settings, session history and plugins live under it *(doc, env-vars, authentication)* | `claude auth login` with the variable set and the throwaway home, once. Its secure storage is "Keychain, with a plaintext fallback" (2.1.330 binary): under the throwaway home `security` finds no Keychain (exit 37, no default keychain; 44 on a read), a non-transient failure, so the login is written to `<state folder>/.credentials.json`. The everyday login, a Keychain entry, is not reachable | `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` in the environment: with `-p` a key is always used when present, and the run would be on the API, not the login *(doc)* |
 | Codex CLI | `CODEX_HOME`: `config.toml`, `auth.json`, `sessions/`, `history.jsonl`, logs *(doc)* | `codex login -c cli_auth_credentials_store="file"` with the variable set, once, so the login is a file in that folder | Copying the everyday `auth.json`: both copies would refresh one token, and the copy that loses is logged out ("refresh token was already used") *(doc, auth; src)* |
-| Devin CLI | `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `DEVIN_SESSIONS_DIR` *(doc)*; `--process-model in-process` | `devin auth login` with them set, once. Where the standard build keeps the token is *(open)* | `devin auth logout` in any environment, until it is known that the two logins are apart |
+| Devin CLI | `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `DEVIN_SESSIONS_DIR` *(doc)*; `--process-model in-process` | `devin auth login` with them set and the throwaway home, once. The token is a file, `credentials.toml` *(binary)*; wherever the build resolves it, it is under `<client-home>` | `devin auth logout` in any environment, until it is known that the two logins are apart |
 | Muse Code | `XDG_CONFIG_HOME` (the credential file is `$XDG_CONFIG_HOME/muse/auth.json`, *launcher script*); `XDG_DATA_HOME` for the sessions *(open)*; `MUSE_NO_AUTO_UPDATE=1` | None: the subscription key in `META_API_KEY`, read from a Keychain item of groundtruth's into the client's environment, as `key.py` does for OpenRouter | The key on a command line or in a file |
 | Antigravity CLI | Not established (1.5, point 2) | The everyday login: there is one keyring entry | — |
 
@@ -303,14 +307,34 @@ repository, kept until the last check (a session is resumed from the folder it w
 `results/` as today: a client reads `CLAUDE.md` or `AGENTS.md` from the folders above its working folder, and a
 checkout of this repository can hold either.
 
-**A clean environment.** The client's process gets a short allow-list (`PATH`, `HOME`, `USER`, `LANG`, `TERM`,
-`TMPDIR`), the variables of the table, and what the run itself sets. So no API key, base URL, proxy setting or
+**A throwaway home folder.** Every process of a client (each run, the login checks, the owner's login, `pi install`)
+gets `HOME=<client-home>/home/<client>`, made and checked like the state folder (under `<client-home>`, no link out,
+no checkout, no everyday folder). What each client finds through `HOME` (2.1.330, 0.171.0, 3000.14.30821, 1.4.25,
+pi 1.6.0; binary strings and `--version`/`--help` under a throwaway home with writes to the real one denied):
+
+| Client | Through `HOME` | Needs the real `HOME` |
+|---|---|---|
+| Claude Code (Bun) | its default folder `~/.claude` when `CLAUDE_CONFIG_DIR` is unset; the Keychain (through `security`, which finds the login keychain from `HOME`) | No: the login goes to `.credentials.json` in its folder |
+| Codex CLI (Rust) | `~/.codex` when `CODEX_HOME` is unset (shown: `codex --help` without it writes `~/.codex/tmp/` under the throwaway home); the keyring only with another credential store than `file` | No |
+| Devin CLI (Rust) | `~/.devin` (plans, hooks, worker cache, cloud setup: named so in its strings) whatever the XDG variables say; the other agents' folders (`.claude`, `.codex`, `.agents`) it reads rules and skills from | No |
+| Muse Code (launcher + binary) | `~/.config/muse/auth.json` only without `XDG_CONFIG_HOME` (launcher); `.muse` folders (strings, not traced to `HOME`); the other agents' personal rules and skills; the Keychain for a stored login (the run's key comes in `META_API_KEY`, the lane that wins) | No |
+| pi (Node) | `~/.pi/agent` when `PI_CODING_AGENT_DIR` is unset (shown: `pi --help` without it writes `~/.pi/agent/auth.json` under the throwaway home); `~/.agents` skills. pi-provimux finds pi's modules from `process.argv[1]` first, `HOME` only as a fallback | No |
+
+So no client keeps the real `HOME`. A side effect: Devin and Muse no longer read the owner's personal rules and skills
+from his home folder into a run's prompt.
+
+**A clean environment.** The client's process gets a short allow-list (`PATH`, `USER`, `LANG`, `TERM`, `TMPDIR`),
+its throwaway `HOME`, the variables of the table, and what the run itself sets. So no API key, base URL, proxy setting or
 cache switch of the owner's shell reaches it. Updates are held for the run (`DISABLE_AUTOUPDATER=1` for Claude
 Code, `MUSE_NO_AUTO_UPDATE=1`), so a run has one client version; nothing else is switched off, because a client
 with its feature flags off may no longer ask for what it asks a user for.
 
-The smoke run checks the first of these from outside: the modification times of the client's default folders are
-read before and after (`stat` only; nothing in them is opened), and must not have changed.
+**A report, not a stop.** The owner uses his computer and his tools during the night (pi's sessions append
+`cache_warm` lines under `~/.pi`, Codex refreshes `~/.codex/auth.json`, his agents run Claude Code and Codex), so
+his everyday folders change whatever the night does. `night.py untouched --save` records them before the logins
+(path, size and modification time to their depth, `stat` only; the Keychain's item names, never a secret), and
+`untouched --report` (by the supervisor at the end, or by hand) lists what changed, folder by folder, for a person
+to judge. A Claude Code Keychain item added or changed would be the sign that the isolation failed.
 
 **What cannot be kept apart.** The quota is the account's: a run and the owner's own work draw on the same
 allowance. A vendor that keeps sessions on its side (Devin) may list them in the account. Claude Code changes
@@ -579,7 +603,7 @@ Steps 1 to 5 send nothing and are tested without a network. Step 6 is the first 
    of a check, `check-invalid` for a turn of more than one request, `stop` events (`no-observable-cache`, `quota`,
    `tier-changed`), ages from the start of the priming, `--filler list`, and a `start` event that records
    `client`, `client_version`, the command with `<prompt>` in the prompt's place, and `isolation`
-   (`{"home": "dedicated", "work": "temporary"}`; never a path). *Tests:* the loop against a fake client and a
+   (`{"home": "dedicated", "HOME": "throwaway", "work": "temporary"}`; never a path). *Tests:* the loop against a fake client and a
    fake clock: a cache that lives 5 minutes gives warm, warm, cold in order; a control that misses ends after
    three requests; a failed check is not sent again; a quota refusal during priming ends the run and the primed
    samples are not checked; a two-request check is not counted; a late check is flagged.
