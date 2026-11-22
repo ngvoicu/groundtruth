@@ -9,6 +9,12 @@ so the loops know no client by name (docs/own-clients.md, sections 1 and 5).
     version()     `<client> --version`
     command()     the argument list of one invocation (a new session, or one resumed)
     parse()       a pure function of what the client printed: a Usage, or Refused / ClientError
+    preflight()   the state folder's own settings checked against the route (Codex: the provider its config selects)
+    allowed_link() the links a client itself makes in its state folder that may leave it (Codex's two helpers)
+    answered_model() the model that answered, where the output leaves it out (Codex: its session file)
+
+Every client process runs under sandbox-exec on macOS (confine): no file write under the owner's home folder except
+in its state folder, its throwaway HOME and its temporary folder.
 
 Usage: total (input tokens of the request, cached or not), cached (read from the cache), write (written to it, where
 the client reports it), calls (model requests the turn made; a check counts only when it is 1), model, and
@@ -18,11 +24,11 @@ Nothing here sends a request by itself: Session runs a command, and only harness
 make Sessions.
 """
 import glob
-import hashlib
 import json
 import os
 import re
 import subprocess
+import sys
 import uuid
 from dataclasses import dataclass
 
@@ -150,12 +156,27 @@ class Client:
         """A command that exits 0 when the state folder is logged in (None: checked otherwise)."""
         return None
 
+    def preflight(self, state):
+        """Raise SystemExit when the state folder would send the runs elsewhere than the route (Codex's config)."""
+
+    def allowed_link(self, rel, target, env=None):
+        """Whether a link the client itself makes in its state folder may leave it (none but Codex's helpers)."""
+        return False
+
+    def allowed_link_for(self, env=None):
+        return lambda rel, target: self.allowed_link(rel, target, env)
+
+    def answered_model(self, state, handle):
+        """The model that answered, where the client's output leaves it out but its state folder has it (Codex)."""
+        return None
+
     def version_command(self):
         return [self.binary, "--version"]
 
-    def version(self, env, run=None):
+    def version(self, env, run=None, writable=None):
         run = run or _run
-        code, out, err = run(self.version_command(), env=env, cwd=None, stdin=None, timeout=60)
+        argv = self.version_command() if writable is None else confine(self.version_command(), env, writable)
+        code, out, err = run(argv, env=env, cwd=None, stdin=None, timeout=60)
         line = (out or err).strip().splitlines()
         if code or not line:
             raise ClientError(f"{self.binary} --version failed: {(err or out)[-300:]}")
@@ -261,12 +282,73 @@ class Codex(Client):
     def home_vars(self, home):
         return {"CODEX_HOME": home}
 
+    # The ChatGPT plan's route is Codex's built-in provider `openai` with the ChatGPT login: forced on every command
+    # line (`-c model_provider="openai"`, Codex's documented `-c key=value` override of config.toml), and a state
+    # folder whose config.toml selects anything else is refused before any run (preflight).
+    PROVIDER = "openai"
+    # config.toml keys that could send a run elsewhere: a provider, a profile (its model_provider would win over the
+    # command line's), provider definitions, other base URLs.
+    ROUTE_KEYS = ("model_provider", "profile", "profiles", "model_providers", "chatgpt_base_url", "openai_base_url")
+    # The helpers Codex links into CODEX_HOME at every start (arg0 dispatch): both point to the codex executable.
+    HELPER_LINK = re.compile(r"^tmp/arg0(?:-macos)?/codex-arg0[A-Za-z0-9]{6}/(?:apply_patch|applypatch)$")
+
     def _config(self):
         # The login is a file in the state folder; never the Keychain, where the everyday login may be.
-        return ["-c", 'cli_auth_credentials_store="file"', "-c", f'model_reasoning_effort="{self.effort}"']
+        return ["-c", 'cli_auth_credentials_store="file"', "-c", f'model_provider="{self.PROVIDER}"',
+                "-c", f'model_reasoning_effort="{self.effort}"']
 
     def login_command(self):
-        return ["codex", "login", "status", "-c", 'cli_auth_credentials_store="file"']
+        return ["codex", "login", "status", "-c", 'cli_auth_credentials_store="file"',
+                "-c", f'model_provider="{self.PROVIDER}"']
+
+    def preflight(self, state):
+        path = os.path.join(state, "config.toml")
+        if not os.path.lexists(path):
+            return
+        import tomllib
+        try:
+            with open(path, "rb") as f:
+                cfg = tomllib.load(f)
+        except (OSError, ValueError) as e:
+            raise SystemExit(f"codex-cli: <client-home>/codex-cli/config.toml cannot be read ({type(e).__name__}): "
+                             "refused (the route must be the ChatGPT plan's)")
+        bad = [k for k in self.ROUTE_KEYS if k in cfg and not (k == "model_provider" and cfg[k] == self.PROVIDER)]
+        if bad:
+            raise SystemExit(f"codex-cli: <client-home>/codex-cli/config.toml sets {', '.join(bad)}: a run could go to "
+                             f"another provider than `{self.PROVIDER}` (the ChatGPT plan): remove them")
+
+    def allowed_link(self, rel, target, env=None):
+        import shutil
+        exe = shutil.which("codex", path=(env or os.environ).get("PATH"))
+        return bool(self.HELPER_LINK.match(rel)) and bool(exe) and target == os.path.realpath(exe)
+
+    def answered_model(self, state, handle):
+        """From the thread's session file in CODEX_HOME/sessions: the model of its last turn (`turn_context`), or the
+        model the server rerouted it to (`model_reroute`, to_model). `codex exec --json` prints neither. Only that one
+        string is read out; the file stays in the state folder."""
+        if not state or not handle or not re.fullmatch(r"[0-9A-Za-z-]{8,64}", str(handle)):
+            return None
+        found = sorted(glob.glob(os.path.join(state, "sessions", "*", "*", "*", f"rollout-*-{handle}.jsonl")))
+        if not found:
+            return None
+        model = None
+        try:
+            with open(found[-1], errors="replace") as f:
+                for line in f:
+                    if '"turn_context"' not in line and '"model_reroute"' not in line:
+                        continue
+                    try:
+                        d = json.loads(line)
+                    except ValueError:
+                        continue
+                    p = d.get("payload") or {}
+                    if d.get("type") == "turn_context" and isinstance(p.get("model"), str):
+                        model = p["model"]
+                    elif d.get("type") == "event_msg" and p.get("type") == "model_reroute" and isinstance(p.get("to_model"), str):
+                        model = p["to_model"]
+        except OSError:
+            return None
+        return model
 
     def command(self, prompt_file, resume=None, session=None, files=None):
         base = ["--json", "--skip-git-repo-check", "-m", self.model, *self._config()]
@@ -393,11 +475,14 @@ class Muse(Client):
                 "--session-id", resume or session, "--prompt-file", prompt_file]
 
     def parse(self, stdout, stderr, code, files, expect=None):
-        u, failure, other = None, [], []
+        u, failure, other, usages, runs = None, [], [], [], 0
         for d in json_lines(stdout):
             kind = str(d.get("payload_type") or d.get("type") or "")
-            if kind == "run.usage":
+            if kind == "run.started":
+                runs += 1
+            elif kind == "run.usage":
                 u = d.get("payload") or {}
+                usages.append(u)
             elif "error" in kind or "fail" in kind:
                 failure.append(json.dumps(d.get("payload") or d))
             elif "usage" in kind:
@@ -409,183 +494,20 @@ class Muse(Client):
             # No run.usage line is no reading, never zero (Muse leaves it out when it cannot count a run). An event
             # that looks like usage is kept (redacted by the Session) so that the fixture can be corrected.
             raise ClientError("no run.usage line" + (f"; usage-like events: {' | '.join(other[:2])}" if other else ""))
-        ms = u.get("models") or []
+        # Every run in the output counts: two runs (two run.started, or two run.usage) are at least two calls, never
+        # the last run's figures alone.
+        ms = [m for x in usages for m in (x.get("models") or [])]
+        calls = sum(x.get("calls") if isinstance(x.get("calls"), int) else 1 for x in usages)
+        calls = max(calls, runs, len(usages))
+        names = {m.get("model") for m in ms}
         return Usage(total=sum(m.get("input_tokens", 0) for m in ms), cached=sum(m.get("cached_tokens", 0) for m in ms),
-                     write=None, calls=u.get("calls"), model=ms[0].get("model") if len(ms) == 1 else None)
+                     write=None, calls=calls, model=ms[0].get("model") if len(names) == 1 and ms else None)
 
 
-PI_THINKING = {"none": "off", "minimal": "minimal", "low": "low", "medium": "medium", "high": "high", "xhigh": "xhigh"}
+CLIENTS = {c.harness: c for c in (Claude, Codex, Devin, Muse)}
 
 
-class Pi(Client):
-    """pi through Provimux (a proxy client, client pi+cliproxyapi): the pi side of a parity pair (Provimux's design
-    client-parity.md, section 6). pi runs from a state folder of its own (PI_CODING_AGENT_DIR = <client-home>/pi-provimux,
-    set up by `night.py pi-setup` with pi-provimux and no key), never ~/.pi. Provimux's key reaches pi only in
-    CLIPROXYAPI_API_KEY, the variable pi-provimux reads first, from the Keychain at the night's go. The model is given as
-    Provimux names it, a Devin id with its effort suffix as given (M-1). Each run records what pi and Provimux were,
-    the payload section of Provimux's configuration included (M-4)."""
-    harness, client_id, binary = "pi", "pi+cliproxyapi", "pi"
-    own = False
-    state_name = "pi-provimux"
-    prompt_mode = "arg"
-    defaults = ("~/.pi",)
-    provider = "cliproxyapi"  # the pi provider pi-provimux registers for the proxy
-    passthrough = ("CLIPROXYAPI_API_KEY",)
-    provimux_config = None    # Provimux's configuration file: only its payload section is read (M-4)
-
-    def home_vars(self, home):
-        return {"PI_CODING_AGENT_DIR": home}
-
-    def run_vars(self):
-        return {"PI_SKIP_VERSION_CHECK": "1", "CLIPROXYAPI_BASE_URL": PROVIMUX_ROOT, "CLIPROXYAPI_FAST": "false"}
-
-    def thinking(self):
-        # A Devin id names its level; pi is asked the same one, so that both sides ask one variant (M-1).
-        tail = self.model.rsplit("-", 1)[-1]
-        return PI_THINKING.get(tail, self.effort) if self.model.startswith("devin/") else self.effort
-
-    def effective_effort(self):
-        return self.thinking()
-
-    def new_session(self):
-        return "hp-" + uuid.uuid4().hex[:12]
-
-    def files(self, io, tag, session):
-        return {"session": (os.path.join(io, "pi-sessions", f"*_{session}.jsonl"), True)}
-
-    def command(self, prompt_file, resume=None, session=None, files=None):
-        sd = os.path.dirname((files or {})["session"][0])
-        return ["pi", "-p", "--session-dir", sd, "--session-id", resume or session,
-                "--model", f"{self.provider}/{self.model}", "--thinking", self.thinking(), prompt_file]
-
-    def parse(self, stdout, stderr, code, files, expect=None):
-        raw = files.get("session")
-        if code or not raw:
-            raise classify(f"exit {code}{'' if raw else ', no session'}: {stderr or stdout}")
-        msgs = [(json.loads(x).get("message") or {}) for x in raw.splitlines() if x.strip()]
-        last_user = max((i for i, m in enumerate(msgs) if m.get("role") == "user"), default=-1)
-        turn = [m for m in msgs[last_user + 1:] if m.get("role") == "assistant"]
-        if not turn or turn[-1].get("stopReason") == "error":
-            raise classify("pi error: " + str((turn[-1] if turn else {}).get("errorMessage")))
-        u = turn[-1].get("usage") or {}
-        return Usage(total=u.get("input", 0) + u.get("cacheRead", 0) + u.get("cacheWrite", 0), cached=u.get("cacheRead", 0),
-                     write=u.get("cacheWrite", 0), calls=len(turn), model=turn[-1].get("model"))
-
-    def describe(self, home, env, run=None):
-        """M-4: the Provimux build, pi's version, pi-provimux's commit, the transport and the payload rules. Read from
-        `provimux --version` (the installed binary), `pi --version`, the checkout named by PI_PROVIMUX_DIR, pi's
-        settings in the state folder, and the payload section of Provimux's configuration (payload_section: nothing
-        else of that file is read into the record, logged or kept)."""
-        run = run or _run
-        info = {}
-
-        def first(argv):
-            code, out, err = run(argv, env=env, cwd=None, stdin=None, timeout=60)
-            lines = (out or err or "").strip().splitlines()
-            if code or not lines:
-                raise SystemExit(f"pi run: {' '.join(argv)} failed: it is needed for the run's record (M-4)")
-            return lines[-1].strip()
-        info["provimux_build"] = first([os.environ.get("GROUNDTRUTH_PROVIMUX_BIN", "provimux"), "--version"])
-        info["pi_version"] = first(["pi", "--version"])
-        checkout = os.environ.get("PI_PROVIMUX_DIR")
-        if not checkout:
-            raise SystemExit("pi run: PI_PROVIMUX_DIR (the pi-provimux checkout pi loads) is not set (M-4)")
-        info["pi_provimux_commit"] = first(["git", "-C", checkout, "rev-parse", "--short=12", "HEAD"])
-        settings = {}
-        try:
-            with open(os.path.join(home, "settings.json")) as f:
-                settings = json.load(f)
-        except (OSError, ValueError):
-            pass
-        info["transport"] = {"requested": settings.get("transport") or "auto (pi-provimux: WebSocket first, SSE fallback)",
-                             "used": "not recorded by pi"}
-        info["payload_rules"] = payload_record(self.provimux_config or PROVIMUX_CONFIG)
-        return info
-
-
-PROVIMUX_CONFIG = "/opt/homebrew/etc/provimux.conf"  # Provimux's configuration as Homebrew installs it
-PROVIMUX_ROOT = "http://127.0.0.1:8317"
-
-
-def _strip_comment(line):
-    """A YAML line without its trailing comment (a # after a space, outside quotes)."""
-    quote = None
-    for i, c in enumerate(line):
-        if quote:
-            if c == quote:
-                quote = None
-        elif c in "\"'":
-            quote = c
-        elif c == "#" and (i == 0 or line[i - 1] in " \t"):
-            return line[:i].rstrip()
-    return line.rstrip()
-
-
-def payload_section(text):
-    """The `payload` section of a Provimux (YAML) configuration, as text: the key at the top level, or under
-    `requests:` (configuration version 8). Comments and blank lines are left out, and nothing outside the section is
-    returned. None when the configuration has no payload section."""
-    lines = text.splitlines()
-    top = None          # the current top-level key
-    child_indent = None  # the indentation of the current top-level key's children
-    for i, line in enumerate(lines):
-        body = line.lstrip(" ")
-        if not body or body.startswith("#") or ":" not in body:
-            continue
-        indent = len(line) - len(body)
-        key = body.split(":", 1)[0].strip().strip("\"'")
-        if indent == 0:
-            top, child_indent = key, None
-            if key != "payload":
-                continue
-        else:
-            if child_indent is None:
-                child_indent = indent
-            if not (top == "requests" and key == "payload" and indent == child_indent):
-                continue
-        rest = _strip_comment(body.split(":", 1)[1]).strip()
-        out = ["payload: " + rest] if rest else ["payload:"]
-        block = []
-        for nxt in lines[i + 1:]:
-            b = nxt.lstrip(" ")
-            if not b or b.startswith("#"):
-                continue
-            if len(nxt) - len(b) <= indent:
-                break
-            kept = _strip_comment(nxt)
-            if kept.strip():
-                block.append(kept)
-        if block:
-            cut = min(len(x) - len(x.lstrip(" ")) for x in block)
-            out += ["  " + x[cut:] for x in block]
-        return "\n".join(out) if rest or block else "payload: null"
-    return None
-
-
-def payload_record(path):
-    """What a pi run records of Provimux's configuration: the payload section only, with its hash. The file's other
-    keys (API keys, upstream credentials, management secrets) are never returned, logged or kept: an error names the
-    file, never its content. A token or e-mail shape inside the section is still masked."""
-    try:
-        with open(path, encoding="utf-8", errors="replace") as f:
-            text = f.read()
-    except OSError as e:
-        raise SystemExit(f"pi run: Provimux's configuration could not be read ({e.__class__.__name__}): its payload "
-                         "rules are part of the run's record (M-4); give it with --provimux-config")
-    section = payload_section(text)
-    del text
-    if section is None:
-        return {"source": "Provimux configuration, payload section", "section": None, "note": "no payload section"}
-    for shape in (TOKEN_SHAPE, EMAIL, HOME_PATH, OPAQUE):
-        section = shape.sub("<redacted>", section)
-    return {"source": "Provimux configuration, payload section", "section": section,
-            "sha256": hashlib.sha256(section.encode()).hexdigest()}
-
-
-CLIENTS = {c.harness: c for c in (Claude, Codex, Devin, Muse, Pi)}
-
-
-# Every client's everyday folders, and pi's: no state folder lies in any of them, whichever client it is for.
+# Every client's everyday folders (pi's ~/.pi too): no state folder lies in any of them, whichever client it is for.
 EVERYDAY = ("~/.claude", "~/.claude.json", "~/.codex", "~/.devin", "~/.muse", "~/.pi", "~/.config", "~/.local/share",
             "~/.local/state", "~/.cache", "~/Library/Application Support", "~/Library/Keychains")
 
@@ -606,22 +528,52 @@ def in_git_checkout(path):
         p = parent
 
 
-def links_out(folder):
-    """Symbolic links under `folder`, at any depth, whose target leaves it (or does not resolve)."""
+def links_out(folder, allowed=None):
+    """Symbolic links under `folder`, at any depth, whose target leaves it (or does not resolve). `allowed(rel, target)`
+    names the links a client itself makes there (Codex's helpers): those, and only those, are left out."""
     real, out = os.path.realpath(folder), []
     for d, dirs, files in os.walk(folder, followlinks=False):
         for name in dirs + files:
             p = os.path.join(d, name)
             if os.path.islink(p) and not inside(os.path.realpath(p), real):
-                out.append(os.path.relpath(p, folder))
+                rel = os.path.relpath(p, folder)
+                if allowed and allowed(rel, os.path.realpath(p)):
+                    continue
+                out.append(rel)
     return sorted(out)
 
 
+# Folders a sync service copies off the machine: no state folder, throwaway home or captured output lies in one.
+CLOUD_SYNC = ("~/Library/Mobile Documents", "~/Library/CloudStorage", "~/Dropbox", "~/Google Drive", "~/OneDrive",
+              "~/iCloud Drive")
+CLOUD_PART = re.compile(r"^(?:Mobile Documents|CloudStorage|Dropbox(?: \(.*\))?|Google Drive|My Drive|OneDrive(?: - .*)?"
+                        r"|iCloud Drive|com~apple~CloudDocs)$", re.I)
+
+
+def in_cloud_sync(path, user_home):
+    """The sync folder that holds `path`, or None: iCloud Drive, ~/Library/CloudStorage (Dropbox, Google Drive, OneDrive,
+    Box), and the older ~/Dropbox, ~/Google Drive, ~/OneDrive*; a path component with one of their names counts too."""
+    real = os.path.realpath(path)
+    for d in CLOUD_SYNC:
+        top = os.path.realpath(user_home + d[1:])
+        if inside(real, top) or inside(os.path.abspath(path), user_home + d[1:]):
+            return d
+    for part in real.split(os.sep) + os.path.abspath(path).split(os.sep):
+        if CLOUD_PART.match(part) or part.startswith("OneDrive"):
+            return part
+    return None
+
+
 def check_folder(what, path, root, user_home):
-    """A folder the run writes to: outside the repository, any Git checkout and every everyday folder."""
+    """A folder the run writes to: outside the repository, any Git checkout, every everyday folder and every folder a
+    sync service copies off the machine."""
     real = os.path.realpath(path)
     if real == user_home or any(inside(real, os.path.realpath(user_home + d[1:])) for d in EVERYDAY):
-        raise SystemExit(f"{what} is an everyday folder of a client or of pi (or inside one)")
+        raise SystemExit(f"{what} is an everyday folder of a client (or inside one)")
+    sync = in_cloud_sync(path, user_home)
+    if sync:
+        raise SystemExit(f"{what} is inside a folder a sync service copies off this computer ({sync}): use a local "
+                         "folder such as ~/groundtruth-clients")
     if inside(real, os.path.realpath(root)):
         raise SystemExit(f"{what} is inside the repository")
     checkout = in_git_checkout(real)
@@ -629,20 +581,50 @@ def check_folder(what, path, root, user_home):
         raise SystemExit(f"{what} is inside a Git checkout")
 
 
-def prepare_home(what, state, base, root, user_home):
-    """The client's throwaway HOME (throwaway_home), made when missing: under <client-home>, never a link out of it,
-    outside the repository, every Git checkout and every everyday folder, holding no link that leaves it."""
+def check_private(what, path, mode=0o700):
+    """A folder (mode 700) or a login file (mode 600) of the night: the owner's, not a link, and nobody else's to read."""
+    st = os.lstat(path)
+    import stat as S
+    if S.S_ISLNK(st.st_mode):
+        raise SystemExit(f"{what} is a link: refused")
+    if st.st_uid != os.getuid():
+        raise SystemExit(f"{what} belongs to another user: refused")
+    if S.S_IMODE(st.st_mode) & 0o077:
+        raise SystemExit(f"{what} has mode {S.S_IMODE(st.st_mode):o}, not {mode:o}: run `chmod {mode:o}` on it "
+                         "(docs/own-clients-RUN.md, step 1)")
+
+
+# A client's login file, wherever in its state folder the client keeps it: mode 600, never a link.
+LOGIN_NAMES = {".credentials.json", "auth.json", "credentials.toml"}
+
+
+def login_files(state):
+    out = []
+    for d, dirs, files in os.walk(state, followlinks=False):
+        out += [os.path.join(d, n) for n in files + dirs if n in LOGIN_NAMES]
+    return sorted(out)
+
+
+def prepare_home(what, state, base, root, user_home, allowed=None):
+    """The client's throwaway HOME (throwaway_home), made when missing (mode 700): under <client-home>, never a link out
+    of it, outside the repository, every Git checkout, every everyday folder and every synced folder, private (700),
+    holding no link that leaves it."""
     home = throwaway_home(state)
     if os.path.islink(home) or os.path.islink(os.path.dirname(home)) or (os.path.lexists(home) and not os.path.isdir(home)):
         raise SystemExit(f"{what}: its HOME <client-home>/home/{os.path.basename(state)} is not under <client-home> "
                          "(a link out of it, or not a folder): refused")
-    os.makedirs(home, mode=0o700, exist_ok=True)
+    for d in (os.path.dirname(home), home):
+        if not os.path.isdir(d):
+            os.mkdir(d, 0o700)
+            os.chmod(d, 0o700)
     real, real_base = os.path.realpath(home), os.path.realpath(base)
     if not inside(real, real_base) or real == real_base:
         raise SystemExit(f"{what}: its HOME <client-home>/home/{os.path.basename(state)} is not under <client-home> "
                          "(a link out of it): refused")
     check_folder(f"{what}: its HOME", home, root, user_home)
-    out = links_out(home)
+    check_private(f"{what}: <client-home>/home", os.path.dirname(home))
+    check_private(f"{what}: its HOME <client-home>/home/{os.path.basename(state)}", home)
+    out = links_out(home, allowed)
     if out:
         raise SystemExit(f"{what}: its HOME holds links that leave it: {', '.join(out[:5])}")
     return home
@@ -679,26 +661,37 @@ def login_ok(client, code, out, err):
 
 def state_folder(client, base, root, user_home=None, env=None, run=None, check_login=True):
     """The client's state folder, `<base>/<client id>` made absolute, or SystemExit. It must exist, lie outside the
-    repository, every Git checkout and every everyday folder (any client's, and pi's), hold no symbolic link that
-    leaves it, and be logged in with the login the route needs (its status output read, not only its exit code)."""
+    repository, every Git checkout, every everyday folder and every synced folder, be private (700, as <client-home>
+    is), hold no symbolic link that leaves it but the ones the client itself makes (Client.allowed_link), keep its
+    login file at mode 600, pass the client's own preflight (Codex: the provider its config selects), and be logged in
+    with the login the route needs (its status output read, not only its exit code)."""
     if not base:
         raise SystemExit(f"{client.client_id}: --client-home (or GROUNDTRUTH_CLIENT_HOME) is required for an own client")
     user_home = os.path.realpath(user_home or os.path.expanduser("~"))
-    name = getattr(client, "state_name", None) or client.client_id
-    home = os.path.realpath(os.path.abspath(os.path.join(base, name)))
+    name = client.client_id
+    lexical = os.path.abspath(os.path.join(base, name))
+    home = os.path.realpath(lexical)
     if not os.path.isdir(home):
         raise SystemExit(f"{client.client_id}: its state folder <client-home>/{name} does not exist: "
                          "create it and log the client in there first (docs/own-clients-RUN.md)")
+    check_folder(f"{client.client_id}: <client-home>", base, root, user_home)
+    check_private(f"{client.client_id}: <client-home>", os.path.abspath(base))
     check_folder(f"{client.client_id}: the state folder", home, root, user_home)
-    out = links_out(home)
+    check_private(f"{client.client_id}: the state folder <client-home>/{name}", lexical)
+    allowed = client.allowed_link_for(env)
+    out = links_out(home, allowed)
     if out:
         raise SystemExit(f"{client.client_id}: the state folder holds links that leave it: {', '.join(out[:5])}")
+    for f in login_files(home):
+        check_private(f"{client.client_id}: the login file <client-home>/{name}/{os.path.relpath(f, home)}", f, 0o600)
+    client.preflight(home)
     prepare_home(f"{client.client_id}", home, base, root, user_home)
     if check_login:
         cmd = client.login_command()
         e = env if env is not None else client.environment(home)
         if cmd:
-            code, o, er = (run or _run)(cmd, env=e, cwd=None, stdin=None, timeout=120)
+            code, o, er = (run or _run)(confine(cmd, e, [home, e.get("HOME"), e.get("TMPDIR")]), env=e, cwd=None,
+                                        stdin=None, timeout=120)
             why = login_ok(client, code, o, er)
             if why:
                 raise SystemExit(f"{client.client_id}: refused: {why} ({' '.join(cmd[:4])})")
@@ -706,6 +699,36 @@ def state_folder(client, base, root, user_home=None, env=None, run=None, check_l
             if not (env if env is not None else os.environ).get(k):
                 raise SystemExit(f"{client.client_id}: {k} is not set (read it from the Keychain into the environment)")
     return home
+
+
+# --- the OS-level layer: each client process under sandbox-exec, no write under the home folder but its own folders --
+
+SANDBOX_EXEC = "/usr/bin/sandbox-exec"
+
+
+def sandbox_profile(writable, user_home=None):
+    """A Seatbelt profile: everything as usual, but no file write under the owner's real home folder except under
+    `writable` (the client's state folder, its throwaway HOME, its temporary folder)."""
+    user_home = os.path.realpath(user_home or os.path.expanduser("~"))
+    paths = sorted({os.path.realpath(w) for w in writable if w})
+    for p in [user_home, *paths]:
+        if '"' in p or "\\" in p:
+            raise SystemExit(f"sandbox: a folder name with a quote or a backslash cannot be confined: {p!r}")
+    allow = " ".join(f'(subpath "{p}")' for p in paths)
+    return (f'(version 1)(allow default)(deny file-write* (subpath "{user_home}"))'
+            + (f"(allow file-write* {allow})" if allow else ""))
+
+
+CONFINED = sys.platform == "darwin"  # Linux and others: the environment's isolation only (recorded by the probe)
+
+
+def confine(argv, env, writable, user_home=None):
+    """`argv` under sandbox-exec on macOS (see sandbox_profile); as it is elsewhere."""
+    if not CONFINED:
+        return list(argv)
+    if not os.path.exists(SANDBOX_EXEC):
+        raise SystemExit(f"{SANDBOX_EXEC} is missing: a client is never run without its write boundary on macOS")
+    return [SANDBOX_EXEC, "-p", sandbox_profile(writable, user_home), *argv]
 
 
 # What never reaches a public file from a client's output: a value of a secret variable of the client's environment,
@@ -734,6 +757,22 @@ class Redactor:
         text = HOME_PATH.sub("<home>", text)
         return OPAQUE.sub("<opaque>", text)
 
+    def scrub(self, text):
+        """Only the secret values (as they are, and as JSON writes them): for a public record, whose other fields
+        (session ids, model names) must stay readable."""
+        text = text or ""
+        for v in self.secrets:
+            text = text.replace(v, "<secret>").replace(json.dumps(v)[1:-1], "<secret>")
+        return text
+
+
+def write_private(path, text):
+    """A new file, mode 600, never through a link (O_NOFOLLOW) and never over an existing one (O_EXCL)."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(text)
+    os.chmod(path, 0o600)
+
 
 def _run(argv, env, cwd, stdin, timeout):
     p = subprocess.run(argv, cwd=cwd, env=env, stdin=stdin if stdin is not None else subprocess.DEVNULL,
@@ -745,15 +784,18 @@ class Session:
     """start() and resume() for the loops, from a client's command() and parse(). `io` holds the prompt and export
     files (deleted after each invocation); `work` is the client's working folder and stays empty."""
 
-    def __init__(self, client, env, io, work, run=None, timeout=900, create=True, home=None, keep=None):
+    def __init__(self, client, env, io, work, run=None, timeout=900, create=True, home=None, keep=None, writable=None):
         self.client, self.env, self.io, self.work = client, env, io, work
         self.run, self.timeout = run or _run, timeout
+        # `writable`: the folders the client may write under the owner's home folder (its state folder, its throwaway
+        # HOME, its temporary folder); every invocation then runs under sandbox-exec (confine). None: not confined.
+        self.writable, self.home = writable, home
         # Every text of the client's that leaves this object (an error, a refusal, a kept output) is redacted.
         self.redact = Redactor(env, [home, io, work, os.path.dirname(io), (env or {}).get("HOME"),
                                      os.path.expanduser("~")])
-        self.keep, self.count = keep, 0  # a private folder for the redacted raw output (smoke runs), or None
-        if keep:
-            os.makedirs(keep, exist_ok=True)
+        # A private folder for the redacted raw output (smoke runs), or None: checked and made (mode 700) by the
+        # caller (harness/probe.py, private_capture_folder); every file in it is written mode 600.
+        self.keep, self.count = keep, 0
         if create:
             os.makedirs(io, exist_ok=True)
             os.makedirs(work, exist_ok=True)
@@ -779,6 +821,8 @@ class Session:
         argv = self.client.command(pf, resume=resume, session=session, files=files)
         if self.client.prompt_mode == "arg":
             argv = [prompt if a == pf else a for a in argv]
+        if self.writable is not None:
+            argv = confine(argv, self.env, self.writable)
         try:
             with open(pf) as stdin:
                 code, out, err = self.run(argv, env=self.env, cwd=self.work,
@@ -799,8 +843,8 @@ class Session:
         if self.keep:
             # The minimum to correct a fixture from: what the client printed and wrote, redacted, kept privately.
             for name, text in (("stdout", out), ("stderr", err), *contents.items()):
-                with open(os.path.join(self.keep, f"{self.count:03d}-{'check' if resume else 'start'}-{name}.txt"), "w") as f:
-                    f.write(self.redact(text))
+                write_private(os.path.join(self.keep, f"{self.count:03d}-{'check' if resume else 'start'}-{name}.txt"),
+                              self.redact(text))
         expect = {"prompt": prompt, "session": resume}
         try:
             u = self.client.parse(out, err, code, contents, expect=expect)
@@ -818,6 +862,11 @@ class Session:
             raise r from None
         if u.handle is None:
             u.handle = resume or session
+        if u.model is None:
+            u.model = self.client.answered_model(self.home, u.handle)
+        if u.model is not None:
+            # A client's text that reaches the public record: no secret value, token, address or path in it.
+            u.model = self.redact(str(u.model))
         return u
 
     def start(self, prompt):

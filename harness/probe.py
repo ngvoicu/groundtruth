@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cache-lifetime probe through real coding harnesses (Claude Code, Codex CLI, Devin CLI, Muse Code, pi).
+"""Cache-lifetime probe through real coding harnesses (Claude Code, Codex CLI, Devin CLI, Muse Code).
 
 The clients themselves (how each is driven and how its output is read) are in harness/clients.py.
 
@@ -15,13 +15,14 @@ Four rules for every client (docs/own-clients.md, section 1):
 2. A check is never sent twice. A check that fails is logged as `check-failed` and its sample is lost. A priming may
    be tried again (3 tries, 30 seconds apart).
 3. The control comes first: it is primed, checked at 30 seconds, and only then are the others primed. A control that
-   misses ends the run (`stop`, `no-observable-cache`) after three requests.
+   misses ends the run (`stop`, `no-observable-cache`) after three requests; a control checked late (more than
+   30 x 1.1 + 90 s after its priming) ends it too (`stop`, `control-late`): a late control shows nothing.
 4. A quota refusal ends the run (`stop`, `quota`), never retried; the samples already primed are not checked.
 Also: ages count from the start of the priming request; a check more than age x 1.1 + 90 s after it is `late`; a run
 whose replies change the lifetime they write (Claude Code in overage) ends (`stop`, `tier-changed`).
 
 Usage:
-  harness/probe.py --harness claude|codex|devin|muse|pi --model ID [--schedule std|long | --ages 30m,1h] --replicas 3 \
+  harness/probe.py --harness claude|codex|devin|muse --model ID [--schedule std|long | --ages 30m,1h] --replicas 3 \
       --label H1 --out DIR [--filler random|list] [--dry-run]
 """
 import argparse, heapq, json, os, random, shutil, sys, tempfile, time
@@ -118,6 +119,11 @@ def written_ttl(usage):
 WAVES, WAVE_GAP = 3, 300.0
 
 
+def late_after(age):
+    """A check made more than this many seconds after its priming started is `late`."""
+    return age * 1.1 + 90
+
+
 def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler="random", cumulative=None,
               waves=WAVES, wave_gap=WAVE_GAP):
     """The loop. `h` has start(prompt) -> (handle, usage dict) and resume(handle, prompt) -> usage dict and raises
@@ -179,7 +185,7 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
         watch(r)
         unique = max(primed["total"] - baseline, 1)
         warm = r["cached"] >= baseline + unique / 2
-        log({"event": "check", **base, "late": real > age * 1.1 + 90, "warm": warm, "usage": r, "prime": primed,
+        log({"event": "check", **base, "late": real > late_after(age), "warm": warm, "usage": r, "prime": primed,
              "unique": unique})
         return warm
 
@@ -197,6 +203,9 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
         handle, primed, t0 = c
         log({"event": "prime", "age": "control", "rep": 0, "handle": handle, "usage": primed})
         clock.sleep(t0 + CONTROL_AGE - clock.now())
+        if clock.now() - t0 > late_after(CONTROL_AGE):
+            # Checked late (a slow priming): the check would show nothing; it is not sent.
+            raise Stop("control-late", f"the control could be checked only {round(clock.now() - t0)} s after its priming")
         warm = check("control", CONTROL_AGE, handle, primed, t0, baseline)
         if warm is None:
             raise Stop("control-failed")
@@ -204,13 +213,14 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
             raise Stop("no-observable-cache")
 
         # The samples of one age are primed in waves (replica r in wave r mod `waves`), a wave starting at least
-        # `wave_gap` seconds after the one before, so the checks of an age fall at different moments (M-3 of the
-        # parity design). Within a wave, long ages first, so the short checks do not wait behind a long queue of
-        # primings; a check that falls due is made before the next priming.
+        # `wave_gap` seconds after the one before, and two replicas of one age primed at least `wave_gap` seconds
+        # apart, whatever a slow priming did to the wave (M-3 of the parity design). Within a wave, long ages first,
+        # so the short checks do not wait behind a long queue of primings; a check that falls due is made before the
+        # next priming.
         waves = max(1, min(waves, replicas or 1))
         samples = sorted([(x, ag, r, r % waves) for r in range(replicas) for x, ag in zip(labels, ages)],
                          key=lambda s: (s[3], -s[1]))
-        queue, due, n, wave_start = list(samples), [], 0, {}
+        queue, due, n, wave_start, age_primed = list(samples), [], 0, {}, {}
         while queue or due:
             now = clock.now()
             if due and due[0][0] <= now:
@@ -220,6 +230,8 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
             if queue:
                 name, age, rep, wave = queue[0]
                 ready = wave_start[wave - 1] + wave_gap if wave and wave - 1 in wave_start else None
+                if name in age_primed:
+                    ready = max(ready or 0, age_primed[name] + wave_gap)
                 if ready is not None and now < ready:
                     clock.sleep(min(ready, due[0][0]) - now if due else ready - now)
                     continue
@@ -229,6 +241,7 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
                 if p:
                     handle, primed, t0 = p
                     wave_start.setdefault(wave, t0)
+                    age_primed[name] = t0
                     log({"event": "prime", "age": name, "rep": rep, "wave": wave, "handle": handle, "usage": primed})
                     heapq.heappush(due, (t0 + age, n, name, age, handle, primed, t0))
                 else:
@@ -282,11 +295,12 @@ def parser():
     ap.add_argument("--devin-daemon", action="store_true",
                     help="Devin only (pair DV-5): leave the process model and the cache keepalive as the client has them")
     ap.add_argument("--keep-raw", metavar="DIR",
-                    help="keep every invocation's output, redacted, in DIR (outside the repository): for the smoke runs, "
-                         "to correct the fixtures")
-    ap.add_argument("--provimux-config", default=C.PROVIMUX_CONFIG,
-                    help="pi runs: Provimux's configuration, of which only the payload section is read into the run's "
-                         f"record (default {C.PROVIMUX_CONFIG})")
+                    help="keep every invocation's output, redacted, in DIR, under --client-home (never a link, never in "
+                         "the repository, a checkout, an everyday or a synced folder; mode 700, files 600): for the "
+                         "smoke runs, to correct the fixtures")
+    ap.add_argument("--delay", type=float, default=0.0,
+                    help="seconds to wait before the run's checks and first request (harness/night.py staggers starts)")
+    ap.add_argument("--launch-id", help="harness/night.py's mark of the launch this run belongs to (process identity)")
     ap.add_argument("--dry-run", action="store_true", help="print the run's start event and plan; run nothing, send nothing")
     return ap
 
@@ -294,6 +308,8 @@ def parser():
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # home: the state folder; HOME: a throwaway home beside it (clients.throwaway_home); work: the working folder.
 ISOLATION = {"home": "dedicated", "HOME": "throwaway", "work": "temporary"}
+CONFINEMENT = ("sandbox-exec: no file write under the home folder but the state folder, the throwaway HOME and the "
+               "temporary folder")
 
 
 def settings_of(pairs):
@@ -306,6 +322,37 @@ def settings_of(pairs):
     return out
 
 
+def private_capture_folder(keep, client_home, root, user_home=None):
+    """The folder of a run's redacted raw output (finding 13): under <client-home>, reached through no link at any
+    level below it, outside the repository, every checkout, every everyday and every synced folder; made mode 700,
+    and refused when it exists with any access for others."""
+    user_home = os.path.realpath(user_home or os.path.expanduser("~"))
+    if not client_home:
+        raise SystemExit("--keep-raw: --client-home (GROUNDTRUTH_CLIENT_HOME) is required: the raw output stays there")
+    base, keep = os.path.abspath(client_home), os.path.abspath(keep)
+    if not C.inside(keep, base) or keep == base:
+        raise SystemExit("--keep-raw: a folder under <client-home> (the raw output is never published)")
+    p = base
+    for part in os.path.relpath(keep, base).split(os.sep):
+        p = os.path.join(p, part)
+        if os.path.islink(p):
+            raise SystemExit(f"--keep-raw: <client-home>/{os.path.relpath(p, base)} is a link: refused")
+        if os.path.lexists(p) and not os.path.isdir(p):
+            raise SystemExit(f"--keep-raw: <client-home>/{os.path.relpath(p, base)} is not a folder: refused")
+    if not C.inside(os.path.realpath(keep), os.path.realpath(base)):
+        raise SystemExit("--keep-raw: the folder resolves outside <client-home>: refused")
+    C.check_folder("--keep-raw", base, root, user_home)
+    C.check_folder("--keep-raw", keep, root, user_home)
+    p = base
+    for part in os.path.relpath(keep, base).split(os.sep):
+        p = os.path.join(p, part)
+        if not os.path.isdir(p):
+            os.mkdir(p, 0o700)
+            os.chmod(p, 0o700)
+    C.check_private("--keep-raw: the raw folder", keep)
+    return keep
+
+
 def main(argv=None):
     a = parser().parse_args(argv)
     ages, labels = ages_of(a.schedule, a.ages)
@@ -315,8 +362,6 @@ def main(argv=None):
         if a.harness != "devin":
             raise SystemExit("--devin-daemon is for the Devin CLI only")
         client.daemon = True
-    if a.harness == "pi":
-        client.provimux_config = a.provimux_config
     salt = os.urandom(4).hex()
     start = {"event": "start", "harness": a.harness, "client": client.client_id, "model": a.model,
              "ages": ",".join(labels), "replicas": a.replicas, "words": a.words, "filler": a.filler, "effort": client.effective_effort(),
@@ -330,29 +375,30 @@ def main(argv=None):
         start["retries"] = client.retries_note
     if client.isolated:
         start["isolation"] = dict(ISOLATION)
+        start["confinement"] = CONFINEMENT if C.CONFINED else "none (not macOS): the environment's isolation only"
     start["waves"] = {"waves": max(1, min(a.waves, a.replicas or 1)), "gap_s": a.wave_gap}
     if client.run_info():
         start[a.harness] = client.run_info()
     if a.dry_run:
         plan = C.Session(client, env=None, io="<io>", work="<work>", create=False)
         start.update(command={"prime": plan.plan(), "check": plan.plan(resume="<session>")})
-        env = client.environment("<client-home>/" + (getattr(client, "state_name", None) or client.client_id), base={k: "<" + k + ">" for k in C.ALLOW})
+        env = client.environment("<client-home>/" + client.client_id, base={k: "<" + k + ">" for k in C.ALLOW})
         requests = 3 + 2 * a.replicas * len(ages)
         print(json.dumps(start))
         print(f"{a.label}: {a.harness} {a.model}: baseline, control (checked at 30 s), then {a.replicas} x "
               f"{len(ages)} samples ({', '.join(labels)}): at most {requests} requests.")
-        if a.harness == "pi":
-            print(f"{a.label}: at the start, the run records the payload section of {a.provimux_config} (nothing else of "
-                  "that file), Provimux's build, pi's version and pi-provimux's commit.")
+        if a.delay:
+            print(f"{a.label}: starts {a.delay:g} s after its launch.")
         if client.isolated:
             print(f"{a.label}: environment {json.dumps(env)}; working folder: a new empty folder under the system's "
                   "temporary folder. Dry run: nothing run, nothing sent.")
         else:
             print(f"{a.label}: the caller's environment (a proxy client). Dry run: nothing run, nothing sent.")
         return
-    keep = os.path.abspath(a.keep_raw) if a.keep_raw else None
-    if keep and (keep + os.sep).startswith(os.path.realpath(ROOT) + os.sep):
-        raise SystemExit("--keep-raw: a folder outside the repository (the raw output is never published)")
+    if a.delay > 0:
+        # A staggered start (harness/night.py): waits first, so that the checks below are made just before the run.
+        time.sleep(a.delay)
+    keep = private_capture_folder(a.keep_raw, a.client_home, ROOT) if a.keep_raw else None
     home = None
     if client.isolated:
         home = C.state_folder(client, a.client_home, ROOT)
@@ -369,23 +415,25 @@ def main(argv=None):
         # The working folder must be outside every checkout (a client reads CLAUDE.md / AGENTS.md above it), whatever
         # TMPDIR says.
         C.check_folder("the working folder (TMPDIR)", tmp, ROOT, os.path.realpath(os.path.expanduser("~")))
+        writable = None
         if env is not None:
             os.makedirs(os.path.join(tmp, "tmp"))
             env["TMPDIR"] = os.path.join(tmp, "tmp")
+            writable = [home, env.get("HOME"), tmp]  # what the client may write under the home folder (confine)
         session = C.Session(client, env=env, io=os.path.join(tmp, "io"), work=os.path.join(tmp, "work"),
-                            home=home, keep=keep)
-        if a.harness == "pi":
-            start["pi"] = client.describe(home, env)
-        start.update(client_version=client.version(env),
+                            home=home, keep=keep, writable=writable)
+        start.update(client_version=client.version(env, writable=writable),
                      command={"prime": session.plan(), "check": session.plan(resume="<session>")})
         os.makedirs(a.out, exist_ok=True)
         path = os.path.join(a.out, f"{a.label}.jsonl")
 
         def log(ev):
             ev["at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            # The last guard of the public record: no value of the child's secret variables, in any field.
+            line = session.redact.scrub(json.dumps(ev))
             with open(path, "a") as f:
-                f.write(json.dumps(ev) + "\n")
-            print(json.dumps(ev), flush=True)
+                f.write(line + "\n")
+            print(line, flush=True)
 
         log(start)
         run_probe(Harness(session), ages=ages, labels=labels, replicas=a.replicas, words=a.words, salt=salt, log=log,

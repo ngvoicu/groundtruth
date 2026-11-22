@@ -55,11 +55,20 @@ STATE_FOLDERS = {"claude-code", "codex-cli", "devin-cli", "muse-code", "antigrav
 STATE_PATH = re.compile(r"(?:/[^\s\"'/]+)+/(?:" + "|".join(sorted(STATE_FOLDERS)) + r")(?=[/\s\"']|$)")
 SESSION_DB = re.compile(r"\.(?:db|sqlite|sqlite3|db-wal|db-shm|sqlite-wal|sqlite-shm)$", re.I)
 # A client's own files: its login and its session records.
-CLIENT_FILES = {".claude.json": "Claude Code's settings file", ".credentials.json": "a client's login file",
-                "auth.json": "a client's login file (Codex CLI, Muse Code)", "history.jsonl": "a client's history"}
+# The names are refused wherever the file lies (a copy outside a state folder too), in the staged tree and in the
+# working tree alike.
+CLIENT_FILES = {".claude.json": "Claude Code's settings file",
+                ".credentials.json": "a client's login file (Claude Code)",
+                "auth.json": "a client's login file (Codex CLI, Muse Code)",
+                "credentials.toml": "a client's login file (Devin CLI)",
+                "history.jsonl": "a client's history", "session_index.jsonl": "a client's session index (Codex CLI)",
+                "fingerprints.json": "the fingerprints of child-only values"}
 CLIENT_FILE_SHAPES = [
     (re.compile(r"^rollout-.*\.jsonl$"), "a Codex CLI session file"),
     (re.compile(r"^export-[0-9a-f]+\.json$"), "a Devin CLI export"),
+    (re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jsonl$"),
+     "a session file (Claude Code, Muse Code: named by its session id)"),
+    (re.compile(r"^\d{3}-(?:start|check)-[a-z]+\.txt$"), "a smoke run's raw output (kept under <client-home> only)"),
 ]
 CLIENT_CONTENT = [
     (re.compile(r'"schema_version"\s*:\s*"ATIF'), "a session export (ATIF: the whole conversation)"),

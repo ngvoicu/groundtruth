@@ -1,16 +1,14 @@
-"""harness/night.py: the run plan, its dry run, and the launcher against fakes (nothing is run or sent; the review's
-reproductions of findings 1, 4, 9, 10 and 12).
+"""harness/night.py: the run plan of the first night (the own clients' cache runs only), its dry run, the everyday
+state's snapshot and report. Nothing is run or sent. The launcher, status, stop and the smoke review are tested in
+test_second_review.py with the review's findings.
 
     python3 -m unittest discover -s test -p "test_*.py"
 """
-import io
 import json
 import os
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
-from types import SimpleNamespace
 from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -24,62 +22,57 @@ def ids(prefix, n, start=1):
 
 
 class Plan(unittest.TestCase):
-    def test_every_run_of_the_narrowed_night_is_in_the_plan(self):
-        want = (ids("OR", 5) + ids("OW", 9) + ["S1", "S2", "S3", "S3b", "S4", "SP"] + ids("CC", 8) + ids("CX", 6)
-                + ids("DV", 17) + ["DV9d"] + ids("MC", 3) + ["CXS-a"])
-        for i in want:
-            self.assertIn(i, night.ALL_STEPS)
+    def test_every_run_of_the_first_night_is_in_the_plan_and_nothing_else(self):
+        want = (["S1", "S2", "S3", "S3b", "S4"] + ids("CC", 8) + ids("CX", 6) + ids("DV", 17) + ["DV9d"] + ids("MC", 3))
+        self.assertEqual(sorted(night.ALL_STEPS), sorted(want))
 
-    def test_no_input_limit_walk_and_no_antigravity(self):
+    def test_no_pi_no_provimux_no_openrouter_no_window_no_supervisor(self):
+        # The chief's decision of 2026-11-22: the first night is the own clients' cache runs only.
         for step in night.ALL_STEPS.values():
             argv = " ".join(night.command(step, "2026-11-23"))
-            self.assertNotIn("client_limits", argv)
-            self.assertNotIn("agy", argv)
-        for gone in ("CL1", "DL1", "ML1", "S1-refusal", "S5", "AG1"):
+            for gone in ("client_limits", "agy", "--harness pi", "provimux", "src/cli.ts", "openrouter", "8317"):
+                self.assertNotIn(gone, argv)
+        for gone in ("CL1", "DL1", "ML1", "S5", "AG1", "SP", "OR1", "OW1", "CXS-a", "P-CC3", "P-DV5"):
             self.assertNotIn(gone, night.ALL_STEPS)
+        for gone in ("openrouter", "windows", "codex-plain", "devin-terra-pi", "claude-5m"):
+            self.assertNotIn(gone, night.PARTS)
+        for gone in ("supervise", "launch_night", "pi_setup", "window", "budget", "estimate", "openrouter_post",
+                     "PROVIMUX_CONFIG", "MONEY_STOP"):
+            self.assertFalse(hasattr(night, gone), gone)
+        import clients
+        for gone in ("Pi", "payload_section", "payload_record", "PROVIMUX_CONFIG"):
+            self.assertFalse(hasattr(clients, gone), gone)
+        self.assertNotIn("pi", probe.HARNESSES)
+        self.assertEqual(set(night.KEYCHAIN), {"META_API_KEY"})
 
-    def test_the_pairs_of_the_parity_design(self):
-        pairs = {"P-CC3": ("claude-sonnet-5-5", "CC-1"), "P-CC4": ("claude-haiku-5-5", "CC-2"),
-                 "P-CX4": ("gpt-6.1-terra", "CX-1"), "P-CX3": ("gpt-6.1-sol", "CX-2"), "P-CX1": ("gpt-6.2-sol", "CX-3"),
-                 "P-DV1": ("devin/claude-opus-5-5-low", "DV-1"), "P-DV9": ("devin/glm-5-3-low", "DV-2"),
-                 "P-DV11": ("devin/nemotron-3-5-super-none", "DV-3"), "P-DV14": ("devin/grok-4-7-low", "DV-4"),
-                 "P-DV5": ("devin/gpt-6-1-terra-low", "DV-6"), "P-MC1": ("muse-wonder-1.0", "MC-1")}
-        for pid, (model, pair) in pairs.items():
-            step = night.ALL_STEPS[pid]
-            self.assertEqual((step["harness"], step["model"], step["pair"]), ("pi", model, pair))
-        # one pi run per pair, CX-3 once (its second run, under Provimux's own name, is skipped)
-        self.assertEqual(len([s for s in night.ALL_STEPS.values() if s.get("harness") == "pi" and s["kind"] == "probe"]), 11)
-        # no Meta rule switch: no second MC-1 pi run, no part that waits for one
-        self.assertNotIn("P-MC1b", night.ALL_STEPS)
-        self.assertNotIn("muse-rule", night.PARTS)
-        # each pi run records the payload section of Provimux's configuration given to night.py
-        argv = night.command(night.ALL_STEPS["P-MC1"], "d")
-        self.assertEqual(argv[argv.index("--provimux-config") + 1], night.PROVIMUX_CONFIG)
-        self.assertNotIn("--provimux-config", night.command(night.ALL_STEPS["MC1"], "d"))
-        # a pi run takes its own-client run's schedule and filler, and starts right after it
-        for own, pi in (("CC3", "P-CC3"), ("CX4", "P-CX4"), ("DV11", "P-DV11"), ("MC1", "P-MC1")):
-            a, b = night.ALL_STEPS[own]["args"], night.ALL_STEPS[pi]["args"]
-            for flag in ("--ages", "--schedule", "--filler"):
-                self.assertEqual(flag in a and a[a.index(flag) + 1], flag in b and b[b.index(flag) + 1])
-        order = [s["id"] for s in night.select(["devin", "devin-terra-pi"])]
-        self.assertEqual(order[order.index("DV5") + 1], "P-DV5")
-        self.assertIn("--devin-daemon", night.ALL_STEPS["DV9d"]["args"])  # DV-5
+    def test_dv9d_is_devin_with_its_own_process_model(self):
+        self.assertIn("--devin-daemon", night.ALL_STEPS["DV9d"]["args"])  # pair DV-5: both runs are Devin's
         self.assertEqual(night.ALL_STEPS["DV9"]["args"][night.ALL_STEPS["DV9"]["args"].index("--schedule") + 1], "std")
 
-    def test_claude_short_runs_set_the_5_minute_lifetime(self):
-        for i in ids("CC", 8, 5):
-            argv = night.command(night.ALL_STEPS[i], "2026-11-23")
-            self.assertIn("CLAUDE_CODE_PROMPT_CACHE_TTL=5m", argv)
-            self.assertEqual(argv[argv.index("--ages") + 1], "10m,15m")
+    def test_claude_short_runs_set_the_5_minute_lifetime_and_start_when_cc1_to_cc4_are_over(self):
+        steps = night.PARTS["claude"]
+        for i, step in enumerate(steps):
+            delay = night.delay_of(step, i)
+            if step["id"] in ids("CC", 8, 5):
+                argv = night.command(step, "2026-11-23")
+                self.assertIn("CLAUDE_CODE_PROMPT_CACHE_TTL=5m", argv)
+                self.assertEqual(argv[argv.index("--ages") + 1], "10m,15m")
+                self.assertGreaterEqual(delay, night.LATER_S)
+            else:
+                self.assertLess(delay, 120)
+        # CC1 - CC4's last check: 120 min, two wave gaps, the control and the primings
+        self.assertGreater(night.LATER_S, 120 * 60 + 2 * probe.WAVE_GAP + 600)
+
+    def test_the_starts_of_a_client_are_staggered(self):
+        self.assertEqual([night.delay_of(s, i) for i, s in enumerate(night.PARTS["devin"])][:3], [0, 20, 40])
+        self.assertEqual([night.delay_of(s, i) for i, s in enumerate(night.PARTS["codex"])][:3], [0, 15, 30])
 
     def test_s1_uses_the_filler_haiku_accepts(self):
-        # Review note 13: Haiku refused the random filler on the login.
         argv = night.command(night.ALL_STEPS["S1"], "2026-11-23")
         self.assertEqual(argv[argv.index("--filler") + 1], "list")
         self.assertIn("--keep-raw", argv)
 
     def test_dv11_and_dv17_record_the_effort_they_ask(self):
-        # Review finding 12.
         for i, effort in (("DV11", "none"), ("DV17", "medium"), ("DV1", "low")):
             args = night.command(night.ALL_STEPS[i], "2099-01-01")[2:]
             a = probe.parser().parse_args(args)
@@ -88,396 +81,15 @@ class Plan(unittest.TestCase):
     def test_results_folders(self):
         self.assertIn("results/own-clients-2026-11-23", night.command(night.ALL_STEPS["CX1"], "2026-11-23"))
         self.assertIn("results/own-clients-2026-11-23/smoke", night.command(night.ALL_STEPS["S1"], "2026-11-23"))
-        self.assertIn("results/openrouter-direct-2026-11-23", night.command(night.ALL_STEPS["OR1"], "2026-11-23"))
 
     def test_the_dry_run_sends_nothing(self):
         lines = []
-        night.dry_run(night.select(["S1", "CC5", "OW1", "P-DV11"]), "2099-01-01", out=lines.append)
+        night.dry_run(night.select(["S1", "CC5", "MC1"]), "2099-01-01", out=lines.append)
         text = "\n".join(lines)
         self.assertIn("at most 3 requests", text)
         self.assertIn("CLAUDE_CODE_PROMPT_CACHE_TTL", text)
-        self.assertIn("cliproxyapi/devin/nemotron-3-5-super-none", text)
         self.assertIn("nothing sent", text)
         self.assertFalse(os.path.exists(os.path.join(night.ROOT, "results", "own-clients-2099-01-01")))
-        self.assertFalse(os.path.exists(os.path.join(night.ROOT, "results", "openrouter-direct-2099-01-01")))
-
-
-class Window(unittest.TestCase):
-    """Review finding 4: the printed window command honours --dry-run, needs --go, and goes direct."""
-
-    def test_only_go_sends(self):
-        for flags, live in (([], False), (["--dry-run"], False), (["--go"], True)):
-            with mock.patch.object(night, "window") as w, redirect_stdout(io.StringIO()):
-                night.main(["--date", "2099-01-01", *flags, "window", "m"])
-            self.assertEqual(w.call_args.kwargs["live"], live, flags)
-
-    def test_without_go_nothing_is_posted(self):
-        with mock.patch.object(night, "openrouter_post") as post, redirect_stdout(io.StringIO()) as out:
-            night.window("m", "2099-01-01", live=False)
-        post.assert_not_called()
-        self.assertIn("Not sent", out.getvalue())
-
-    def test_a_shell_key_alone_does_not_send_past_the_money_stop(self):
-        get = lambda path, key: {"data": {"usage": 4.5}}  # noqa: E731
-        with mock.patch.dict(os.environ, {"CACHE_PROBE_KEY": "synthetic"}), \
-                mock.patch.object(night, "openrouter_post") as post, self.assertRaisesRegex(SystemExit, "stop"):
-            night.window("m", "2099-01-01", live=True, get=get, out=lambda *_: None)
-        post.assert_not_called()
-
-    def test_openrouter_never_goes_through_a_proxy_of_the_environment(self):
-        with mock.patch.dict(os.environ, {"HTTPS_PROXY": "http://127.0.0.1:8317", "https_proxy": "http://127.0.0.1:8317"}):
-            handlers = [h for h in night.DIRECT.handlers if h.__class__.__name__ == "ProxyHandler"]
-            self.assertTrue(all(not h.proxies for h in handlers))
-            env = night.clean_env({"CACHE_PROBE_KEY": "k"})
-        for k in night.PROXY_VARS:
-            self.assertNotIn(k, env)
-        argv = night.command(night.ALL_STEPS["OR1"], "d")
-        self.assertEqual(argv[argv.index("--base-url") + 1], "https://openrouter.ai/api/v1")
-        self.assertNotIn("8317", " ".join(" ".join(night.command(s, "d")) for s in night.PARTS["openrouter"] + night.PARTS["windows"]))
-
-
-class Launcher(unittest.TestCase):
-    """Review findings 9 and 10, against a fake process table and a fake OpenRouter."""
-
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.root = os.path.join(self.tmp.name, "repo")
-        os.makedirs(self.root)
-        self.home = os.path.join(self.tmp.name, "client-home")
-        os.makedirs(self.home)
-        p = [mock.patch.object(night, "ROOT", self.root), mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": self.home}),
-             mock.patch.object(night, "keychain", return_value="synthetic-key-0123456789"),
-             mock.patch.object(night.scan_secrets, "remember")]
-        for x in p:
-            x.start()
-            self.addCleanup(x.stop)
-        self.addCleanup(self.tmp.cleanup)
-
-    def test_the_money_stop_is_checked_before_every_launch(self):
-        ledger = {"spent": 3.50, "launched": []}
-
-        def get(path, key):
-            if path == "/key":
-                return {"data": {"usage": ledger["spent"]}}
-            return {"data": {"endpoints": [{"pricing": {"prompt": "0.000001", "completion": "0.000002"}}]}}
-
-        def popen(argv, **kw):
-            ledger["launched"].append(argv[argv.index("--label") + 1])
-            ledger["spent"] += 0.03
-            return SimpleNamespace(pid=100 + len(ledger["launched"]))
-        # each run's worst case is 90 x (3000 x 1e-6 + 32 x 2e-6) = 0.28: committed estimates add up
-        with self.assertRaisesRegex(SystemExit, "would pass the 4.00 USD stop"):
-            night.go(night.select(["openrouter"]), "2099-02-01", popen=popen, sleep=lambda s: None, get=get, out=lambda *_: None)
-        self.assertEqual(ledger["launched"], ["OR1"])  # 3.53 + 0.28 committed + 0.28 > 4.00
-
-    def test_an_unknown_spend_starts_nothing(self):
-        with self.assertRaisesRegex(SystemExit, "unknown"):
-            night.go(night.select(["OR1"]), "2099-02-01", popen=mock.Mock(), sleep=lambda s: None,
-                     get=lambda p, k: {"data": {}}, out=lambda *_: None)
-
-    def smoke_run(self, codes):
-        seq = []
-
-        def run(argv, **kw):
-            label = argv[argv.index("--label") + 1]
-            seq.append(label)
-            folder = os.path.join(self.root, night.folders("2099-02-02")["smoke"])
-            os.makedirs(folder, exist_ok=True)
-            with open(os.path.join(folder, label + ".jsonl"), "w") as f:
-                f.write(json.dumps({"event": "start"}) + "\n" + json.dumps({"event": "done" if codes.get(label, 0) == 0 else "stop"}) + "\n")
-            return SimpleNamespace(returncode=codes.get(label, 0))
-        return seq, run
-
-    def test_smoke_waits_for_each_run_and_a_rerun_skips_what_is_done(self):
-        seq, run = self.smoke_run({})
-        popen = mock.Mock()
-        night.go(night.select(["smoke"]), "2099-02-02", popen=popen, run=run, out=lambda *_: None)
-        popen.assert_not_called()  # in the foreground, one after the other
-        self.assertEqual(seq, ["S1", "S2", "S3", "S3b", "S4", "SP"])
-        night.go(night.select(["smoke"]), "2099-02-02", popen=popen, run=run, out=lambda *_: None)
-        self.assertEqual(len(seq), 6, "nothing sent twice")
-
-    def test_a_smoke_failure_stops_the_launcher(self):
-        seq, run = self.smoke_run({"S2": 1})
-        with self.assertRaisesRegex(SystemExit, "S2"):
-            night.go(night.select(["smoke"]), "2099-02-02", run=run, out=lambda *_: None)
-
-    def test_a_rerun_skips_detached_runs_started_once(self):
-        launched = []
-
-        def popen(argv, **kw):
-            launched.append(argv[argv.index("--label") + 1])
-            return SimpleNamespace(pid=200 + len(launched))
-        steps = night.select(["CC1", "CC2"])
-        night.go(steps, "2099-02-03", popen=popen, sleep=lambda s: None, out=lambda *_: None)
-        night.go(steps, "2099-02-03", popen=popen, sleep=lambda s: None, out=lambda *_: None)
-        self.assertEqual(launched, ["CC1", "CC2"])
-
-    def test_the_guards(self):
-        with self.assertRaisesRegex(SystemExit, "all"):
-            night.guard(["all"], night.select(["all"]), "2099-02-04")
-        with self.assertRaisesRegex(SystemExit, "smoke runs go alone"):
-            night.guard(["smoke", "claude"], night.select(["smoke", "claude"]), "2099-02-04")
-        with self.assertRaisesRegex(SystemExit, "smoke results were read"):
-            night.guard(["claude"], night.select(["claude"]), "2099-02-04")
-        night.guard(["openrouter"], night.select(["openrouter"]), "2099-02-04")  # no login: no smoke needed
-        os.makedirs(night.night_dir("2099-02-04"))
-        open(night.reviewed_path("2099-02-04"), "w").close()
-        with self.assertRaisesRegex(SystemExit, "pi-setup"):
-            night.guard(["claude"], night.select(["claude"]), "2099-02-04")  # P-CC3, P-CC4 need pi's folder
-        with mock.patch.object(night, "pi_ready", return_value=True):
-            night.guard(["claude"], night.select(["claude"]), "2099-02-04")
-
-    def test_stop_finds_each_runs_pid_folder_and_checks_the_process(self):
-        for sid, folder in (("S1", "smoke"), ("OR1", "or"), ("CC1", "own")):
-            logs = os.path.join(self.root, night.folders("2099-02-05")[folder], "logs")
-            os.makedirs(logs, exist_ok=True)
-            with open(os.path.join(logs, sid + ".pid"), "w") as f:
-                f.write("4242\n")
-            killed = []
-            night.stop(sid, "2099-02-05", ps=lambda p: f"caffeinate -i python3 x --label {sid} --out y",
-                       killpg=lambda p, s: killed.append(p), out=lambda *_: None)
-            self.assertEqual(killed, [4242])
-            with self.assertRaisesRegex(SystemExit, "not this run"):
-                night.stop(sid, "2099-02-05", ps=lambda p: "some other program", killpg=lambda p, s: killed.append(p))
-
-
-class PiSetup(unittest.TestCase):
-    """`pi-setup`: pi's folder made with pi's own `pi install`, under GROUNDTRUTH_CLIENT_HOME, never from ~/.pi."""
-
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        t = self.tmp.name
-        self.home, self.user, self.src = os.path.join(t, "client-home"), os.path.join(t, "person"), os.path.join(t, "pkg")
-        os.makedirs(os.path.join(self.user, ".pi", "agent"))
-        with open(os.path.join(self.user, ".pi", "agent", "cliproxyapi.json"), "w") as f:
-            f.write('{"apiKey": "everyday-key-never-read"}')
-        os.makedirs(self.home)
-        os.makedirs(self.src)
-        with open(os.path.join(self.src, "package.json"), "w") as f:
-            json.dump({"name": "pi-provimux", "pi": {"extensions": ["./extensions/index.ts"]}}, f)
-        p = mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": self.home, "PI_PROVIMUX_DIR": self.src})
-        p.start()
-        self.addCleanup(p.stop)
-        self.calls = []
-
-    def fake_pi(self, argv, env, cwd, **kw):
-        # What `pi install <path>` does with PI_CODING_AGENT_DIR: the path in that folder's settings.json.
-        self.calls.append((argv, env))
-        with open(os.path.join(env["PI_CODING_AGENT_DIR"], "settings.json"), "w") as f:
-            json.dump({"packages": [argv[2]]}, f)
-        return SimpleNamespace(returncode=0, stdout="", stderr="")
-
-    def test_it_installs_with_pi_into_its_own_folder_and_stores_no_key(self):
-        night.pi_setup(run=self.fake_pi, user_home=self.user, out=lambda *_: None)
-        (argv, env), = self.calls
-        folder = os.path.join(self.home, "pi-provimux")
-        self.assertEqual(argv, ["pi", "install", os.path.realpath(self.src)])
-        self.assertEqual(env["PI_CODING_AGENT_DIR"], folder)
-        self.assertEqual(env["PI_OFFLINE"], "1")
-        self.assertEqual(env["HOME"], os.path.join(self.home, "home", "pi-provimux"))  # pi's throwaway HOME
-        self.assertTrue(os.path.isdir(env["HOME"]))
-        for k in env:
-            self.assertNotIn("KEY", k)
-        with open(os.path.join(folder, "cliproxyapi.json")) as f:
-            cfg = json.load(f)
-        self.assertEqual(cfg, {"baseUrl": "http://127.0.0.1:8317", "fast": False, "pause": False})
-        self.assertTrue(night.pi_ready())
-        night.pi_setup(run=self.fake_pi, user_home=self.user, out=lambda *_: None)
-        self.assertEqual(len(self.calls), 1, "a second setup installs nothing again")
-        for root, _, files in os.walk(self.home):
-            for name in files:
-                with open(os.path.join(root, name)) as f:
-                    self.assertNotIn("everyday-key-never-read", f.read())
-
-    def test_a_folder_that_leaves_the_client_home_is_refused(self):
-        os.symlink(os.path.join(self.user, ".pi", "agent"), os.path.join(self.home, "pi-provimux"))
-        with self.assertRaisesRegex(SystemExit, "not under GROUNDTRUTH_CLIENT_HOME"):
-            night.pi_setup(run=self.fake_pi, user_home=self.user, out=lambda *_: None)
-        self.assertEqual(self.calls, [])
-
-    def test_the_package_is_never_taken_from_pi_s_folder(self):
-        os.environ["PI_PROVIMUX_DIR"] = os.path.join(self.user, ".pi", "agent")
-        with self.assertRaisesRegex(SystemExit, "never ~/.pi"):
-            night.pi_setup(run=self.fake_pi, user_home=self.user, out=lambda *_: None)
-
-    def test_a_key_in_the_folder_is_refused(self):
-        os.makedirs(os.path.join(self.home, "pi-provimux"))
-        with open(os.path.join(self.home, "pi-provimux", "cliproxyapi.json"), "w") as f:
-            f.write('{"apiKey": "x"}')
-        with self.assertRaisesRegex(SystemExit, "holds a key"):
-            night.pi_setup(run=self.fake_pi, user_home=self.user, out=lambda *_: None)
-
-    def test_the_night_refuses_pi_runs_before_the_setup(self):
-        os.makedirs(night.night_dir("2099-04-01"))
-        open(night.reviewed_path("2099-04-01"), "w").close()
-        with self.assertRaisesRegex(SystemExit, "pi-setup"):
-            night.guard(["night"], night.select(["night"]), "2099-04-01")
-
-
-class Supervisor(unittest.TestCase):
-    """`--go night`: one detached supervisor; claude-5m when CC1 - CC4 have ended; status; stop all."""
-
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        self.root = os.path.join(self.tmp.name, "repo")
-        self.home = os.path.join(self.tmp.name, "client-home")
-        os.makedirs(self.root)
-        os.makedirs(self.home)
-        for x in (mock.patch.object(night, "ROOT", self.root),
-                  mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": self.home})):
-            x.start()
-            self.addCleanup(x.stop)
-        self.date = "2099-05-01"
-        os.makedirs(night.night_dir(self.date))
-        open(night.reviewed_path(self.date), "w").close()
-
-    def finish(self, sid, event="done"):
-        step = night.ALL_STEPS[sid]
-        folder = os.path.join(self.root, night.folder_of(step, self.date))
-        os.makedirs(folder, exist_ok=True)
-        with open(os.path.join(folder, sid + ".jsonl"), "a") as f:
-            f.write(json.dumps({"event": "start"}) + "\n" + json.dumps({"event": event, "reason": "quota"}) + "\n")
-
-    def test_the_parts_in_order_then_claude_5m_when_cc1_to_cc4_have_ended(self):
-        launched, polls, finished = [], [], set()
-        logs = os.path.join(self.root, night.folders(self.date)["own"], "logs")
-
-        def go_(steps, date, out):
-            launched.append(night.PART_OF[steps[0]["id"]])
-            os.makedirs(logs, exist_ok=True)
-            for s in steps:
-                if s["id"] in ("CC1", "CC2", "CC3", "CC4"):
-                    with open(os.path.join(logs, s["id"] + ".pid"), "w") as f:
-                        f.write(s["id"][2:] + "\n")
-
-        def ps(pid):
-            sid = "CC" + str(pid)
-            return "" if sid in finished else f"python3 probe.py --label {sid} --out x"
-
-        def sleep(s):
-            polls.append(s)
-            sid = ("CC1", "CC2", "CC3", "CC4")[min(len(polls), 4) - 1]
-            finished.add(sid)
-            self.finish(sid)
-        reports = []
-        with mock.patch.object(night, "untouched", lambda d, mode, out=print: reports.append(mode) or []):
-            self.assertTrue(night.supervise(self.date, go_=go_, sleep=sleep, ps=ps, out=lambda *_: None))
-        self.assertEqual(reports, ["report"], "the morning report, once, at the end")
-        self.assertEqual(launched, ["openrouter", "claude", "codex", "codex-plain", "devin", "muse", "windows", "claude-5m"])
-        self.assertEqual(len(polls), 4, "claude-5m waited until CC1 - CC4 had ended")
-
-    def test_devin_terra_pi_goes_only_if_s3b_saw_cached_tokens(self):
-        self.assertNotIn("devin-terra-pi", night.night_parts(self.date))
-        folder = os.path.join(self.root, night.folders(self.date)["smoke"])
-        os.makedirs(folder)
-        with open(os.path.join(folder, "S3b.jsonl"), "w") as f:
-            f.write(json.dumps({"event": "check", "usage": {"total": 9000, "cached": 0}}) + "\n")
-        self.assertNotIn("devin-terra-pi", night.night_parts(self.date))
-        with open(os.path.join(folder, "S3b.jsonl"), "a") as f:
-            f.write(json.dumps({"event": "check", "usage": {"total": 9000, "cached": 8800}}) + "\n")
-        self.assertIn("devin-terra-pi", night.night_parts(self.date))
-
-    def test_a_part_that_cannot_start_lets_the_next_go_on(self):
-        launched = []
-
-        def go_(steps, date, out):
-            part = night.PART_OF[steps[0]["id"]]
-            launched.append(part)
-            if part == "openrouter":
-                raise SystemExit("OR3: would pass the 4.00 USD stop")
-        lines = []
-        with mock.patch.object(night, "untouched", return_value=["changed: ~/.pi/agent/sessions/x.jsonl"]):
-            self.assertTrue(night.supervise(self.date, go_=go_, sleep=lambda s: None, ps=lambda p: "", out=lines.append))
-        self.assertEqual(launched, ["openrouter", "claude", "codex", "codex-plain", "devin", "muse", "windows",
-                                    "claude-5m"])
-        self.assertTrue(any("4.00 USD" in x for x in lines))
-
-    def test_no_launch_compares_the_everyday_state(self):
-        """The owner uses his computer all night: a change of his folders never stops a launch."""
-        def popen(argv, **kw):
-            return SimpleNamespace(pid=300)
-        with mock.patch.object(night, "untouched", side_effect=AssertionError("compared at a launch")), \
-                mock.patch.object(night, "keychain", return_value="k"), mock.patch.object(night.scan_secrets, "remember"):
-            night.go(night.select(["CC1", "CC2"]), self.date, popen=popen, sleep=lambda s: None, out=lambda *_: None)
-        self.assertTrue(night.done(night.ALL_STEPS["CC1"], self.date))
-        self.assertTrue(night.done(night.ALL_STEPS["CC2"], self.date))
-
-    def test_pi_runs_get_provimux_s_key_in_the_variable_pi_provimux_reads(self):
-        envs = {}
-
-        def popen(argv, env, **kw):
-            envs[argv[argv.index("--label") + 1]] = env
-            return SimpleNamespace(pid=301)
-        with mock.patch.object(night, "keychain", side_effect=lambda item: "value of " + item), \
-                mock.patch.object(night.scan_secrets, "remember"), \
-                mock.patch.dict(os.environ, {"CLIPROXYAPI_API_KEY": "the shell's"}):
-            night.go(night.select(["CC3", "P-CC3"]), self.date, popen=popen, sleep=lambda s: None, out=lambda *_: None)
-        self.assertEqual(envs["P-CC3"]["CLIPROXYAPI_API_KEY"], "value of groundtruth PROVIMUX_KEY")
-        self.assertNotIn("CLIPROXYAPI_API_KEY", envs["CC3"])
-
-    def test_go_night_starts_one_detached_supervisor(self):
-        started = []
-
-        def popen(argv, **kw):
-            started.append((argv, kw))
-            return SimpleNamespace(pid=4321)
-        with mock.patch.object(night, "pi_ready", return_value=True), \
-                self.assertRaisesRegex(SystemExit, "no snapshot"):
-            night.launch_night(self.date, popen=popen, out=lambda *_: None, ps=lambda p: "")
-        os.makedirs(os.path.dirname(night.everyday_path(self.date)), exist_ok=True)
-        with open(night.everyday_path(self.date), "w") as f:
-            json.dump({"files": {}, "keychain": []}, f)
-        with mock.patch.object(night, "pi_ready", return_value=True), \
-                mock.patch.object(night, "untouched", side_effect=AssertionError("compared at the go")):
-            night.launch_night(self.date, popen=popen, out=lambda *_: None, ps=lambda p: "")
-            (argv, kw), = started
-            self.assertEqual(argv[:3], ["nohup", "caffeinate", "-i"])
-            self.assertEqual(argv[-1], "supervise")
-            self.assertTrue(kw["start_new_session"])  # its own session: closing the terminal does not end it
-            self.assertEqual(kw["env"]["GROUNDTRUTH_NIGHT_SUPERVISOR"], "1")
-            running = lambda p: f"python3 harness/night.py --date {self.date} --provimux-config x supervise"  # noqa: E731
-            with self.assertRaisesRegex(SystemExit, "runs already"):
-                night.launch_night(self.date, popen=popen, out=lambda *_: None, ps=running)
-        self.assertEqual(len(started), 1)
-
-    def test_supervise_only_from_go_night(self):
-        with self.assertRaisesRegex(SystemExit, "--go night"):
-            night.main(["--date", self.date, "supervise"])
-
-    def test_status_says_what_runs_what_is_done_what_failed(self):
-        self.finish("CC1")
-        self.finish("CC2", event="stop")
-        logs = os.path.join(self.root, night.folders(self.date)["own"], "logs")
-        os.makedirs(logs, exist_ok=True)
-        for sid, pid in (("CC3", 501), ("CC4", 502)):
-            with open(os.path.join(logs, sid + ".pid"), "w") as f:
-                f.write(f"{pid}\n")
-        ps = lambda p: "caffeinate -i python3 probe.py --label CC3 --out x" if str(p) == "501" else ""  # noqa: E731
-        lines = []
-        counts = night.status(self.date, ps=ps, out=lines.append)
-        text = "\n".join(lines)
-        self.assertIn("supervisor: not running", text)
-        self.assertRegex(text, r"CC1 +done")
-        self.assertRegex(text, r"CC2 +failed  stop: quota")
-        self.assertRegex(text, r"CC3 +running  pid 501")
-        self.assertRegex(text, r"CC4 +failed  ended without")
-        self.assertEqual((counts["done"], counts["failed"], counts["running"]), (1, 2, 1))
-
-    def test_stop_all_stops_the_supervisor_first_then_every_running_run(self):
-        logs = os.path.join(self.root, night.folders(self.date)["own"], "logs")
-        os.makedirs(logs, exist_ok=True)
-        for name, pid in (("supervisor", 600), ("CC3", 601), ("DV1", 602)):
-            with open(os.path.join(logs, name + ".pid"), "w") as f:
-                f.write(f"{pid}\n")
-        table = {"600": f"python3 harness/night.py --date {self.date} --provimux-config x supervise",
-                 "601": "python3 probe.py --label CC3 --out y", "602": "something else now"}
-        killed = []
-        night.stop_all(self.date, ps=lambda p: table.get(str(p), ""), killpg=lambda p, s: killed.append(p),
-                       out=lambda *_: None)
-        self.assertEqual(killed, [600, 601])  # DV1's pid was reused: left alone
 
 
 class Everyday(unittest.TestCase):
@@ -495,7 +107,9 @@ class Everyday(unittest.TestCase):
         self.keychain = ['keychain: "/k"', 'class: "genp"', '    "svce"<blob>="Claude Code-credentials"',
                          '    "acct"<blob>="someone"', '    "mdat"<timedate>=0x3230323630313031  "20260101000000Z\\000"']
         self.base = os.path.join(self.tmp.name, "client-home")
-        for name in ("claude-code", "codex-cli", "devin-cli", "muse-code", "pi-provimux"):
+        mask = os.umask(0o077)  # the night's folders are private (mode 700)
+        self.addCleanup(os.umask, mask)
+        for name in ("claude-code", "codex-cli", "devin-cli", "muse-code"):
             os.makedirs(os.path.join(self.base, name))
         p = mock.patch.dict(os.environ, {"GROUNDTRUTH_CLIENT_HOME": self.base})
         p.start()
@@ -547,13 +161,8 @@ class Everyday(unittest.TestCase):
             f.write("changed\n\n")
         real = night.snapshot_files
         with mock.patch.object(night, "keychain_items", return_value=[]), \
-                mock.patch.object(night, "snapshot_files", lambda user_home=None: real(self.user)):
+                mock.patch.object(night, "snapshot_files", lambda user_home=None, vanished=None: real(self.user, vanished)):
             night.main(["--date", "2099-03-01", "untouched", "--report"])  # no SystemExit: a report, exit 0
-        popen = mock.Mock(return_value=SimpleNamespace(pid=7))
-        with mock.patch.object(night, "ROOT", self.tmp.name), mock.patch.object(night, "untouched") as u:
-            night.go(night.select(["CC1"]), "2099-03-01", popen=popen, sleep=lambda s: None, out=lambda *_: None)
-        self.assertEqual(popen.call_count, 1)
-        u.assert_not_called()
 
     def test_a_report_needs_the_snapshot(self):
         with self.assertRaisesRegex(SystemExit, "no snapshot"):
@@ -566,9 +175,10 @@ class Everyday(unittest.TestCase):
 
     def test_the_snapshot_makes_and_checks_each_client_s_throwaway_home(self):
         self.save()
-        for name in ("claude-code", "codex-cli", "devin-cli", "muse-code", "pi-provimux"):
+        for name in ("claude-code", "codex-cli", "devin-cli", "muse-code"):
             self.assertTrue(os.path.isdir(os.path.join(self.base, "home", name)))
-        os.symlink(os.path.join(self.user, ".pi"), os.path.join(self.base, "home", "pi-provimux", "agent"))
+            self.assertEqual(os.stat(os.path.join(self.base, "home", name)).st_mode & 0o777, 0o700)
+        os.symlink(os.path.join(self.user, ".pi"), os.path.join(self.base, "home", "muse-code", "agent"))
         with self.assertRaisesRegex(SystemExit, "HOME holds links that leave it"):
             self.save("2099-03-02")
 

@@ -22,3 +22,4 @@ results/**/work-*/
 *.sqlite
 *.sqlite3
 **/work-*/
+**/credentials.toml

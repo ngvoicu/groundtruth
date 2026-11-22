@@ -170,10 +170,12 @@ def main(argv=None):
     client = C.CLIENTS[a.harness](a.model, a.effort)
     home = C.state_folder(client, a.client_home, ROOT)
     env = client.environment(home)
-    version = client.version(env)
     tmp = tempfile.mkdtemp(prefix=f"groundtruth-limits-{a.harness}-")
+    writable = [home, env.get("HOME"), tmp]
     try:
-        session = C.Session(client, env=env, io=os.path.join(tmp, "io"), work=os.path.join(tmp, "work"), timeout=1800)
+        version = client.version(env, writable=writable)
+        session = C.Session(client, env=env, io=os.path.join(tmp, "io"), work=os.path.join(tmp, "work"), timeout=1800,
+                            home=home, writable=writable)
         os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
         with open(a.out, "a") as out:
             def record(row):
