@@ -16,8 +16,8 @@ These are the only steps that need the owner. Do them in this order, in one term
 **What the night does to keep apart from your own use of the computer**, and what it does not:
 
 - Every client process it starts gets its own folders under `$G`: its state folder (`$G/claude-code` and so on) and
-  a throwaway home folder (`HOME=$G/home/<client>`). It gets only `PATH`, `USER`, `LANG`, `TERM` and `TMPDIR` from
-  your shell, never a key, a proxy or a base URL.
+  a throwaway home folder (`HOME=$G/home/<client>`), and its own temporary folder (`TMPDIR=$G/tmp/<client>`). It gets
+  only `PATH`, `USER`, `LANG` and `TERM` from your shell, never its `TMPDIR`, a key, a proxy or a base URL.
 - On a Mac, every client process runs under `sandbox-exec` with a profile that refuses any file write under your
   home folder except in that client's state folder, its throwaway home and its temporary folder. That covers files
   only. It does not stop a client from reading your files, and it does not cover what a client asks of macOS's own
@@ -26,18 +26,27 @@ These are the only steps that need the owner. Do them in this order, in one term
   `~/.claude.json`, `~/.codex`, `~/.devin`, Devin's and Muse Code's folders under `~/.config` and `~/.local/share`,
   `~/.muse`, `~/.pi`) and the names and dates of your Keychain's items, never a content or a secret. The morning
   report lists what changed since, for you to read. It sees a file or an item added, changed or removed; it cannot
-  see a read. Changes your own tools make during the night appear in it too. Nothing in it stops the night.
-- The night's folders must be yours alone (mode 700) and on this computer: a `$G` under iCloud Drive
+  see a read, and it cannot tell your own tools' changes from the night's: a line in it is something to look at, not
+  proof of either. If the Keychain cannot be listed (at step 1 or in the morning), the report says the items were not
+  compared; it never says "nothing changed" for them. Nothing in it stops the night.
+- The night's folders must be yours alone (exactly mode 700) and on this computer: a `$G` under iCloud Drive
   (`~/Library/Mobile Documents`), `~/Library/CloudStorage`, Dropbox, Google Drive or OneDrive is refused, and so is a
-  login file another user could read (mode other than 600).
+  login file whose mode is not exactly 600.
 
 So you can use your computer and your tools as usual during the night, Claude Code, Codex, the Devin CLI and Muse
 Code included.
 
 **What it costs the accounts.** The night uses the Claude subscription, the ChatGPT plan used with Codex, the Devin
 subscription and the Muse Code subscription, each through its own client. A login's quota is the account's own:
-start when the plans' meters are low. For Claude this matters twice, because in overage Claude Code writes the
-5-minute cache and the run stops.
+start when the plans' meters are low.
+
+**Claude in paid overage.** When the Claude account has used its plan's included usage and paid overage is on, every
+further Claude request is billed as paid usage, and Claude Code then writes the 5-minute cache. The night refuses that:
+the smoke run S1, and every Claude run, stops at its first cache write if that write is the 5-minute tier, and
+`--go claude` (or `--go all`) starts no Claude run after S1 showed it. The 5-minute runs CC5 – CC8 cannot see overage
+in their own writes, so they do not start when one of CC1 – CC4 stopped for it. Only `--allow-overage` (on `--go smoke`
+and `--go claude`/`--go all`) runs Claude in overage anyway, and then **the runs use paid usage**: up to about 500 Claude
+requests over the night.
 
 **Devin's account history.** About 820 Devin sessions from the night will appear in the owner's Devin account
 history. Each one's first line is `groundtruth cache measurement <salt> (an automated test, not a task).` (the Devin
@@ -58,9 +67,11 @@ It checks the folders (local, mode 700, no link that leaves them), makes each cl
 (`$G/home/claude-code` and so on, mode 700), and records the snapshot described above in
 `$G/night-$N/everyday-before.json` (mode 600).
 
-**2. The three logins** (about 2 minutes each; a browser window opens for each). Each runs the client's own login
-command with exactly the folders, the throwaway home and the sandbox its runs will have, then sets its login file to
-mode 600 and checks the folder again.
+**2. The three logins** (about 2 minutes each; a browser window opens for each), after step 1. Each runs the
+client's own login command with exactly the folders, the throwaway home, the temporary folder and the sandbox its runs
+will have. It says `done` only when the client's login file is in its state folder (non-empty; then set to mode 600)
+and the client's own status command, in the same folders, shows the subscription login; otherwise it says what is
+missing, and the login is not done.
 
 ```bash
 python3 harness/night.py --date $N login claude     # the Claude subscription's account, not the Console
@@ -72,7 +83,8 @@ Claude Code finds no Keychain under its throwaway home, and keeps this login in 
 `$G/claude-code/.credentials.json`. Codex is told to keep its login in a file (`$G/codex-cli/auth.json`) and to use
 its built-in ChatGPT provider (`model_provider="openai"`); every Codex run says the same on its command line, and a
 `$G/codex-cli/config.toml` that selects another provider, a profile or another base URL is refused. Before every run
-the night checks each login's status, with the same folders, and refuses an API key or the Console. Never run
+the night checks each login's status, with the same folders, and refuses an API key or the Console; a Claude run is
+refused too when `$G/claude-code/.credentials.json` is missing or empty. Never run
 `claude setup-token` or `devin auth logout`, and never copy an everyday login file.
 
 **3. Muse Code's key** (1 minute). Type it at `security`'s prompt, so that it never lands in the shell's history.
@@ -124,8 +136,9 @@ its priming is left out, so a sleeping computer loses checks, not truth.
   its pid is alive and that process is that run of this launch. How a run ended is in its results file
   (`results/own-clients-$N/<id>.jsonl`), and its console output in `results/own-clients-$N/logs/<id>.log`.
 - **Stopping**: `python3 harness/night.py --date $N stop <client>` (or `stop all`) signals exactly that client's runs
-  that are alive. `--dry-run stop all` names them and signals nothing. A run also stops by itself on a quota refusal,
-  a missed or late control, or (Claude) a change of cache lifetime.
+  that are alive: those its launch file records, and any process carrying its launch's id (a run left by an
+  interrupted `--go`). `--dry-run stop all` names them and signals nothing. A run also stops by itself on a quota
+  refusal, a missed or late control, or (Claude) paid overage or a change of cache lifetime.
 
 ### The smoke review (step 3)
 
@@ -135,6 +148,8 @@ a first line with the client's version and the isolation; exactly one check, the
 of a single model request; no failed, invalid, refused or retried request; the last line `done` with the control warm.
 S3b asks whether Devin still reports no cached token for `gpt-6-1-terra`: a cold control there, ending
 `stop`/`no-observable-cache`, is the expected answer and is noted, not refused. A late control is refused everywhere.
+S1 ending `stop`/`overage` is noted, not refused: the account is in paid overage, and the Claude runs then wait for
+`--allow-overage` (see "Claude in paid overage").
 
 Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each invocation's raw output, redacted, is in
 `$G/night-$N/raw/<id>/` (mode 700, files 600), never in the repository. If an item fails, do not run
@@ -148,8 +163,15 @@ Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each inv
 - [ ] `S3.jsonl`'s first line shows `"process_model": "in-process"` and `"keepalive_max_pings": 0` under `"devin"`.
 - [ ] `ls -A "$G"/home/*` shows what each client wrote in its throwaway home. Note anything there for the
       maintainer; it needs no action.
-- [ ] `git status --short` lists nothing outside `results/own-clients-$N/`, and
-      `python3 harness/scan_secrets.py --git .` ends with `CLEAN`.
+- [ ] `git status --short` lists nothing outside `results/own-clients-$N/`, and both scans end with `CLEAN`:
+      `python3 harness/scan_secrets.py --own-clients --git .` and
+      `python3 harness/scan_secrets.py --own-clients results/own-clients-$N`. With `--own-clients` the scan opens no
+      proxy or pi file (the night uses neither). It reads the files a commit could take (the first) and the night's
+      results with every console log under `logs/` (the second), and looks in them for the key variables of the shell,
+      for Muse Code's key by the fingerprint the night recorded when it read the Keychain item `groundtruth
+      META_API_KEY` (in `~/.groundtruth/fingerprints.json`: a hash, a length and the first six characters, never the
+      key), and for token shapes, e-mail addresses, home-folder and state-folder paths, and the clients' login and
+      session files by name.
 - [ ] `python3 harness/night.py --date $N untouched --report` lists no Keychain item `Claude Code-credentials-…` as
       added or changed since the logins.
 

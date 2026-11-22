@@ -4,6 +4,17 @@ A design, written on 2026-11-22. Nothing in it has been run: no request was sent
 It says how groundtruth measures each login through the client its vendor ships, how OpenRouter's proxy-only
 entries are measured again directly, what changes in `observed.json`, which runs are owed and what has to be built.
 
+**Since the third review (2026-11-22): the last round before the night.** A login is done only when the client's
+login file is in its state folder (non-empty, then 600) and its own status shows the subscription; a Claude run is
+refused without that file. Each client's TMPDIR is its own, `<client-home>/tmp/<client>`, never the shell's, and no
+sandbox exception may hold the home folder. Modes are exact (700, 600). Console logs are 600 and the probe's errors,
+the version diagnostic and a timeout included, reach them and the public JSONL redacted. A Muse count of 0 is no call,
+an absent one unknown; the builder refuses a check that is not one explicit call, and a check answered by another
+model than the manifest's (Codex's model evidence is bound to the measured turn). The launcher records each worker's
+pid as it starts, and `status`/`stop` also find a worker by its launch id. `scan_secrets.py --own-clients` reads no
+proxy or pi file. The morning report says when the Keychain could not be listed. Claude runs stop at a first 5-minute
+cache write (paid overage) unless `--allow-overage`; CC5 – CC8 do not start after such a stop.
+
 **Since the second review (2026-11-22): the first night is the own clients' cache runs only** (the chief's decision).
 It supersedes what the list below says of pi, Provimux, OpenRouter and the supervisor:
 
