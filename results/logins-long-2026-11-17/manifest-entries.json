@@ -1,5 +1,5 @@
 {
- "comment": "Entries the runs of results/logins-long-2026-11-17 would add to observed/manifest.json (T-75, branch campaign/logins-long). runs: appended to runs; excluded: appended to excluded. Nothing here is a result. The runs that continue logins-2026-11-17/LC1 - LC4 and LM1, LM3 need those as runs: LC1 - LC4 are runs in that part's entries, LM1 and LM3 are in its excluded and must move to runs (they were held back to be published with ML1 and ML3, as one evaluation each, whatever those show). CL1, CL3, ML1 and ML3 were cut off by a restart of the Mac: their files are the probes' progress files.",
+ "comment": "Entries the runs of results/logins-long-2026-11-17 would add to observed/manifest.json (branch campaign/logins-long). runs: appended to runs; excluded: appended to excluded. Nothing here is a result. The runs that continue logins-2026-11-17/LC1 - LC4 and LM1, LM3 need those as runs: LC1 - LC4 are runs in that part's entries, LM1 and LM3 are in its excluded and must move to runs (they were held back to be published with ML1 and ML3, as one evaluation each, whatever those show). CL1, CL3, ML1 and ML3 were cut off by a restart of the Mac: their files are the probes' progress files.",
  "runs": [
   {
    "id": "logins-long-2026-11-17/CL1",

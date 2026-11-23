@@ -1,5 +1,5 @@
 {
- "comment": "Entries the runs of results/logins-gpt-6-2-2026-11-17 would add to observed/manifest.json (T-86, branch campaign/logins-long). runs: appended to runs; excluded: appended to excluded. Nothing here is a result.",
+ "comment": "Entries the runs of results/logins-gpt-6-2-2026-11-17 would add to observed/manifest.json (branch campaign/logins-long). runs: appended to runs; excluded: appended to excluded. Nothing here is a result.",
  "runs": [
   {
    "id": "logins-gpt-6-2-2026-11-17/GS1",

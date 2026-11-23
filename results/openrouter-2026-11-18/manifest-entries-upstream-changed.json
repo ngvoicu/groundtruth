@@ -1,4 +1,4 @@
 {
- "comment": "Empty since the reviewer's rulings on batch 1 (m-10767): runs with crossings in their timed checks are in manifest-entries.json with the crossings in their note; a pinned run and a control crossing with no timed check are in its excluded. Kept so that the earlier commits (f1cca4d, 6abf96d) read the same.",
+ "comment": "Empty since the reviewer's rulings on batch 1: runs with crossings in their timed checks are in manifest-entries.json with the crossings in their note; a pinned run and a control crossing with no timed check are in its excluded. Kept so that the earlier commits (f1cca4d, 6abf96d) read the same.",
  "runs": []
 }

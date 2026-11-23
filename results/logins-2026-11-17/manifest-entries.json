@@ -1,5 +1,5 @@
 {
- "comment": "Entries the runs of results/logins-2026-11-17 would add to observed/manifest.json (T-74, branch campaign/logins). limits: the 13 rows replace existing rows; the claude-fable-5-2 row is new. runs: appended to runs. limits: each REPLACES the existing row of the same route, client and model (one row each). excluded: appended to excluded. Nothing here is a result: build_observed.py computes them from the raw files.",
+ "comment": "Entries the runs of results/logins-2026-11-17 would add to observed/manifest.json (branch campaign/logins). limits: the 13 rows replace existing rows; the claude-fable-5-2 row is new. runs: appended to runs. limits: each REPLACES the existing row of the same route, client and model (one row each). excluded: appended to excluded. Nothing here is a result: build_observed.py computes them from the raw files.",
  "runs": [
   {
    "id": "logins-2026-11-17/LC1",

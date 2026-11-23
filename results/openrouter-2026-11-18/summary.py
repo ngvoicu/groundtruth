@@ -41,7 +41,7 @@ def fmt_s(s):
 
 
 def verdict(doc, through, first_cold, checks):
-    """The site's documented lifetime against the run, in the site's sense (the reviewer's ruling 4, m-10767): holds
+    """The site's documented lifetime against the run, in the site's sense (the reviewer's ruling 4 on batch 1): holds
     when every check up to it was warm; contradicted only when at an age at or below it fewer than half the checks hit
     (by how much: the first such age); otherwise the misses are told as they are (n of m at an age, warm through)."""
     if doc is None:
@@ -124,7 +124,7 @@ for r in S.runs:
             if r["group"] == "free":
                 ent["note"] = "paced: --concurrency 1 --prime-pause 3500 (OpenRouter's limit on free requests per minute)"
             if st["status"] == "failed":
-                # The chief's ruling (m-10781), as round two's cut-off runs: the answered checks stand.
+                # The chief's ruling after batch 3, as round two's cut-off runs: the answered checks stand.
                 last = max(data["checks"])
                 ent["note"] = ((ent.get("note") + "; ") if ent.get("note") else "") + (
                     f"the run ended after its {B.age_label(last)} checks, at the next check, on an upstream's answer "
@@ -145,12 +145,12 @@ for r in S.runs:
                                  + (f" (replies {' → '.join(map(str, c['upstreams']))})" if len(c["upstreams"]) > 2 else "")
                                  + f": {res}" + (f" ({ct.get('cachedTokens')}/{ct.get('promptTokens')} cached)" if ct.get("promptTokens") else ""))
             row["crossings"] = crossings
-            # The reviewer's rulings (m-10767): a pinned run is never a manifest run (excluded, its provider option
+            # The reviewer's rulings on batch 1: a pinned run is never a manifest run (excluded, its provider option
             # stated); a crossing in a control that missed, with no timed checks, is excluded; a run with crossings in
             # its timed checks is published as what the default route gives, the crossings told in its note.
             if r.get("separate"):
-                excluded.append({"id": rid, "reason": "supplemental evidence, not a manifest run (the reviewer's ruling, "
-                                 "m-10767): pinned to one upstream, options.provider = " + json.dumps(r["options"].get("provider"))
+                excluded.append({"id": rid, "reason": "supplemental evidence, not a manifest run (the reviewer's ruling on "
+                                 "batch 1): pinned to one upstream, options.provider = " + json.dumps(r["options"].get("provider"))
                                  + f"; {('crossings: ' + '; '.join(crossings)) if crossings else 'no check crossed upstreams'}"})
             elif control_crossed and data["control"] == [False] and not data["checks"]:
                 excluded.append({"id": rid, "reason": "the control's re-send was answered by another upstream than the one "
@@ -190,15 +190,15 @@ for model, w in windows.items():
             "file": f"results/{FOLDER}/windows.jsonl",
             "evidence": [{"row_model": model, "message_has": f"maximum context length is {m.group(1)} tokens"}]})
 
-json.dump({"comment": f"Empty since the reviewer's rulings on batch 1 (m-10767): runs with crossings in their timed "
+json.dump({"comment": f"Empty since the reviewer's rulings on batch 1: runs with crossings in their timed "
            "checks are in manifest-entries.json with the crossings in their note; a pinned run and a control crossing "
            "with no timed check are in its excluded. Kept so that the earlier commits (f1cca4d, 6abf96d) read the same.",
            "runs": separate}, open(os.path.join(HERE, "manifest-entries-upstream-changed.json"), "w"), indent=1)
-# The reviewer's ruling 5 (m-10767): a first run and its larger-prompt run that both read 0 with a valid control and
+# The reviewer's ruling 5 on batch 1: a first run and its larger-prompt run that both read 0 with a valid control and
 # known upstream are both published, with that said in their notes.
 ent_by_id = {e["id"]: e for e in entries}
 
-# The chief's ruling (m-10781): where the ~2,500-token run read 0 and the ~8,000-token run's control hit, only the
+# The chief's ruling after batch 3: where the ~2,500-token run read 0 and the ~8,000-token run's control hit, only the
 # larger-prompt run is a manifest run; the small one goes under excluded, and the large one's note says so.
 for r in S.runs:
     if not r.get("larger_prompt_of"):
@@ -241,7 +241,7 @@ json.dump({"comment": f"Entries for observed/manifest.json from results/{FOLDER}
            "assembles the manifest.",
            "runs": entries, "excluded": excluded, "limits": limits}, open(os.path.join(HERE, "manifest-entries.json"), "w"), indent=1)
 
-# The chief's decision (m-10759): first runs whose control read 0 cached tokens at the default ~2,500 tokens, each
+# The chief's decision of 2026-11-18: first runs whose control read 0 cached tokens at the default ~2,500 tokens, each
 # with its run of about 8,000 tokens once that exists (the assembler holds the cold rows out until then).
 by_label = {x["label"]: x for x in rows}
 all_entries = {e["id"]: e for e in entries} | {x["entry"]["id"]: x["entry"] for x in separate}
@@ -272,7 +272,7 @@ for r in S.runs:
     cold.append(item)
 json.dump({"comment": f"First runs of results/{FOLDER} whose control read 0 cached tokens at the default ~2,500-token "
            "prompt (no observable cache), each with its run of its own with a ~8,000-token prompt (as "
-           "cpa-latest-2026-11-06/L1b) once that exists (the chief's decision, m-10759). The first runs stay in "
+           "cpa-latest-2026-11-06/L1b) once that exists (the chief's decision of 2026-11-18). The first runs stay in "
            "manifest-entries.json as summary.py builds it; the assembler holds them out until their larger-prompt run "
            "exists.", "runs": cold}, open(os.path.join(HERE, "manifest-entries-cold-control.json"), "w"), indent=1)
 with open(os.path.join(HERE, "results.md"), "w") as md:

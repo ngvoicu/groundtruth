@@ -1,5 +1,5 @@
 {
- "comment": "First runs of results/openrouter-2026-11-18 whose control read 0 cached tokens at the default ~2,500-token prompt (no observable cache), each with its run of its own with a ~8,000-token prompt (as cpa-latest-2026-11-06/L1b) once that exists (the chief's decision, m-10759). The first runs stay in manifest-entries.json as summary.py builds it; the assembler holds them out until their larger-prompt run exists.",
+ "comment": "First runs of results/openrouter-2026-11-18 whose control read 0 cached tokens at the default ~2,500-token prompt (no observable cache), each with its run of its own with a ~8,000-token prompt (as cpa-latest-2026-11-06/L1b) once that exists (the chief's decision of 2026-11-18). The first runs stay in manifest-entries.json as summary.py builds it; the assembler holds them out until their larger-prompt run exists.",
  "runs": [
   {
    "run": {

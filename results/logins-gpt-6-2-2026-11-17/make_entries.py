@@ -29,7 +29,7 @@ for label, m, stamp, base in (("GS1", "gpt-6.2-sol", "2026-11-17T21-26-51", "LC1
                  "route": "codex-subscription", "client": "cliproxyapi", "model": m, "models_dev": None,
                  "base_model": f"openai/{m}", "options": {}, "note": NOTE.format(base=base, m=m)})
 excluded = json.load(open(f"{D}/excluded-window.json")) if os.path.exists(f"{D}/excluded-window.json") else []
-out = {"comment": "Entries the runs of results/logins-gpt-6-2-2026-11-17 would add to observed/manifest.json (T-86, branch "
+out = {"comment": "Entries the runs of results/logins-gpt-6-2-2026-11-17 would add to observed/manifest.json (branch "
                   "campaign/logins-long). runs: appended to runs; excluded: appended to excluded. Nothing here is a result.",
        "runs": runs, "excluded": excluded}
 open(f"{D}/manifest-entries.json", "w").write(json.dumps(out, indent=1, ensure_ascii=False) + "\n")

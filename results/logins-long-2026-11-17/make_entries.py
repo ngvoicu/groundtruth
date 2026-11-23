@@ -142,7 +142,7 @@ excluded = ag_excluded + [
                "an invalid ttl with 400) (fields-devin.jsonl). A long run would send Devin exactly what a short run "
                "sends, so by the chief's decision none was made."},
 ]
-out = {"comment": "Entries the runs of results/logins-long-2026-11-17 would add to observed/manifest.json (T-75, branch "
+out = {"comment": "Entries the runs of results/logins-long-2026-11-17 would add to observed/manifest.json (branch "
                   "campaign/logins-long). runs: appended to runs; excluded: appended to excluded. Nothing here is a "
                   "result. The runs that continue logins-2026-11-17/LC1 - LC4 and LM1, LM3 need those as runs: LC1 - LC4 "
                   "are runs in that part's entries, LM1 and LM3 are in its excluded and must move to runs (they were "

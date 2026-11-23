@@ -173,7 +173,7 @@ def zero_controls():
 
 
 def add_larger_prompt_runs():
-    """The chief's decision (m-10759): every model whose control read 0 gets one more run of its own with a prefix of
+    """The chief's decision of 2026-11-18: every model whose control read 0 gets one more run of its own with a prefix of
     about 8,000 tokens (as cpa-latest-2026-11-06/L1b), everything else as its first run; the dearest first, ahead of
     the first runs not yet started."""
     have = {r.get("larger_prompt_of") for r in runs}

@@ -25,7 +25,7 @@ case "$1" in
   antigravity) X="@--schedule@std@--prefix-tokens@5000@--concurrency@1@--prime-pause@1000"
          ARGS="--prime-timeout 600 AG1=gemini-3.1-flash-lite$X AG2=gemini-3.5-flash-lite$X AG3=gemini-3-flash$X
                AG4=gemini-3.8-flash-tiered$X AG5=gpt-oss-120b-medium$X" ;;
-  # Added on the chief's note (m-10465): Muse Ember and Wonder on the Meta login, continuing LM1 and LM3 of
+  # Added on the chief's note of 2026-11-17: Muse Ember and Wonder on the Meta login, continuing LM1 and LM3 of
   # ../logins-2026-11-17 at 4, 8, 12 and 24 h, made as they were (plain probe, no body extra: the proxy's payload
   # rule adds prompt_cache_retention "24h" to every muse-* request; 2 primes at a time). muse-* ids have one account.
   meta) X="@--ages@4h,8h,12h,24h@--concurrency@2"

@@ -2,7 +2,7 @@
 
 **State of this folder: final, 2026-11-18 about 14:45 UTC. Every run has ended; nothing runs.** Batches were pushed
 while the measuring went on: batch 1 `f1cca4d`, batch 2 `6abf96d`, the reviewer's rulings `c40cc28`, batch 3 `87e12f4`,
-the chief's rulings of m-10781 `d78171e`. A run gets its entry
+the chief's rulings after batch 3 `d78171e`. A run gets its entry
 only once it has finished. The folder is complete in
 itself at every pushed commit.
 
@@ -48,23 +48,23 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
   (logged by the probe since 0.3.4) is looked up once in `GET /api/v1/generation` (free) by `upstream.py`:
   `upstreams.jsonl` has, per reply, the upstream that answered, every attempt OpenRouter made (a fallback shows there),
   the model version and the session id OpenRouter used (the `prompt_cache_key`). Each check is paired with its sample's
-  priming by that key. **Crossings** (the reviewer's rulings on batch 1, m-10767): a run whose timed checks include
+  priming by that key. **Crossings** (the reviewer's rulings on batch 1): a run whose timed checks include
   checks answered by another upstream than their sample's priming is published as what the default route gives, in
   `manifest-entries.json`, with the crossings told in its entry's `note` (which checks, primed where, answered where,
   the outcome, and that such a check was not answered by the upstream its sample was primed on, so its miss is what
   the default route gave and does not show whether a cache at that upstream had expired); the
   observed crossings stay out of `options`. A crossing in a control that missed, with no timed check (Gemini 4
   Carbon), is excluded: no lifetime measured. Until batch 2 these runs were kept apart in
-  `manifest-entries-upstream-changed.json` (the chief's decision, m-10723); that list is now empty and kept only so
+  `manifest-entries-upstream-changed.json` (the chief's decision of 2026-11-18 ~09:20 UTC); that list is now empty and kept only so
   that the earlier commits read the same.
 - **GPT-6.2 Sol pinned to OpenAI** (`openai--gpt-6.2-sol-pinned-openai`): a second Sol run with
   `{"provider": {"order": ["openai"], "allow_fallbacks": false}}` (in its recorded options), as evidence whether the
-  lifetime holds when the upstream cannot change; the chief's go (m-10723). A pinned run is never a manifest run (the
+  lifetime holds when the upstream cannot change; the chief's go-ahead of 2026-11-18 ~09:20 UTC. A pinned run is never a manifest run (the
   site would pool it with the default route's row): it is in `excluded` as supplemental evidence, its `provider`
-  option stated (ruling 2, m-10767).
+  option stated (the reviewer's ruling 2 on batch 1).
 - **Free models** (`:free`): OpenRouter allows 20 free requests a minute. The first free run
   (`baidu/ernie-5.5-flash-preview:free`, unpaced, 08:44) was refused during its priming (HTTP 429
-  "free-models-per-min"); on the chief's go (m-10711 B) the free runs are **paced**, `--concurrency 1 --prime-pause
+  "free-models-per-min"); on the chief's go-ahead of 2026-11-18 ~09:20 UTC the free runs are **paced**, `--concurrency 1 --prime-pause
   3500` (one priming request every ~3.5 s), one free run at a time, after the big releases; Ernie got a new paced run
   (`…-paced`). Only a refusal that names OpenRouter's free limit leaves the remaining free ones; an upstream's 429
   ("Provider returned error") ends that run only.
@@ -86,7 +86,7 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
 - **Probe version.** The probe's changes for this folder (the upstream reply fields, the reply id and the sample key in
   the usage log; HTTP 402 as a refusal) are commit `e0d1afb`, first named 0.3.3; `campaign-1-long` already had another
   0.3.3, so the version was renamed 0.3.4 (commit `5977b0b`, code unchanged). The run files that recorded "0.3.3" with this code (started before `5977b0b`, 09:07 UTC): `anthropic--claude-fable-5.2`, `baidu--ernie-5.5-flash-preview-free`, `deepseek--deepseek-v4.1-flash-1017`, `google--gemini-4-carbon`, `google--gemini-4-hydrogen`, `ibm-granite--granite-4.2-8b`, `inclusionai--ling-3.0-flash-vl`, `inclusionai--ling-3.1-flash`, `liquid--lfm-2.5-24b-a2b`, `meta--muse-ember`, `nex-agi--nex-n2.5-mini`, `nex-agi--nex-n2.5-pro`, `openai--gpt-6.2-astra`, `openai--gpt-6.2-sol`, `particle-ai--particle-1`, `qwen--qwen4-max`, `scaledown--extract`, `scaledown--summarize`, `tencent--hy4-flash`, `upstage--solar-mini4`; every later run records "0.3.4". The run files are not edited.
-- **A larger prompt where the control read nothing** (the chief's decision, m-10759): a control that read 0 cached
+- **A larger prompt where the control read nothing** (the chief's decision of 2026-11-18): a control that read 0 cached
   tokens at about 2,500 tokens may only mean the prompt is under that upstream's smallest cacheable size (the reason
   for the second run; the runs do not establish it either way). Every model
   whose first run's control read 0 cached tokens gets one more run of its own (label `…-8k`) with
@@ -97,15 +97,15 @@ R1b), the launch files and the ledger of `../direct-2026-11-17`:
   prompt tokens per request). Its manifest entry carries `"prefix_tokens": 8000` in its options, as L1b's; no lifetime
   is asked, so it lands in the short profile like the first run (`scratch_build.py`). `manifest-entries-cold-control.json`
   lists every first run whose control read 0, with its larger-prompt run and what that showed. Where the larger
-  prompt's control hit, only the larger-prompt run is a manifest run (the chief's ruling, m-10781): the ~2,500-token run
+  prompt's control hit, only the larger-prompt run is a manifest run (the chief's ruling after batch 3): the ~2,500-token run
   is under `excluded` ("its control read no cached token with a ~2,500-token prompt; the ~8,000-token run read from
-  cache at its control and is the manifest run; why the small prompt read nothing is not established", the wording of
-  m-10805) and the larger run's note says the small prompt's control read no cached token and its own did. The site would not keep the
+  cache at its control and is the manifest run; why the small prompt read nothing is not established", the wording settled
+  in a later review) and the larger run's note says the small prompt's control read no cached token and its own did. The site would not keep the
   two apart by itself: `observed.json` gives them different options (`{}` and `{"prefix_tokens": 8000}`), so both are
   `latest`, but neither asks a lifetime, so `site/src/core/resolve.ts` puts both in the short profile of the same
   entry and their results would be pooled. Where both sizes read 0 (ScaleDown Summarize, Perceptron Mk1.5), both runs
   are listed, each noting it.
-- **Runs that ended on an upstream's rate answer after answered checks** (the chief's ruling, m-10781, as round two's
+- **Runs that ended on an upstream's rate answer after answered checks** (the chief's ruling after batch 3, as round two's
   cut-off runs): listed as runs, the answered checks standing, with a note on how and where they ended; the build takes
   a run file of status `failed` by its checks. `google--gemini-4-carbon-8k` is the one (2.5 and 5 minutes answered,
   ended at 7.5 on HTTP 504 after Google AI Studio's 429). `inclusionai/ling-3.2-flash:free` stays excluded (its one
@@ -148,7 +148,7 @@ minutes, Pareto 26.10 Preview through 1 hour, Aion 3.5 Mini through 50 minutes, 
 through 30 minutes, Flint v1.0 free through 40 minutes); and three models spread over several upstreams that crossed
 (MiMo v2.6 Flash, Nemotron 3.5 Super VL, Beam 1.0), in the entries with their crossings in the note. Where a
 larger-prompt run read 0 again (ScaleDown Summarize, Perceptron Mk1.5), both runs' notes say "no cache read observed
-with about 2,500- and 8,000-token prompts" (ruling 5, m-10767).
+with about 2,500- and 8,000-token prompts" (the reviewer's ruling 5 on batch 1).
 
 **Batch 3** adds 30 finished runs. The larger-prompt runs of MiDM K 3.0 Pro (warm in every check to 2 hours at
 ~9,500 tokens), LFM 2.5 24B (through 1 hour), Nemotron 3.5 Super VL free (through 90 minutes) and
@@ -198,7 +198,7 @@ Failed runs, kept with their files and in `excluded` of `manifest-entries.json`:
   (5,474 of 7,528), then at the 7.5-minute check OpenRouter answered HTTP 504 "The operation was aborted" after a 429
   of Google AI Studio ("temporarily rate-limited upstream"). The probe's `--stop-on-refusal` read the upstream's rate
   wording in that answer and ended the run, not retried: 2.5 min 1/3, 5 min 0/3, the four misses all checks crossing
-  from Google to Google AI Studio. Not started again (the chief, m-10781); listed as a run with its answered checks
+  from Google to Google AI Studio. Not started again (the chief's ruling after batch 3); listed as a run with its answered checks
   and a note (above).
 - `sakana/fugu-max`, `sakana/fugu-ultra-v2`: HTTP 403 "not available in your region: Sakana AI blocks requests
   originating from your location". Nothing measured.

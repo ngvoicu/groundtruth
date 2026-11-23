@@ -1331,5 +1331,5 @@
    "prompt_tokens": 9000
   }
  ],
- "note": "2026-11-18 ~09:20 UTC, the chief's go (m-10711 B): the :free entries are run paced (--concurrency 1 --prime-pause 3500), one at a time; ernie-5.5-flash-preview:free, refused unpaced at 08:44, gets a new paced run (label \u2026-paced). Edited here by hand, not by plan.py. ~09:20 UTC, the chief's decision (m-10723): GPT-6.2 Sol once more, pinned to OpenAI (provider.order [openai], allow_fallbacks false), label \u2026-pinned-openai, for the separate list. 12:38 UTC: the OpenAI -pro variants answer with ~8,900-token prompts (OpenRouter adds its own text): the -pro runs not yet started are planned with 9,000 prompt tokens per request."
+ "note": "2026-11-18 ~09:20 UTC, the chief's go-ahead: the :free entries are run paced (--concurrency 1 --prime-pause 3500), one at a time; ernie-5.5-flash-preview:free, refused unpaced at 08:44, gets a new paced run (label \u2026-paced). Edited here by hand, not by plan.py. ~09:20 UTC, the chief's decision: GPT-6.2 Sol once more, pinned to OpenAI (provider.order [openai], allow_fallbacks false), label \u2026-pinned-openai, for the separate list. 12:38 UTC: the OpenAI -pro variants answer with ~8,900-token prompts (OpenRouter adds its own text): the -pro runs not yet started are planned with 9,000 prompt tokens per request."
 }

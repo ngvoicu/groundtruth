@@ -827,7 +827,7 @@
   },
   {
    "id": "openrouter-2026-11-18/openai--gpt-6.2-sol-pinned-openai",
-   "reason": "supplemental evidence, not a manifest run (the reviewer's ruling, m-10767): pinned to one upstream, options.provider = {\"order\": [\"openai\"], \"allow_fallbacks\": false}; no check crossed upstreams"
+   "reason": "supplemental evidence, not a manifest run (the reviewer's ruling on batch 1): pinned to one upstream, options.provider = {\"order\": [\"openai\"], \"allow_fallbacks\": false}; no check crossed upstreams"
   },
   {
    "id": "openrouter-2026-11-18/baidu--ernie-5.5-flash-preview-free",
