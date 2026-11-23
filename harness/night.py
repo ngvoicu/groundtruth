@@ -57,7 +57,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import clients as C  # noqa: E402
 import model_ids as M  # noqa: E402
-import pacing as P  # noqa: E402
+import night_plan as NP  # noqa: E402
 
 STD65 = "10m,15m,20m,25m,30m,40m,50m,60m,65m,75m,90m,120m"
 PROXY_VARS = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy",
@@ -113,10 +113,9 @@ PART_OF = {s["id"]: part for part in ORDER for s in PARTS[part]}
 # Seconds between two starts of one client's runs (Devin's as on 8 November).
 SPACING = {"devin": 20}
 SPACING_DEFAULT = 15
-# Each client's request budget per minute, shared by all its runs of a night (harness/pacing.py; `--pace devin=N`).
-PACE = dict(P.PACE_RPM)
-# Seconds one request takes, for the dry run's plan (tonight's median gap between two primings: Devin 3, Codex 5).
-TOOK = {"devin": 4.0, "codex": 6.0}
+# Each client's request limits, per window of seconds (harness/night_plan.py; `--limit devin=40/300`): every run's
+# start is planned so that the client's whole schedule keeps under them.
+LIMITS = {c: dict(v) for c, v in NP.LIMITS.items()}
 STATE_FOLDERS = tuple(C.CLIENTS[h].client_id for h in CLIENT_PARTS)
 LOGINS = {"codex": ["codex", "login", "-c", 'cli_auth_credentials_store="file"', "-c", 'model_provider="openai"'],
           "devin": ["devin", "auth", "--process-model", "in-process", "login"]}
@@ -207,14 +206,11 @@ def delay_of(step, index):
 
 
 def command(step, date, launch_id=None, delay=None):
-    """The argument list of a step, run from the repository's root. A launched run of a client with a budget (PACE)
-    shares it with the client's other runs of the night, in <client-home>/night-<date>/pacing."""
+    """The argument list of a step, run from the repository's root."""
     folder = folder_of(step, date)
     argv = [sys.executable, "harness/probe.py", *step["args"], "--out", folder]
     if step["kind"] == "smoke":
         argv += ["--keep-raw", os.path.join(night_dir(date), "raw", step["id"])]
-    elif PACE.get(step["harness"]):
-        argv += ["--pace-rpm", str(PACE[step["harness"]]), "--pace-dir", os.path.join(night_dir(date), "pacing")]
     if delay:
         argv += ["--delay", str(delay)]
     if launch_id:
@@ -250,17 +246,12 @@ def whole(selection):
     return all(len(steps) == len(PARTS[n]) for n, steps in selection.items())
 
 
-def check_ids(steps, what, live=False, lister=None, out=print):
-    """Refuses (SystemExit, naming them) the runs whose model id their client does not list (harness/model_ids.py):
-    nothing is started or planned for them. Returns {client: where its list came from}; `out` is told only what a
-    dry run shows, or a list that is not the client's own (--go)."""
-    bad, sources = M.unknown(steps, live=live, client_home=client_home(), lister=lister)
-    for c, (src, own) in sources.items():
-        if not live or not own:
-            out(f"  model ids of {c}: {src}")
+def check_ids(steps, what):
+    """Refuses (SystemExit, naming them) the runs whose model id is not in the checked list, harness/model-ids.json
+    (harness/model_ids.py): nothing is started or planned for them. No client is run to list models."""
+    bad = M.unknown(steps)
     if bad:
-        raise SystemExit(f"{what}: refused: model ids the client does not list: {', '.join(bad)}; nothing started")
-    return sources
+        raise SystemExit(f"{what}: refused: model ids not in harness/model-ids.json: {', '.join(bad)}; nothing started")
 
 
 def select(names):
@@ -288,10 +279,11 @@ def clean_env(extra=None):
     return env
 
 
-def dry_run(steps, date, out=print):
+def dry_run(steps, date, out=print, delays=None):
     for i, step in enumerate(steps):
+        delay = (delays or {}).get(step["id"], delay_of(step, i))
         argv = command(step, date, launch_id="<launch-id>" if step["kind"] == "probe" else None,
-                       delay=delay_of(step, i) if step["kind"] == "probe" else None)
+                       delay=delay if step["kind"] == "probe" else None)
         out(f"== {step['id']}: {shown(argv)}")
         p = subprocess.run([*argv, "--dry-run"], cwd=ROOT, capture_output=True, text=True, timeout=120,
                            env=clean_env({"PYTHONDONTWRITEBYTECODE": "1"}))
@@ -609,9 +601,6 @@ def smoke_problems(sid, ev, cold_expected=False):
     bad = sorted({e.get("event") for e in ev if e.get("event") in BAD_EVENTS})
     if bad:
         problems.append(f"{sid}: {', '.join(bad)}")
-    waits = sum(1 for e in ev if e.get("event") == "rate-wait")
-    if waits:
-        notes.append(f"{sid}: {waits} wait{'s' if waits > 1 else ''} on a rate limit that named its reset (rate-wait)")
     if last.get("event") == "stop" and last.get("reason") == "control-late":
         problems.append(f"{sid}: the control could not be checked in time (control-late)")
         return problems, notes
@@ -650,7 +639,7 @@ def go_smoke(date, run=None, out=print):
     need_hook("--go smoke")
     if not os.path.exists(everyday_path(date)):
         raise SystemExit("--go smoke: no snapshot of the everyday state (`untouched --save`, step 1): nothing started")
-    check_ids(PARTS["smoke"], "--go smoke", live=True, out=out)
+    check_ids(PARTS["smoke"], "--go smoke")
     make_night_dir(date)
     for step in PARTS["smoke"]:
         if os.path.exists(os.path.join(ROOT, folder_of(step, date), step["id"] + ".jsonl")):
@@ -756,7 +745,7 @@ def stop_path(date, client):
     return os.path.join(night_dir(date), "launch", client + ".stop")
 
 
-def launch(name, date, popen=None, out=print, steps=None):
+def launch(name, date, popen=None, out=print, steps=None, delays=None):
     """One client's runs, each its own background process (harness/probe.py itself, which keeps the computer awake
     with `caffeinate -w` on its own pid). The lock file is created exclusively, with the launcher's own pid, start
     time and command line, before the first run starts, and rewritten with each run's pid and start time as soon as
@@ -784,17 +773,11 @@ def launch(name, date, popen=None, out=print, steps=None):
         json.dump(lock, f)
     logs = os.path.join(ROOT, folders(date)["own"], "logs")
     os.makedirs(logs, exist_ok=True)
-    if PACE.get(name):
-        pace_dir = os.path.join(d, "pacing")
-        C.check_folder("<client-home>/night-<date>/pacing", pace_dir, ROOT, os.path.realpath(os.path.expanduser("~")))
-        if not os.path.isdir(pace_dir):
-            os.mkdir(pace_dir, 0o700)
-        C.check_private("<client-home>/night-<date>/pacing", pace_dir)
     for i, step in enumerate(steps):
         if os.path.lexists(stop_path(date, name)):
             raise SystemExit(f"--go {name}: stopped (`stop`) after {len(lock['runs'])} of {len(steps)} runs: "
                              "nothing more starts")
-        delay = delay_of(step, i)
+        delay = (delays or {}).get(step["id"], delay_of(step, i))
         argv = command(step, date, launch_id=launch_id, delay=delay)
         with private_log(os.path.join(logs, step["id"] + ".log")) as log:
             p = popen(argv, cwd=ROOT, env=clean_env(), stdout=log, stderr=subprocess.STDOUT,
@@ -805,9 +788,10 @@ def launch(name, date, popen=None, out=print, steps=None):
     return lock
 
 
-def go_clients(names, date, popen=None, out=print, lister=None):
+def go_clients(names, date, popen=None, out=print):
     """`--go codex|devin|all`, or `--go CX1,CX3,DV1` (some runs, on a new date folder: the same logins, isolation and
-    smoke rules). Each client's model ids are checked against its own list first (check_ids; Devin's read live)."""
+    smoke rules). The model ids are checked against the checked list first (check_ids), and each run starts at its
+    planned offset (plan); a schedule over a client's limits is refused."""
     if names and all(n in CLIENT_PARTS for n in names) or names == ["all"]:
         names = list(CLIENT_PARTS) if names == ["all"] else names
         selection = {n: PARTS[n] for n in names}
@@ -816,11 +800,11 @@ def go_clients(names, date, popen=None, out=print, lister=None):
         selection = runs_of(names)
         guard(list(selection), date, [s for steps in selection.values() for s in steps])
         names = list(selection)
-    notes = []  # said after the starts: a run's first line is its pid
-    check_ids([s for steps in selection.values() for s in steps], "--go", live=True, lister=lister, out=notes.append)
-    locks = [launch(n, date, popen=popen, out=out, steps=selection[n]) for n in names]
-    for note in notes:
-        out(note)
+    check_ids([s for steps in selection.values() for s in steps], "--go")
+    planned = plan(selection)
+    refuse_over_limits(planned, "--go")
+    starts = {rid: s for p in planned.values() for rid, s in p["starts"].items()}
+    locks = [launch(n, date, popen=popen, out=out, steps=selection[n], delays=starts) for n in names]
     out(f"started: {', '.join(names)}; the terminal may be closed. `python3 harness/night.py --date {date} status` "
         "shows which runs are alive.")
     return locks
@@ -1010,17 +994,38 @@ def stop(target, date, ps=None, kill=None, out=print, dry=False, started=None):
     return signalled
 
 
-def sim_runs(selection):
-    """The runs of a selection as pacing.plan takes them: each one's start after the go, its ages and waves."""
+def sim_runs(steps):
+    """The runs as harness/night_plan.py takes them: each one's id, ages and waves."""
     import probe as PR
     runs = []
-    for name, steps in selection.items():
-        for i, s in enumerate(steps):
-            a = PR.parser().parse_args([*s["args"], "--out", "-"])
-            ages, labels = PR.ages_of(a.schedule, a.ages)
-            runs.append({"id": s["id"], "client": name, "delay": delay_of(s, i), "ages": ages, "labels": labels,
-                         "replicas": a.replicas, "waves": a.waves, "wave_gap": a.wave_gap})
+    for s in steps:
+        a = PR.parser().parse_args([*s["args"], "--out", "-"])
+        ages, labels = PR.ages_of(a.schedule, a.ages)
+        runs.append({"id": s["id"], "ages": ages, "labels": labels, "replicas": a.replicas, "waves": a.waves,
+                     "wave_gap": a.wave_gap})
     return runs
+
+
+def plan(selection):
+    """{client: {"starts": {run id: seconds after the go}, "limits", "max": {window: requests}, "ends", "requests"}}:
+    each client's runs placed by night_plan.schedule under its LIMITS (none: the plain spacing), and measured."""
+    out = {}
+    for name, steps in selection.items():
+        runs, limits = sim_runs(steps), {w: n for w, n in LIMITS.get(name, {}).items() if n}
+        took = NP.TOOK.get(name, (4.0,))
+        try:
+            starts = NP.schedule(runs, limits, took, SPACING.get(name, SPACING_DEFAULT))
+        except ValueError as e:
+            raise SystemExit(f"plan: {name}: {e}") from None
+        out[name] = dict(NP.report(runs, starts, limits, took), starts=starts, limits=limits)
+    return out
+
+
+def refuse_over_limits(planned, what):
+    over = [f"{n}: {p['max'][w]} requests in {w} s, over {lim}" for n, p in planned.items()
+            for w, lim in p["limits"].items() if p["max"][w] > lim]
+    if over:
+        raise SystemExit(f"{what}: refused: the schedule passes its limits ({'; '.join(over)}); nothing started")
 
 
 def hm(seconds):
@@ -1028,38 +1033,32 @@ def hm(seconds):
     return f"{m // 60} h {m % 60:02d}" if m >= 60 else f"{m} min"
 
 
-def plan_report(selection, out=print, at=None):
-    """The expected times of a selection with pacing (pacing.plan: the real loop on a simulated clock, every cache
-    warm, each request TOOK seconds): per client, its requests, its busiest minute, when its last run ends; and the
-    whole night's end. `at`: the go's time (epoch seconds), to give clock times too. Returns {client: (end, requests)}."""
-    runs = sim_runs(selection)
-    result, times = P.plan(runs, {n: PACE.get(n, 0) for n in selection}, TOOK)
-    ends, total = {}, 0
-    for name in selection:
-        mine = [result[r["id"]] for r in runs if r["client"] == name]
-        end, requests = max(x["end"] for x in mine), sum(x["requests"] for x in mine)
-        total += requests
-        late = sum(x["late"] for x in mine)
-        ends[name] = (end, requests)
-        when = f" ({time.strftime('%Y-%m-%d %H:%M', time.localtime(at + end))})" if at else ""
-        out(f"  {name}: {len(mine)} runs, {requests} requests with every control warm the first time (each run "
-            "at most 2 more for a second control), " + (f"paced at {PACE[name]} a minute (primings "
-            f"{PACE[name] - P.reserve_of(PACE[name])})" if PACE.get(name) else "not paced")
-            + f"; busiest minute {P.busiest_minute(times[name])} requests; the last run ends {hm(end)} after the go"
-            + when + (f"; {late} checks would be late" if late else "; no check late"))
-        out("    each run ends: " + ", ".join(f"{r['id']} {hm(result[r['id']]['end'])} ({result[r['id']]['requests']})"
-                                       for r in runs if r["client"] == name))
-    end = max(e for e, _ in ends.values())
-    out(f"  expected: {total} requests; the last run ends {hm(end)} after the go"
-        + (f" ({time.strftime('%Y-%m-%d %H:%M', time.localtime(at + end))})" if at else "")
-        + "; longer by each rate-limit wait (at most 10 min a sample) and each retried priming (30 s).")
-    return ends
+def plan_report(selection, out=print, at=None, planned=None):
+    """The planned schedule of a selection: per client, each run's start and end after the go, its requests, the
+    most requests in any 60 s and any 15 minutes against its limits; and the last end. `at`: the go's time (epoch
+    seconds), for clock times too. Returns the plan (plan())."""
+    planned = planned or plan(selection)
+    clock = (lambda sec: f" ({time.strftime('%Y-%m-%d %H:%M', time.localtime(at + sec))})") if at else (lambda sec: "")
+    for name, p in planned.items():
+        lim = p["limits"]
+        mx = ", ".join(f"{p['max'][w]} in any {hm(w) if w >= 60 else str(w) + ' s'}"
+                       + (f" (limit {lim[w]})" if w in lim else "") for w in sorted(p["max"]))
+        end = max(p["ends"].values())
+        out(f"  {name}: {len(p['starts'])} runs, {p['requests']} requests with every control warm the first time "
+            f"(at most 2 more a run for a second control); most requests: {mx}; the last run ends {hm(end)} after "
+            f"the go{clock(end)}")
+        out("    each run (start + m:ss, end after the go): " + ", ".join(
+            f"{rid} +{int(st) // 60}:{int(st) % 60:02d} to {hm(p['ends'][rid])}" for rid, st in p["starts"].items()))
+    end = max(max(p["ends"].values()) for p in planned.values())
+    out(f"  expected: {sum(p['requests'] for p in planned.values())} requests; the last run ends {hm(end)} after the "
+        f"go{clock(end)}; later by each priming tried again (30 s, or a rate limit's reset).")
+    return planned
 
 
-def dry_run_go(names, date, out=print, lister=None, at=None):
+def dry_run_go(names, date, out=print, at=None):
     """`--dry-run codex|devin|all`, or `--dry-run CX1,CX3,DV1`: the checks --go makes, each run's own dry run, the
     model ids against each client's list (refused, named, when one is not there), and the expected times with
-    pacing (plan_report). Nothing run, nothing sent, nothing written."""
+    the planned schedule under each client's limits (plan_report). Nothing run, nothing sent, nothing written."""
     if names == ["all"] or (names and all(n in CLIENT_PARTS for n in names)):
         names = list(CLIENT_PARTS) if names == ["all"] else names
         selection = {n: PARTS[n] for n in names}
@@ -1068,7 +1067,7 @@ def dry_run_go(names, date, out=print, lister=None, at=None):
     shown_names = " ".join(names) if whole(selection) else ",".join(s["id"] for v in selection.values() for s in v)
     out(f"`--go {shown_names}`: checks (this checkout's own commit hook, step 1's snapshot, the smoke results "
         "marked, no launch yet and no stop mark of the client(s) for this night, no results yet of these runs on this "
-        "date, every model id in its client's own list), then creates <client-home>/night-"
+        "date, every model id in harness/model-ids.json, the planned schedule under each client's limits), then creates <client-home>/night-"
         f"{date}/launch/<client>.json exclusively with the launcher's pid, starts each run as its own background "
         "process (caffeinate -w, a session of its own), looking for the stop mark before each start, and returns. "
         "Each run waits for its pid in the lock before its first client call and looks for the stop mark before "
@@ -1077,13 +1076,20 @@ def dry_run_go(names, date, out=print, lister=None, at=None):
     out("  the commit hook: `git config core.hooksPath` is `scripts`: this checkout's own scripts/pre-commit" if not why
         else f"  the commit hook: --go would refuse: {why}")
     steps = [s for v in selection.values() for s in v]
-    check_ids(steps, "--dry-run", live=False, lister=lister, out=out)
+    check_ids(steps, "--dry-run")
+    out("  model ids: every one in harness/model-ids.json")
+    planned = plan(selection)
+    starts = {rid: s for p in planned.values() for rid, s in p["starts"].items()}
     for n, v in selection.items():
-        out(f"  {n}: " + ", ".join(f"{s['id']} (+{delay_of(s, i)} s)" for i, s in enumerate(v)))
+        out(f"  {n}: " + ", ".join(f"{s['id']} (+{int(starts[s['id']])} s)" for s in v))
     for n, v in selection.items():
-        dry_run(v, date, out=out)
-    out("The plan (every cache warm, so every run goes to its end; pacing as each run is told):")
-    plan_report(selection, out=out, at=at)
+        dry_run(v, date, out=out, delays=starts)
+    out("The plan (every cache warm, so every run goes to its end; each run starts at its planned offset):")
+    plan_report(selection, out=out, at=at, planned=planned)
+    over = [f"{n}: {p['max'][w]} in {w} s, over {lim}" for n, p in planned.items() for w, lim in p["limits"].items()
+            if p["max"][w] > lim]
+    if over:
+        out(f"  --go would refuse: the schedule passes its limits ({'; '.join(over)})")
     out(f"Dry run of `--go {shown_names}`: {len(steps)} runs; nothing run, nothing sent, nothing written.")
 
 
@@ -1097,15 +1103,18 @@ def main(argv=None):
                                              "login codex|devin, smoke-reviewed, status, stop codex|devin|all")
     ap.add_argument("--save", action="store_true")
     ap.add_argument("--report", action="store_true")
-    ap.add_argument("--pace", action="append", default=[], metavar="CLIENT=N",
-                    help=f"a client's request budget per minute, shared by its runs (default {PACE}; 0: none)")
+    ap.add_argument("--limit", action="append", default=[], metavar="CLIENT=N60/N900",
+                    help="a client's most requests in any 60 s and any 15 minutes, for the planned schedule (default "
+                         "devin=40/300; 0/0: none)")
     ap.add_argument("--at", metavar="HH:MM", help="--dry-run: the go's local time on --date, for clock times")
     a = ap.parse_args(argv)
-    for item in a.pace:
+    for item in a.limit:
         client, _, n = item.partition("=")
-        if client not in CLIENT_PARTS or not n.isdigit():
-            raise SystemExit(f"--pace {item}: CLIENT=N, a client of {', '.join(CLIENT_PARTS)} and a whole number")
-        PACE[client] = int(n)
+        per = n.split("/")
+        if client not in CLIENT_PARTS or len(per) != 2 or not all(x.isdigit() for x in per):
+            raise SystemExit(f"--limit {item}: CLIENT=N60/N900, a client of {', '.join(CLIENT_PARTS)} and two whole "
+                             "numbers")
+        LIMITS[client] = {60: int(per[0]), 900: int(per[1])}
     at = time.mktime(time.strptime(f"{a.date} {a.at}", "%Y-%m-%d %H:%M")) if a.at else None
     head, dry = a.what[0], a.dry_run
     if head in ("audit", "manifest"):

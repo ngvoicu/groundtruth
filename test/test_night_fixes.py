@@ -1,6 +1,7 @@
-"""The fixes after the first own-client night (2026-11-23), where 17 of 25 runs stopped: a rate limit taken for quota,
-no shared request budget, one cold control ending a run, an unknown model id, `status` tied to the shell's language;
-and the re-run of chosen runs. Nothing is sent and no client is run: fakes, a fake or simulated clock, fake listings.
+"""The fixes after the first own-client night (2026-11-23), where 17 of 25 runs stopped, as simplified after the first
+review: no same-session retry of a check; Devin's own rate-limit text alone is `rate-limited`; the schedule is planned
+before the go (no pacer); model ids from the checked list only; the clock check; the second control; `status` in any
+locale; the re-run of chosen runs. Nothing is sent and no client is run: fakes and a fake or simulated clock.
 
     python3 -m unittest discover -s test -p "test_*.py"
 """
@@ -17,14 +18,13 @@ from types import SimpleNamespace
 from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-os.environ.setdefault("GROUNDTRUTH_MODEL_LIST", "checked")
 sys.path.insert(0, os.path.join(HERE, "..", "harness"))
 sys.path.insert(0, HERE)
 import clients as C  # noqa: E402
 import client_limits as CL  # noqa: E402
 import model_ids as M  # noqa: E402
 import night  # noqa: E402
-import pacing as P  # noqa: E402
+import night_plan as NP  # noqa: E402
 import probe  # noqa: E402
 import test_second_review as R2  # noqa: E402
 from test_probe import FakeClient, FakeClock, go as loop, checks  # noqa: E402
@@ -50,15 +50,139 @@ def scratch(test):
     return tmp
 
 
-# --- 1. a rate limit waits; it is not quota ---------------------------------------------------------------------------
+# --- A. no same-session retry of a check; a priming again only in a new session ------------------------------------
+
+class FailingCheckClient(FakeClient):
+    """FakeClient whose checks of the sessions in `fail` (handle -> an exception to raise) fail after being sent (the
+    request counted), and whose primings whose prompt holds a key of `refuse` (-> an exception, how many times) fail."""
+
+    def __init__(self, clock, ttl, fail=None, refuse=None, **kw):
+        super().__init__(clock, ttl, **kw)
+        self.failing, self.refuse, self.prompts = dict(fail or {}), dict(refuse or {}), []
+
+    def start(self, prompt):
+        self.prompts.append(prompt)
+        for key, (exc, times) in list(self.refuse.items()):
+            if key in prompt and times:
+                self.refuse[key] = (exc, times - 1)
+                self.requests += 1
+                self.clock.t += self.took
+                raise exc
+        return super().start(prompt)
+
+    def resume(self, handle, prompt):
+        if handle in self.failing:
+            self.requests += 1
+            self.resumes.append(handle)
+            self.clock.t += self.took
+            raise self.failing[handle]
+        return super().resume(handle, prompt)
+
+
+def devin_rate(n=2):
+    return C.Refused("rate-limited", f"Reached request rate limit. Your limit will reset in {n} seconds (at 11:15 UTC)",
+                     reset={"in": float(n), "at": None})
+
+
+class NoCheckRetry(unittest.TestCase):
+    def test_a_check_that_fails_after_it_was_sent_is_lost_and_never_resumed_again(self):
+        # s5: the 2.5m sample (baseline s0, control s1, its check, then 7.5m s3, 5m s4, 2.5m s5).
+        for exc, kind in ((devin_rate(), "rate-limited"),
+                          (C.ClientError("exit 1: Agent error: The model ended its turn without a response.",
+                                         kind="exit-nonzero"), "exit-nonzero"),
+                          (C.ClientError("connection reset"), "other"),
+                          (C.Refused("input", "prompt is too long"), "input")):
+            with self.subTest(kind=kind):
+                clock = FakeClock()
+                c = FailingCheckClient(clock, ttl=3600, fail={"s5": exc})
+                reason, ev = loop(c, clock)
+                self.assertIsNone(reason)
+                self.assertEqual(c.resumes.count("s5"), 1)
+                failed = [e for e in ev if e["event"] == "check-failed"]
+                self.assertEqual([(e["age"], e.get("kind") or e.get("error_kind")) for e in failed], [("2.5m", kind)])
+                self.assertEqual([a for a, _ in checks(ev)], ["control", "5m", "7.5m"])
+
+    def test_a_failed_priming_is_tried_again_in_a_new_session_with_a_new_block(self):
+        clock = FakeClock()
+        c = FailingCheckClient(clock, ttl=3600, refuse={"t-1,": (C.ClientError("exit 1"), 1),
+                                                         "t-2,": (C.ClientError("exit 1"), 1)})
+        reason, ev = loop(c, clock)
+        self.assertIsNone(reason)
+        tried = [p for p in c.prompts if "Reference document" in p and "-control" not in p]
+        blocks = [p.split("Reference document ", 1)[1].split(",", 1)[0] for p in tried]
+        self.assertEqual(len(blocks), len(set(blocks)))  # every try its own block, so its own session
+        self.assertEqual([e["try"] for e in ev if e["event"] == "retry"], [1, 2])
+        primes = [e for e in ev if e["event"] == "prime" and e["age"] == "7.5m"]
+        self.assertEqual(len(primes), 1)
+
+    def test_a_rate_limited_priming_waits_for_the_reset_then_a_new_session(self):
+        clock = FakeClock()
+        c = FailingCheckClient(clock, ttl=3600, refuse={"t-1,": (devin_rate(40), 1)})
+        reason, ev = loop(c, clock)
+        self.assertIsNone(reason)
+        r = [e for e in ev if e["event"] == "retry"]
+        self.assertEqual([(e["age"], e["error_kind"]) for e in r], [("7.5m", "rate-limited")])
+        self.assertTrue(41 <= r[0]["waitSec"] <= 45)
+        self.assertEqual([a for a, _ in checks(ev)], ["control", "2.5m", "5m", "7.5m"])
+
+    def test_at_most_three_tries_of_a_priming(self):
+        clock = FakeClock()
+        c = FailingCheckClient(clock, ttl=3600, refuse={"t-": (C.ClientError("exit 1"), 99)})
+        c.refuse = {"Reference document t-1,": (C.ClientError("exit 1"), 99),
+                    "Reference document t-2,": (C.ClientError("exit 1"), 99),
+                    "Reference document t-3,": (C.ClientError("exit 1"), 99)}
+        reason, ev = loop(c, clock, ages=("2.5m",))
+        self.assertIsNone(reason)
+        self.assertEqual([e["event"] for e in ev if e.get("age") == "2.5m"], ["retry", "retry", "retry", "prime-failed"])
+
+    def test_a_priming_s_wait_never_holds_a_check_that_falls_due(self):
+        clock = FakeClock()
+        c = FailingCheckClient(clock, ttl=36000, refuse={"t-3,": (C.ClientError("exit 1"), 99)})
+        reason, ev = loop(c, clock, ages=("2.5m", "5m", "7.5m", "10m"))
+        self.assertIsNone(reason)
+        self.assertFalse([e for e in ev if e["event"] == "check" and e["late"]])
+
+    def test_three_rate_limited_refusals_in_a_row_end_the_run_as_quota(self):
+        clock = FakeClock()
+        c = FailingCheckClient(clock, ttl=3600, refuse={"t-1,": (devin_rate(), 9), "t-2,": (devin_rate(), 9),
+                                                                 "t-3,": (devin_rate(), 9)})
+        reason, ev = loop(c, clock)
+        self.assertEqual(reason, "quota")
+        self.assertEqual(sum(1 for e in ev if e.get("error_kind") == "rate-limited" or e.get("kind") == "rate-limited"),
+                         3)
+
+    def test_a_success_between_ends_the_row(self):
+        clock = FakeClock()
+        c = FailingCheckClient(clock, ttl=3600, fail={"s4": devin_rate(), "s5": devin_rate()},
+                               refuse={"t-4,": (devin_rate(), 1)})
+        reason, ev = loop(c, clock)
+        self.assertIsNone(reason)
+
+    def test_a_plan_limit_still_ends_the_run(self):
+        clock = FakeClock()
+        c = FakeClient(clock, ttl=3600)
+        c.refuse_prime[3] = "quota"
+        reason, ev = loop(c, clock)
+        self.assertEqual(reason, "quota")
+
+    def test_tonight_s_code_sent_each_check_once(self):
+        # main d80a6dd, harness/probe.py check_once: a failed check is check-failed and never sent again.
+        out = subprocess.run(["git", "-C", ROOT, "show", "0950369:harness/probe.py"], capture_output=True, text=True)
+        if out.returncode:
+            self.skipTest("the base commit is not in this clone")
+        body = out.stdout.split("def check_once", 1)[1].split("\n    try:\n        b = prime", 1)[0]
+        self.assertEqual(body.count("h.resume("), 1)
+        self.assertNotIn("for i in range", body)
+
+
+# --- B. rate limit vs quota ---------------------------------------------------------------------------------------
 
 class RateLimitKinds(unittest.TestCase):
     def test_tonight_s_devin_refusal_is_rate_limited_with_its_reset(self):
         e = C.classify(DEVIN_RATE)
         self.assertEqual(e.kind, "rate-limited")
         self.assertEqual(e.reset, {"in": 2.0, "at": 11 * 3600 + 15 * 60})
-        # The later of the two: 11:15:00, 43 s after 11:14:17 (not the 2 s).
-        self.assertEqual(C.reset_wait(e.reset, AT_111417), 43)
+        self.assertEqual(C.reset_wait(e.reset, AT_111417), 43)  # the later of the two: 11:15:00
 
     def test_the_devin_parse_and_the_session_keep_the_reset(self):
         with self.assertRaises(C.Refused) as r:
@@ -69,26 +193,13 @@ class RateLimitKinds(unittest.TestCase):
                       run=lambda *a, **k: (1, "", DEVIN_RATE))
         with self.assertRaises(C.Refused) as r:
             s.start("x")
-        self.assertEqual(r.exception.kind, "rate-limited")
         self.assertEqual(r.exception.reset, {"in": 2.0, "at": 40500})
 
-    def test_the_general_shape_rate_limit_reset_or_retry_in_n(self):
-        for text, wait in (("rate limit exceeded, retry in 30s", 30), ("429 Too Many Requests; try again in 1 minute", 60),
-                           ("Rate limit reached. Please try again in 1.5 seconds.", 1.5),
-                           ("HTTP 429 rate_limited, Retry-After: 20", 20), ("rate limit: resets in 500ms", 0.5)):
-            with self.subTest(text=text):
-                e = C.classify(text)
-                self.assertEqual(e.kind, "rate-limited")
-                self.assertAlmostEqual(C.reset_wait(e.reset, 0), wait)
-
-    def test_a_plan_limit_stays_quota_and_a_rate_limit_without_a_reset_too(self):
-        for text in ("You've hit your usage limit. Try again later.",  # Codex, protocol/src/error.rs
-                     "You've hit your usage limit. Upgrade to Pro or try again in 3 days 4 hours.",
-                     "Error: you have reached your usage limit for this billing period",  # the Devin fixture
-                     "Claude AI usage limit reached. Your limit resets at 3am.",  # the Claude fixture
-                     "429 Too Many Requests: quota exceeded",  # the Muse fixture
-                     "You are out of credits; reset in 30 seconds", "Reached request rate limit.",
-                     "stream error: exceeded retry limit, last status: 429 Too Many Requests"):
+    def test_every_other_rate_or_quota_text_is_quota(self):
+        for text in ("You've hit your usage limit. Try again later.", "Claude AI usage limit reached. Your limit resets at 3am.",
+                     "429 Too Many Requests: quota exceeded", "You've hit your request rate limit. Retry in 2 seconds.",
+                     "HTTP 429: monthly ACU limit reached. Retry-After: 10", "rate limit exceeded, retry in 30s",
+                     "Reached request rate limit.", "Error: you have reached your usage limit for this billing period"):
             with self.subTest(text=text):
                 self.assertEqual(C.classify(text).kind, "quota")
 
@@ -102,209 +213,72 @@ class RateLimitKinds(unittest.TestCase):
     def test_the_input_limits_walk_ends_on_a_rate_limit_with_no_row(self):
         class S:
             def start(self, prompt):
-                raise C.Refused("rate-limited", "rate limit, retry in 5s", reset={"in": 5, "at": None})
+                raise devin_rate()
         rows = []
         CL.walk(S(), "m", "devin-cli", None, rows.append, say=lambda *_: None)
         self.assertEqual(rows, [])
 
-
-class RateLimitedClient(FakeClient):
-    """FakeClient whose primings (by a text of their prompt: `t-1,` is the first sample's) and checks (by session:
-    s1 the control, s5 the 2.5m sample) listed in `limited` (-> how many times) are first refused as rate-limited, each
-    refusal naming a reset `reset_in` seconds away."""
-
-    def __init__(self, clock, ttl, limited=None, reset_in=2.0, **kw):
-        super().__init__(clock, ttl, **kw)
-        self.limited, self.reset_in, self.refusals = dict(limited or {}), reset_in, 0
-
-    def _gate(self, key):
-        if key and self.limited.get(key, 0) > 0:
-            self.limited[key] -= 1
-            self.refusals += 1
-            raise C.Refused("rate-limited", f"Reached request rate limit. Your limit will reset in {self.reset_in} "
-                                            "seconds", reset={"in": self.reset_in, "at": None})
-
-    def start(self, prompt):
-        self._gate(next((k for k in self.limited if k in prompt), None))
-        return super().start(prompt)
-
-    def resume(self, handle, prompt):
-        self._gate(handle if handle in self.limited else None)
-        return super().resume(handle, prompt)
-
-
-class RateLimitWaits(unittest.TestCase):
-    def test_a_rate_limited_priming_waits_and_goes_on_each_wait_an_event(self):
-        clock = FakeClock()
-        c = RateLimitedClient(clock, ttl=3600, limited={"t-1,": 2})  # the first sample's priming, twice
-        reason, ev = loop(c, clock)
-        self.assertIsNone(reason)
-        waits = [e for e in ev if e["event"] == "rate-wait"]
-        self.assertEqual([(w["age"], w["try"]) for w in waits], [("7.5m", 1), ("7.5m", 2)])
-        self.assertTrue(all(3 <= w["waitSec"] <= 7 for w in waits))  # 2 s and 1 - 5 s of jitter
-        self.assertEqual([a for a, _ in checks(ev)], ["control", "2.5m", "5m", "7.5m"])
-        self.assertNotIn("stop", [e["event"] for e in ev])
-
-    def test_a_rate_limited_check_waits_and_a_wait_that_makes_it_late_keeps_late(self):
-        clock = FakeClock()
-        c = RateLimitedClient(clock, ttl=36000, limited={"s5": 1}, reset_in=120)  # the 2.5m check
-        reason, ev = loop(c, clock)
-        self.assertIsNone(reason)
-        check = next(e for e in ev if e["event"] == "check" and e["age"] == "2.5m")
-        self.assertGreaterEqual(check["realAgeSec"], 150 + 120)
-        self.assertTrue(check["late"])  # more than 150 x 1.1 + 90 s after its priming
-        self.assertEqual(c.resumes.count(check["handle"]), 1)  # the refused try reached no model: one answer
-
-    def test_at_most_five_tries_then_the_sample_is_lost_not_the_run(self):
-        clock = FakeClock()
-        c = RateLimitedClient(clock, ttl=3600, limited={"t-1,": 99})
-        reason, ev = loop(c, clock)
-        self.assertIsNone(reason)
-        self.assertEqual(c.refusals, probe.RATE_TRIES)
-        self.assertEqual(len([e for e in ev if e["event"] == "rate-wait"]), probe.RATE_TRIES - 1)
-        lost = [e for e in ev if e["event"] == "prime-refused"]
-        self.assertEqual([(e["age"], e["kind"]) for e in lost], [("7.5m", "rate-limited")])
-
-    def test_at_most_ten_minutes_of_waits_for_one_sample(self):
-        clock = FakeClock()
-        c = RateLimitedClient(clock, ttl=3600, limited={"t-1,": 99}, reset_in=250)
-        reason, ev = loop(c, clock)
-        waits = [e for e in ev if e["event"] == "rate-wait"]
-        self.assertEqual(len(waits), 2)  # 2 x (250 + jitter) <= 600 s; a third wait would pass it
-        self.assertLessEqual(sum(w["waitSec"] for w in waits), probe.RATE_WAIT_MAX)
-        self.assertEqual([e["kind"] for e in ev if e["event"] == "prime-refused"], ["rate-limited"])
-
-    def test_a_check_that_stays_rate_limited_is_check_failed_rate_limited(self):
-        clock = FakeClock()
-        c = RateLimitedClient(clock, ttl=3600, limited={"s5": 99})
-        reason, ev = loop(c, clock)
-        self.assertIsNone(reason)
-        failed = [e for e in ev if e["event"] == "check-failed"]
-        self.assertEqual([(e["age"], e["kind"]) for e in failed], [("2.5m", "rate-limited")])
-
-    def test_a_plan_limit_still_ends_the_run(self):
-        clock = FakeClock()
-        c = FakeClient(clock, ttl=3600)
-        c.refuse_prime[3] = "quota"
-        reason, ev = loop(c, clock)
-        self.assertEqual(reason, "quota")
-        self.assertNotIn("rate-wait", [e["event"] for e in ev])
-
-    def test_a_rate_limited_control_check_that_would_be_late_ends_control_late(self):
-        clock = FakeClock()
-        c = RateLimitedClient(clock, ttl=3600, limited={"s1": 1}, reset_in=200)  # the control's check
-        reason, ev = loop(c, clock)
-        self.assertEqual(reason, "control-late")
-
-    def test_the_rate_wait_line_is_in_the_public_schema(self):
+    def test_the_public_lines_of_a_rate_limited_run_are_in_the_schema(self):
         import weekly
         start = {"event": "start", "model": "m", "harness": "devin", "ages": "2.5m"}
-        line = {"event": "rate-wait", "age": "2.5m", "rep": 1, "try": 2, "waitSec": 43.2, "at": "x"}
-        self.assertEqual(weekly.public_line_problems(line, start), [])
-        pub = probe.Public(os.path.join(scratch(self), "r.jsonl"), start)
-        self.assertIn('"waitSec": 43.2', pub.line(dict(line)))
-        self.assertIn('"kind": "rate-limited"', pub.line({"event": "check-failed", "age": "2.5m", "kind": "rate-limited"}))
+        for line in ({"event": "retry", "age": "2.5m", "error_kind": "rate-limited", "try": 1, "waitSec": 43.2},
+                     {"event": "check-failed", "age": "2.5m", "kind": "rate-limited", "rep": 1, "monoAgeSec": 150}):
+            self.assertEqual(weekly.public_line_problems(dict(line, at="x"), start), [])
 
 
-# --- 2. pacing: one budget per client, across processes -----------------------------------------------------------
+# --- C. the schedule, planned before the go -----------------------------------------------------------------------
 
-class Pacing(unittest.TestCase):
-    def test_never_more_than_the_budget_in_any_minute_and_spread(self):
-        clock = FakeClock()
-        p = P.Pacer(P.MemoryStore(), 24, clock, jitter=0)
-        times = []
-        for i in range(100):
-            p.acquire("check" if i % 3 == 0 else "prime")
-            times.append(clock.now())
-        self.assertLessEqual(P.busiest_minute(times), 24)
-        self.assertGreaterEqual(min(b - a for a, b in zip(times, times[1:])), 60 / 24 - 1e-9)
+class Schedule(unittest.TestCase):
+    def test_the_pacer_is_gone(self):
+        self.assertFalse(os.path.exists(os.path.join(ROOT, "harness", "pacing.py")))
+        argv = night.command(night.ALL_STEPS["DV1"], "2099-01-01", launch_id="L", delay=0)
+        self.assertFalse([a for a in argv if "pace" in a])
+        self.assertNotIn("pace", probe.parser().format_help())
 
-    def test_primings_leave_room_for_checks(self):
-        clock = FakeClock()
-        p = P.Pacer(P.MemoryStore(), 24, clock, jitter=0)
-        for _ in range(18):
-            p.acquire("prime")
-        t = clock.now()
-        self.assertFalse(p.acquire("prime", until=t + 10))  # the 19th priming of the minute waits 17.5 s
-        self.assertTrue(p.acquire("check", until=t + 10))  # a check goes after the 2.5 s gap
+    def test_window_max(self):
+        self.assertEqual(NP.window_max([0, 1, 59.9, 60, 120], 60), 3)
+        self.assertEqual(NP.window_max([], 60), 0)
 
-    def test_a_waiting_check_goes_before_every_priming(self):
-        clock = FakeClock()
-        store = P.MemoryStore()
-        a, b = P.Pacer(store, 24, clock, jitter=0), P.Pacer(store, 24, clock, jitter=0)
-        a.acquire("prime")
-        self.assertFalse(b.acquire("check", until=clock.now() + 1))  # it must wait 2.5 s: it says so
-        self.assertTrue(store.state["checks"])
-        self.assertFalse(a.acquire("prime", until=clock.now() + 3))  # that turn is the check's
-        self.assertTrue(b.acquire("check"))
-        self.assertTrue(a.acquire("prime"))
+    def test_the_devin_schedule_keeps_under_40_a_minute_and_300_a_quarter_hour(self):
+        sel = night.runs_of(["devin"])
+        p = night.plan(sel)["devin"]
+        self.assertLessEqual(p["max"][60], 40)
+        self.assertLessEqual(p["max"][900], 300)
+        starts = list(p["starts"].values())
+        self.assertEqual(starts, sorted(starts))
+        self.assertTrue(all(b - a >= 20 for a, b in zip(starts, starts[1:])))
+        self.assertEqual(p["requests"], 16 * 87 + 3 * 105)
 
-    def test_the_budget_is_shared_by_processes_through_the_night_folder(self):
-        tmp = scratch(self)
-        code = ("import sys; sys.path.insert(0, sys.argv[1]); import pacing as P, probe\n"
-                "p = P.Pacer(P.FileStore(sys.argv[2], 'devin'), 600, probe.Clock(), jitter=0)\n"
-                "for _ in range(5): p.acquire('prime')\n")
-        procs = [subprocess.Popen([sys.executable, "-c", code, os.path.join(ROOT, "harness"), tmp]) for _ in range(3)]
-        for pr in procs:
-            self.assertEqual(pr.wait(timeout=60), 0)
-        with open(os.path.join(tmp, "devin.json")) as f:
-            times = sorted(json.load(f)["times"])
-        self.assertEqual(len(times), 15)  # every process's requests in the one shared record
-        self.assertGreaterEqual(min(b - a for a, b in zip(times, times[1:])), 0.1 - 0.01)  # 60 / 600 s apart
-        self.assertEqual(os.stat(os.path.join(tmp, "devin.json")).st_mode & 0o777, 0o600)
-
-    def test_a_run_keeps_to_the_budget_and_its_checks_are_not_held_by_its_primings(self):
-        clock = FakeClock()
-        pacer = P.Pacer(P.MemoryStore(), 6, clock, jitter=0)  # a small budget: the primings must queue
-        times = []
-
-        def pace(kind, until=None):
-            ok = pacer.acquire(kind, until)
-            if ok:
-                times.append(clock.now())
-            return ok
-        c = FakeClient(clock, ttl=36000, took=1)
-        events = []
-        probe.run_probe(c, ages=[150, 300, 450], labels=["2.5m", "5m", "7.5m"], replicas=3, words=10, salt="t",
-                        log=events.append, clock=clock, pace=pace)
-        self.assertEqual(events[-1]["event"], "done")
-        self.assertEqual(len(times), c.requests)
-        self.assertLessEqual(P.busiest_minute(times), 6)
-        self.assertFalse([e for e in events if e.get("event") == "check" and e["late"]])
-
-    def test_devin_runs_get_the_budget_codex_and_smoke_runs_none(self):
-        dv = night.command(night.ALL_STEPS["DV1"], "2099-01-01", launch_id="L", delay=0)
-        self.assertEqual(dv[dv.index("--pace-rpm") + 1], "24")
-        self.assertTrue(dv[dv.index("--pace-dir") + 1].endswith("night-2099-01-01/pacing"))
-        self.assertNotIn("--pace-rpm", night.command(night.ALL_STEPS["CX1"], "2099-01-01", launch_id="L"))
-        self.assertNotIn("--pace-rpm", night.command(night.ALL_STEPS["S3"], "2099-01-01"))
-        a = probe.parser().parse_args(dv[2:])
-        self.assertEqual(a.pace_rpm, 24)
-        with mock.patch.dict(night.PACE, {}), mock.patch.object(night, "dry_run_go", lambda *a, **k: None):
-            night.main(["--date", "2099-01-01", "--pace", "devin=12", "--dry-run", "devin"])
-            dv = night.command(night.ALL_STEPS["DV1"], "2099-01-01", launch_id="L")
-            self.assertEqual(dv[dv.index("--pace-rpm") + 1], "12")
+    def test_the_limits_are_configurable_and_the_go_refuses_a_schedule_over_them(self):
+        with mock.patch.dict(night.LIMITS, {"devin": {60: 30, 900: 200}}):
+            p = night.plan(night.runs_of(["DV1,DV2,DV3,DV4,DV5,DV6"]))["devin"]
+            self.assertLessEqual((p["max"][60], p["max"][900]), (30, 200))
+        with mock.patch.dict(night.LIMITS, {"devin": {60: 5, 900: 300}}), \
+                self.assertRaisesRegex(SystemExit, "alone passes the limits"):
+            night.plan(night.runs_of(["DV1"]))
+        planned = {"devin": {"limits": {60: 40}, "max": {60: 41, 900: 10}}}
+        with self.assertRaisesRegex(SystemExit, "41 requests in 60 s, over 40"):
+            night.refuse_over_limits(planned, "--go")
+        with mock.patch.dict(night.LIMITS, {}), mock.patch.object(night, "dry_run_go", lambda *a, **k: None):
+            night.main(["--date", "2099-01-01", "--limit", "devin=30/250", "--dry-run", "devin"])
+            self.assertEqual(night.LIMITS["devin"], {60: 30, 900: 250})
         with self.assertRaises(SystemExit):
-            night.main(["--date", "2099-01-01", "--pace", "devin=fast", "--dry-run", "devin"])
+            night.main(["--date", "2099-01-01", "--limit", "devin=fast", "--dry-run", "devin"])
 
-    def test_the_probe_s_start_line_records_the_budget(self):
-        argv = night.command(night.ALL_STEPS["DV1"], "2099-01-01", launch_id="L")[2:]
-        with redirect_stdout(StringIO()) as out:
-            probe.main([*argv, "--dry-run"])
-        start = json.loads(out.getvalue().splitlines()[0])
-        self.assertEqual(start["pacing"], {"rpm": 24, "reserve_for_checks": 6})
-        self.assertIn("paced: at most 24 devin requests a minute", out.getvalue())
+    def test_the_plan_is_the_real_loop(self):
+        run = night.sim_runs([night.ALL_STEPS["DV1"]])[0]
+        times, end = NP.profile(run, 4.0)
+        self.assertEqual(len(times), 87)
+        self.assertTrue(2 * 3600 < end < 2.5 * 3600)
 
-    def test_the_dry_run_plans_the_time_with_pacing(self):
+    def test_the_dry_run_reports_the_schedule_and_its_maxima(self):
         out = []
-        ends = night.plan_report(night.runs_of(["DV1,DV2,DV3"]), out=out.append)
-        end, requests = ends["devin"]
-        self.assertEqual(requests, 3 * 87)
-        self.assertTrue(2 * 3600 < end < 3 * 3600, end)
+        planned = night.plan_report(night.runs_of(["DV1,DV2,DV3"]), out=out.append)
         text = "\n".join(out)
-        self.assertIn("paced at 24 a minute", text)
-        self.assertIn("no check late", text)
-
+        self.assertIn("(limit 40)", text)
+        self.assertIn("(limit 300)", text)
+        self.assertIn("DV3 +", text)
+        self.assertEqual(planned["devin"]["requests"], 3 * 87)
 
 # --- 3. the control's second chance -------------------------------------------------------------------------------
 
@@ -336,7 +310,7 @@ class SecondControl(unittest.TestCase):
         self.assertIsNone(reason)
         controls = [e for e in ev if e.get("age") == "control"]
         self.assertEqual([(e["event"], e.get("rep"), e.get("warm")) for e in controls],
-                         [("prime", 0, None), ("check", None, False), ("prime", 1, None), ("check", None, True)])
+                         [("prime", 0, None), ("check", 0, False), ("prime", 1, None), ("check", 1, True)])
         self.assertNotEqual(controls[0]["session"], controls[2]["session"])
         self.assertEqual(ev[-1]["event"], "done")
 
@@ -379,10 +353,10 @@ class SecondControl(unittest.TestCase):
             self.assertEqual(bo.read_harness("r.jsonl")["control"], [False, True])
 
 
-# --- 4. the model ids, before the go ------------------------------------------------------------------------------
+# --- D. model ids: the checked list only --------------------------------------------------------------------------
 
 class ModelIds(unittest.TestCase):
-    def test_dv12_is_deepseek_v4_pro_high_and_every_run_is_in_the_checked_lists(self):
+    def test_dv12_is_deepseek_v4_pro_high_and_every_run_is_in_the_checked_list(self):
         self.assertEqual(night.ALL_STEPS["DV12"]["model"], "deepseek-v4-pro-high")
         for s in night.ALL_STEPS.values():
             with self.subTest(run=s["id"]):
@@ -390,69 +364,91 @@ class ModelIds(unittest.TestCase):
         self.assertNotIn("deepseek-v4-pro-low", M.checked("devin"))
 
     def test_an_unknown_id_is_refused_by_name_in_the_dry_run_and_the_go(self):
-        def lister(client):
-            return {"glm-5-3-low"} if client == "devin" else {"gpt-6.2-sol"}
-        with mock.patch.object(night, "dry_run", side_effect=AssertionError("planned")), \
-                self.assertRaisesRegex(SystemExit, r"DV1 \(claude-opus-5-5-low\)"):
-            night.dry_run_go(["DV1,DV9"], "2099-01-01", out=lambda *_: None, lister=lister)
-        with mock.patch.object(night, "guard"), mock.patch.object(night, "launch") as launch, \
-                self.assertRaisesRegex(SystemExit, r"--go: refused: .*CX3 \(gpt-6.1-sol\)"):
-            night.go_clients(["CX1,CX3"], "2099-01-01", popen=lambda *a, **k: None, out=lambda *_: None,
-                             lister=lister)
-        launch.assert_not_called()
         with mock.patch.dict(night.ALL_STEPS["DV12"], model="deepseek-v4-pro-low"), \
+                mock.patch.object(night, "dry_run", side_effect=AssertionError("planned")), \
                 self.assertRaisesRegex(SystemExit, r"DV12 \(deepseek-v4-pro-low\)"):
-            night.check_ids([night.ALL_STEPS["DV12"]], "--dry-run", out=lambda *_: None)
+            night.dry_run_go(["DV12"], "2099-01-01", out=lambda *_: None)
+        with mock.patch.dict(night.ALL_STEPS["CX3"], model="gpt-9"), mock.patch.object(night, "guard"), \
+                mock.patch.object(night, "launch") as launch, \
+                self.assertRaisesRegex(SystemExit, r"--go: refused: .*CX3 \(gpt-9\)"):
+            night.go_clients(["CX1,CX3"], "2099-01-01", popen=lambda *a, **k: None, out=lambda *_: None)
+        launch.assert_not_called()
 
-    def test_the_dry_run_runs_no_client_to_list_and_the_go_reads_the_client_s_own(self):
-        with mock.patch.dict(os.environ, {"GROUNDTRUTH_MODEL_LIST": ""}), \
-                mock.patch.object(M, "codex_listed", side_effect=AssertionError("a client was run")), \
-                mock.patch.object(M, "devin_listed", side_effect=AssertionError("a client was run")):
-            for client in ("codex", "devin"):
-                ids, src, own = M.known_ids(client, live=False)
-                self.assertFalse(own)
-                self.assertIn("checked list", src)
-        with mock.patch.dict(os.environ, {"GROUNDTRUTH_MODEL_LIST": ""}), \
-                mock.patch.object(M, "codex_listed", return_value={"gpt-6-luna"}):
-            ids, _, own = M.known_ids("codex", live=True)
-            self.assertEqual((ids, own), ({"gpt-6-luna"}, True))
-        with mock.patch.dict(os.environ, {"GROUNDTRUTH_MODEL_LIST": ""}), \
-                mock.patch.object(M, "devin_listed", side_effect=M.ListError("no Devin login")):
-            ids, src, own = M.known_ids("devin", live=True)
-            self.assertFalse(own)
-            self.assertIn("no Devin login", src)
-            self.assertIn("deepseek-v4-pro-high", ids)
+    def test_no_client_is_run_to_list_models(self):
+        import inspect
+        src = inspect.getsource(M)
+        for gone in ("subprocess", "models list", "debug models", "tempfile", "sandbox"):
+            self.assertNotIn(gone, src.split('"""', 2)[2])
+        with mock.patch.object(night.subprocess, "run", side_effect=AssertionError("a client was run")):
+            night.check_ids(list(night.ALL_STEPS.values()), "--go")
 
-    def test_codex_lists_offline_without_the_network(self):
-        seen = {}
 
-        def run(argv, **kw):
-            seen.update(argv=argv, env=kw["env"])
-            return SimpleNamespace(returncode=0, stdout=json.dumps({"models": [{"slug": "gpt-6-luna"},
-                                                                               {"slug": "gpt-6.2-sol"}]}))
-        with mock.patch.object(M.shutil, "which", return_value="/x/codex"), mock.patch.object(C, "CONFINED", True):
-            self.assertEqual(M.codex_listed(run=run), {"gpt-6-luna", "gpt-6.2-sol"})
-        self.assertIn("--bundled", seen["argv"])
-        self.assertIn("(deny network*)", seen["argv"][2])
-        self.assertNotEqual(seen["env"]["CODEX_HOME"], os.path.expanduser("~/.codex"))
-        self.assertFalse(os.path.exists(seen["env"]["HOME"]))  # the throwaway folder is gone
+# --- E. the clock check, F. the second control's rep ------------------------------------------------------------
 
-    def test_devin_s_list_is_never_asked_without_its_login(self):
-        tmp = scratch(self)
-        os.chmod(tmp, 0o700)
-        os.mkdir(os.path.join(tmp, "devin-cli"), 0o700)
-        run = mock.Mock(side_effect=AssertionError("the client was run"))
-        with mock.patch.object(C, "CONFINED", False), self.assertRaisesRegex(M.ListError, "no Devin login"):
-            M.devin_listed(tmp, run=run)
-        run.assert_not_called()
+class SkewClock(FakeClock):
+    """FakeClock with a monotonic clock that misses `lost` seconds of the next sleep longer than `after` (a sleep
+    macOS's monotonic clock does not count), or a wall clock step."""
 
-    def test_devin_s_json_list_read_flat_or_by_family(self):
-        flat = [{"id": "glm-5-3-low", "label": "GLM 5.3 Low"}, {"id": "deepseek-v4-pro-high"}]
-        family = {"families": [{"name": "DeepSeek", "models": [{"id": "deepseek-v4-pro", "levels": ["high", "max"]}]}]}
-        self.assertTrue({"glm-5-3-low", "deepseek-v4-pro-high"} <= M.ids_in(flat))
-        found = M.ids_in(family)
-        self.assertIn("deepseek-v4-pro-high", found)
-        self.assertNotIn("deepseek-v4-pro-low", found)
+    def __init__(self):
+        super().__init__()
+        self.m, self.lose = 5000.0, None
+
+    def mono(self):
+        return self.m
+
+    def sleep(self, seconds):
+        if seconds > 0:
+            self.t += seconds
+            lost = self.lose if self.lose and seconds > 60 else 0
+            if lost:
+                self.lose = None
+            self.m += seconds - lost
+
+
+class MonoFakeClient(FakeClient):
+    def start(self, prompt):
+        self.clock.m += self.prime_took.get(self.requests, self.took)
+        return super().start(prompt)
+
+    def resume(self, handle, prompt):
+        self.clock.m += self.took
+        return super().resume(handle, prompt)
+
+
+class ClockCheck(unittest.TestCase):
+    def test_both_ages_are_recorded_and_agree(self):
+        clock = SkewClock()
+        reason, ev = loop(MonoFakeClient(clock, ttl=3600), clock)
+        for e in (e for e in ev if e["event"] == "check"):
+            self.assertLessEqual(abs(e["realAgeSec"] - e["monoAgeSec"]), 1)
+            self.assertFalse(e["late"])
+
+    def test_a_check_whose_clocks_disagree_by_more_than_5_s_is_late_and_left_out(self):
+        clock = SkewClock()
+        clock.lose = 30  # a sleep of 30 s the monotonic clock does not count
+        reason, ev = loop(MonoFakeClient(clock, ttl=36000), clock)
+        late = [e for e in ev if e["event"] == "check" and e["late"]]
+        self.assertTrue(late)
+        self.assertTrue(all(e["realAgeSec"] - e["monoAgeSec"] >= 29 for e in late))
+        self.assertTrue(all(e["realAgeSec"] <= probe.late_after(e["ageSec"]) for e in late))  # on time by the wall
+
+    def test_a_control_whose_clocks_disagree_ends_control_late(self):
+        clock = SkewClock()
+        c = MonoFakeClient(clock, ttl=3600)
+        orig = clock.sleep
+
+        def sleep(seconds):  # the 30 s control wait: the monotonic clock counts 20
+            orig(seconds)
+            if 25 <= seconds <= 30:
+                clock.m -= 10
+        clock.sleep = sleep
+        reason, ev = loop(c, clock)
+        self.assertEqual(reason, "control-late")
+
+    def test_the_second_control_s_check_carries_rep_1(self):
+        clock = FakeClock()
+        reason, ev = loop(ColdFirstControl(clock, ttl=3600, cold=1), clock)
+        self.assertEqual([e["rep"] for e in ev if e["event"] == "check" and e["age"] == "control"], [0, 1])
 
 
 # --- 5. status and stop in any language -------------------------------------------------------------------------
@@ -558,8 +554,7 @@ class Rerun(R2.Owner):
         self.assertEqual([lk["runs"][r]["delay_s"] for lk in locks for r in sorted(lk["runs"])], [0, 15, 0, 20])
         dv12 = self.started[3]
         self.assertEqual(dv12[dv12.index("--model") + 1], "deepseek-v4-pro-high")
-        self.assertIn("--pace-rpm", dv12)
-        self.assertEqual(R2.mode(os.path.join(night.night_dir(DATE), "pacing")), 0o700)
+        self.assertFalse([a for a in dv12 if "pace" in a])
         with self.assertRaisesRegex(SystemExit, "launched already"):
             night.go_clients(["CX6"], DATE, popen=self.popen(), out=lambda *_: None)
 

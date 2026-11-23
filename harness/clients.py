@@ -78,8 +78,8 @@ class Usage:
 
 
 class Refused(Exception):
-    """A refusal: kind `quota` (a plan's limit, or a rate limit that says no reset), `rate-limited` (a rate limit that
-    says when it resets: `reset`, see rate_reset), `input` (the input is too long, from the provider), or `client-cap`
+    """A refusal: kind `quota` (a plan's limit, or any rate text but Devin's known one), `rate-limited` (Devin's rate
+    limit, which says when it resets: `reset`, see rate_reset), `input` (the input is too long, from the provider), or `client-cap`
     (the client refused before sending anything: Codex's message size)."""
 
     def __init__(self, kind, text, reset=None):
@@ -136,47 +136,25 @@ INPUT_TOO_LONG = re.compile(r"prompt is too long|input is too long|too many (?:i
                             r"|exceeds? (?:the )?(?:model'?s? )?(?:maximum|context|limit)", re.I)
 QUOTA = re.compile(r"usage limit|rate[ _]limit|quota|too many requests|\b429\b|out of (?:credits|usage)|limit reached"
                    r"|hit your|insufficient[ _](?:credits|balance|quota)", re.I)
-# A plan's limit: what the account may use is spent, whatever the text says of a reset (Claude's "usage limit reached.
-# Your limit resets at 3am.", Codex's "You've hit your usage limit. Try again later."). Always `quota`: it ends the run.
-PLAN_LIMIT = re.compile(r"usage limit|quota|out of (?:credits|usage)|hit your|insufficient[ _](?:credits|balance|quota)"
-                        r"|billing (?:period|cycle)|credits? (?:exhausted|depleted|balance)|(?:weekly|monthly|daily) limit"
-                        r"|upgrade (?:to|your)", re.I)
-# A rate limit: too many requests in a short time, whatever the plan has left.
-RATE_LIMIT = re.compile(r"rate[ _-]?limit|too many requests|\b429\b", re.I)
-# When it resets, as the refusal says it: "reset in 2 seconds", "retry in 30s", "try again in 1 minute", "retry after
-# 20", and a UTC time "(at 11:15 UTC)". A local time ("at 3am") is no reset the probe can read.
-RESET_IN = re.compile(r"(?:reset|retry|try again)\w*(?: again)?\s+(?:in|after)\s+(\d+(?:\.\d+)?)\s*"
-                      r"(ms|milliseconds?|s|secs?|seconds?|m|mins?|minutes?)\b", re.I)
-RETRY_AFTER = re.compile(r"retry[- ]after:?\s*(\d+(?:\.\d+)?)\s*(?:s|secs?|seconds?)?\b", re.I)
-RESET_AT = re.compile(r"\bat\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*UTC\b", re.I)
+# Devin's own rate limit, the one shape known (2026-11-23, seven runs within nine seconds): "Error: Agent error: Reached
+# request rate limit. Please switch to a different model or contact support. Your limit will reset in 2 seconds (at
+# 11:15 UTC)." Only this is `rate-limited`; every other text that QUOTA matches stays `quota` and ends the run.
+DEVIN_RATE_LIMIT = re.compile(r"Reached request rate limit\b.*?reset in (\d+(?:\.\d+)?) seconds?\s*"
+                              r"\(at (\d{1,2}):(\d{2}) UTC\)", re.I | re.S)
 
 
 def rate_reset(text):
-    """What a rate-limit refusal says of its reset: {"in": seconds or None, "at": the UTC second of the day or None},
-    or None when it says neither."""
-    text = text or ""
-    m = RESET_IN.search(text)
-    secs = None
-    if m:
-        unit = m.group(2).lower()
-        scale = 0.001 if unit.startswith("ms") or unit.startswith("milli") else 60 if unit.startswith("m") else 1
-        secs = float(m.group(1)) * scale
-    else:
-        r = RETRY_AFTER.search(text)
-        secs = float(r.group(1)) if r else None
-    a = RESET_AT.search(text)
-    at = None
-    if a and int(a.group(1)) < 24 and int(a.group(2)) < 60:
-        at = int(a.group(1)) * 3600 + int(a.group(2)) * 60 + int(a.group(3) or 0)
-    if secs is None and at is None:
+    """{"in": seconds, "at": the UTC second of the day} of Devin's rate-limit refusal, or None for any other text."""
+    m = DEVIN_RATE_LIMIT.search(text or "")
+    if not m or int(m.group(2)) > 23 or int(m.group(3)) > 59:
         return None
-    return {"in": secs, "at": at}
+    return {"in": float(m.group(1)), "at": int(m.group(2)) * 3600 + int(m.group(3)) * 60}
 
 
 def reset_wait(reset, now):
-    """Seconds from `now` (epoch seconds) until the reset a refusal named (rate_reset): the later of its two forms when
-    it gives both (Devin's "reset in 2 seconds (at 11:15 UTC)" at 11:14:17 waits until 11:15:00). A UTC time that
-    has just passed (by up to 12 hours, a clock apart) counts as now. Never negative."""
+    """Seconds from `now` (epoch seconds) until the reset the refusal named: the later of its two forms ("reset in 2
+    seconds (at 11:15 UTC)" at 11:14:17 waits until 11:15:00). A time that has just passed (by up to 12 hours, a clock
+    apart) counts as now. Never negative."""
     waits = [0.0]
     if reset and reset.get("in") is not None:
         waits.append(float(reset["in"]))
@@ -187,17 +165,14 @@ def reset_wait(reset, now):
 
 
 def classify(text):
-    """The exception for a client's failure text: an input refusal; a plan's limit (`quota`, it ends the run); a rate
-    limit that says when it resets (`rate-limited`, waited for: harness/probe.py); a rate limit that does not, or any
-    other quota text (`quota`); or another error."""
+    """The exception for a client's failure text: an input refusal; Devin's rate limit (`rate-limited`, with its
+    reset: rate_reset); any other quota or rate text (`quota`, it ends the run); or another error."""
     text = (text or "").strip()  # never clipped here: redaction comes first, then any clipping (Session)
     if INPUT_TOO_LONG.search(text):
         return Refused("input", text)
-    if PLAN_LIMIT.search(text):
-        return Refused("quota", text)
-    if RATE_LIMIT.search(text):
-        reset = rate_reset(text)
-        return Refused("rate-limited", text, reset=reset) if reset else Refused("quota", text)
+    reset = rate_reset(text)
+    if reset:
+        return Refused("rate-limited", text, reset=reset)
     if QUOTA.search(text):
         return Refused("quota", text)
     return ClientError(text or "no output")

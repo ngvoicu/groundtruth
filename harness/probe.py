@@ -9,23 +9,25 @@ large system prompt between sessions, so a check is warm only when the cache cov
 of the sample's unique block: cached >= baseline + unique / 2, where baseline is the prompt size of a session without
 the block (measured once at start). One check per sample, like the TypeScript probe in src/.
 
-Five rules for every client (docs/own-clients.md, section 1):
+Six rules for every client (docs/own-clients.md, section 1):
 1. One model request per check. A check whose turn was not one model request (a tool call, then the answer) is
    logged as `check-invalid` and left out: the second request would read what the first one wrote.
-2. A check is never sent twice. A check that fails is logged as `check-failed` and its sample is lost. A priming may
-   be tried again (3 tries, 30 seconds apart).
+2. A check is never sent twice, and its session is never resumed again: a check that fails after it was sent, for any
+   reason (a refusal, a rate limit, an error, a turn without an answer), is logged as `check-failed` with its kind
+   and its sample is lost; a call that failed may have written cache already. A priming may be tried again, only in a
+   new session with a new block: 3 tries, 30 seconds apart after an error, after the named reset on a rate limit.
 3. The control comes first: it is primed, checked at 30 seconds, and only then are the others primed. A control that
    misses gets one more control, in a fresh session (another unique block); the run ends (`stop`,
    `no-observable-cache`) only when both miss, after five requests, and both are recorded. A control checked late
    (more than 30 x 1.1 + 90 s after its priming) ends the run (`stop`, `control-late`): a late control shows nothing.
-4. A quota refusal (a plan's limit) ends the run (`stop`, `quota`), never retried; the samples already primed are not
-   checked. A rate limit that says when it resets (`rate-limited`, clients.classify) is no quota: the request waits
-   for the reset plus a few random seconds and is sent again (a `rate-wait` event per wait), at most 5 tries for one
-   request and 10 minutes of such waits for one sample; then the request is lost as any refused one (a priming
-   `prime-refused`, a check `check-failed`, both of kind `rate-limited`). The vendor refused it before any model
-   read it, so a check sent again after it reads no write of its own; one that the waits made late is `late`.
-5. A client with a request budget (harness/pacing.py, --pace-rpm) asks the budget, shared by every run of the
-   client that night, before each request.
+4. A quota refusal ends the run (`stop`, `quota`), never retried; the samples already primed are not checked. Only
+   Devin's own rate-limit text ("Reached request rate limit ... reset in N seconds (at HH:MM UTC)") is
+   `rate-limited` (clients.classify): a priming waits for its reset and is tried again (rule 2), a check is lost
+   (rule 2). Three rate-limited refusals in a row end the run as `quota`: it never loops.
+5. The night spaces a client's runs ahead of time (harness/night.py: each run's start, planned so that the client's
+   requests stay under a limit per 60 s and per 15 minutes); nothing paces a run while it runs.
+6. Every check's age is measured by the wall clock and by the monotonic clock (`realAgeSec`, `monoAgeSec`); apart by
+   more than 5 s (a clock step, a sleep macOS's monotonic clock does not count), the check is `late` and left out.
 Also: ages count from the start of the priming request; a check more than age x 1.1 + 90 s after it is `late`; a run
 whose replies change the lifetime they write (Claude Code in overage) ends (`stop`, `tier-changed`).
 
@@ -39,7 +41,6 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import clients as C  # noqa: E402
-import pacing  # noqa: E402
 
 OK_PROMPT = C.OK_PROMPT
 
@@ -52,9 +53,10 @@ LONG_REST = ["4h", "8h", "12h"]
 SCHEDULES = {"std": LADDER_START + STD_REST, "long": LADDER_START + STD_REST + LONG_REST}
 CONTROL_AGE = 30.0
 PRIME_TRIES, RETRY_WAIT = 3, 30
-# A rate limit that says when it resets (rule 4): tries of one request, seconds of waits for one sample, and the random
-# seconds added to each wait (so that the runs of a night do not all come back at the reset's second).
-RATE_TRIES, RATE_WAIT_MAX, RATE_JITTER = 5, 600.0, (1.0, 5.0)
+# Devin's rate limit (rule 4): its rate-limited refusals in a row that end the run as quota, the longest wait for a
+# reset before a priming is tried again, and the random seconds added to it (the runs do not all come back at once).
+RATE_LIMITED_STOP, RATE_WAIT_CAP, RATE_JITTER = 3, 300.0, (1.0, 5.0)
+CLOCK_SKEW = 5.0  # rule 6: seconds the wall and the monotonic clock may disagree on a check's age
 CONTROLS = 2  # rule 3: a cold control gets one more, in a fresh session
 
 
@@ -111,6 +113,9 @@ class Clock:
     def now(self):
         return time.time()
 
+    def mono(self):
+        return time.monotonic()
+
     def sleep(self, seconds):
         if seconds > 0:
             time.sleep(seconds)
@@ -139,7 +144,7 @@ WAVES, WAVE_GAP = 3, 300.0
 # reason, an error kind) or of the run's own plan (an age label). Anything else, and every string a client or vendor
 # reported, never reaches the public file: it goes to the run's console log (private, mode 600), for the audit.
 NUMBER, BOOL, AGE = "number", "bool", "age"
-EVENTS = ("start", "baseline", "prime", "check", "check-invalid", "check-failed", "retry", "rate-wait", "prime-refused",
+EVENTS = ("start", "baseline", "prime", "check", "check-invalid", "check-failed", "retry", "prime-refused",
           "prime-failed", "model-scan", "stop", "done")
 STOP_REASONS = ("baseline-failed", "control-failed", "control-late", "no-observable-cache", "quota", "tier-changed",
                 "other-model", "unreadable-session")
@@ -150,7 +155,7 @@ USAGE = {"total": NUMBER, "cached": NUMBER, "write": NUMBER, "calls": NUMBER, "w
          "model_matches": BOOL, "model_issue": C.MODEL_ISSUES, "model_evidence": ("own-turn",),
          "raw": {"total": NUMBER, "cached": NUMBER, "write": NUMBER}}
 FIELDS = {"event": EVENTS, "age": AGE, "ageSec": NUMBER, "realAgeSec": NUMBER, "rep": NUMBER, "wave": NUMBER,
-          "try": NUMBER, "waitSec": NUMBER, "unique": NUMBER, "session": NUMBER, "late": BOOL, "warm": BOOL, "final": BOOL,
+          "try": NUMBER, "waitSec": NUMBER, "monoAgeSec": NUMBER, "unique": NUMBER, "session": NUMBER, "late": BOOL, "warm": BOOL, "final": BOOL,
           "unreadable": BOOL, "other_models": NUMBER, "reason": REASONS, "kind": C.ERROR_KINDS,
           "error_kind": C.ERROR_KINDS, "usage": USAGE, "prime": USAGE}
 
@@ -216,17 +221,17 @@ def late_after(age):
 
 
 def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler="random", cumulative=None,
-              waves=WAVES, wave_gap=WAVE_GAP, detail=None, pace=None, rng=None):
+              waves=WAVES, wave_gap=WAVE_GAP, detail=None, rng=None):
     """The loop. `h` has start(prompt) -> (handle, usage dict) and resume(handle, prompt) -> usage dict and raises
     clients.Refused / another exception; `log` takes one event (public); `detail` takes a failure's text (the console
-    log only: a public event carries only its kind, one of clients.ERROR_KINDS); `clock` has now() and sleep();
-    `pace(kind, until=None)`, when given, returns True once a request of kind "prime" or "check" may go, or False when
-    `until` comes first (harness/pacing.py Pacer.acquire); `rng` draws the jitter of rate-limit waits. Returns the
-    stop reason or None."""
+    log only: a public event carries only its kind, one of clients.ERROR_KINDS); `clock` has now() and sleep(), and
+    mono() (a monotonic clock) when it can; `rng` draws the jitter of a rate limit's wait. Returns the stop reason or
+    None."""
     clock = clock or Clock()
     detail = detail or (lambda text: None)
     rng = rng or random.Random()
-    waited = {}  # (age label, replica) -> seconds this sample waited on rate limits (rule 4)
+    mono = getattr(clock, "mono", clock.now)
+    in_a_row = [0]  # rate-limited refusals in a row (rule 4)
     sessions = []  # every session the run started (baseline, control, samples): read whole by the model scans
     cumulative = getattr(h, "cumulative", False) if cumulative is None else cumulative
     seen_ttl = [None]
@@ -244,64 +249,68 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
         detail(f"{where}: {kind}: {type(e).__name__}: {e}")
         return kind
 
+    def outcome(e=None):
+        """Counts rate-limited refusals in a row (any other outcome ends the row); a quota refusal, or the
+        RATE_LIMITED_STOP-th rate-limited refusal in a row, ends the run (`stop`, `quota`)."""
+        if isinstance(e, C.Refused) and e.kind == "quota":
+            raise Stop("quota")
+        in_a_row[0] = in_a_row[0] + 1 if isinstance(e, C.Refused) and e.kind == "rate-limited" else 0
+        if in_a_row[0] >= RATE_LIMITED_STOP:
+            raise Stop("quota", f"{in_a_row[0]} rate-limited refusals in a row")
+
     def watch(usage):
         t = written_ttl(usage)
         if t == "mixed" or (t and seen_ttl[0] and t != seen_ttl[0]):
             raise Stop("tier-changed", f"a reply wrote {t} after {seen_ttl[0]}")
         seen_ttl[0] = seen_ttl[0] or t
 
-    def send(call, kind, name, rep, latest=None, paced=False):
-        """(what `call()` returned, the moment the request that answered went out). The budget first (`pace`). A
-        `rate-limited` refusal waits for the reset the vendor named plus RATE_JITTER seconds, as a `rate-wait` event,
-        and the request goes again: at most RATE_TRIES tries, and RATE_WAIT_MAX seconds of such waits for the sample
-        (`name`, `rep`); past either, the refusal is raised as it came. `latest`: the control's last moment; a control
-        that the budget or a wait would send later ends the run (`control-late`). `paced`: the first try's turn is
-        taken already (the sample loop takes it, so that waiting for it never holds a check that falls due)."""
-        for i in range(1, RATE_TRIES + 1):
-            if pace and not (paced and i == 1):
-                pace(kind)
-            if latest is not None and clock.now() > latest:
-                raise Stop("control-late", "the control's check could not go in time (rate limit or budget)")
-            t = clock.now()
-            try:
-                return call(), t
-            except C.Refused as e:
-                if e.kind != "rate-limited" or i == RATE_TRIES:
-                    raise
-                wait = C.reset_wait(e.reset, clock.now()) + rng.uniform(*RATE_JITTER)
-                spent = waited.get((name, rep), 0.0)
-                if spent + wait > RATE_WAIT_MAX:
-                    detail(f"{kind} {name}: rate-limited, {spent:.0f} s waited already for this sample: no more")
-                    raise
-                waited[(name, rep)] = spent + wait
-                detail(f"{kind} {name}: rate-limited (try {i}), waiting {wait:.1f} s: {e.text}")
-                log({"event": "rate-wait", "age": name, "rep": rep, "try": i, "waitSec": round(wait, 1)})
-                clock.sleep(wait)
-
-    def prime(prompt, name, rep, paced=False):
-        """(handle, usage, start time) or None. Tried again on an error, never on a refusal (a rate limit's wait
-        aside: send). A priming that was not one explicit model request (Muse's `calls: 0`, or no count) is no
-        priming: tried again too."""
-        for i in range(PRIME_TRIES):
-            try:
-                (handle, usage), t0 = send(lambda: h.start(prompt), "prime", name, rep, paced=paced and i == 0)
-                if usage.get("calls") != 1:
-                    raise C.ClientError(f"the priming made {usage.get('calls')!r} model requests, not 1",
-                                        kind="not-one-call")
-            except C.Refused as e:
-                kind = failed(f"priming {name}", e)
-                if e.kind == "quota":
-                    raise Stop("quota")
+    def attempt(prompt, name, i):
+        """One try (`i`, from 0) of a priming, in a new session: ("ok", handle, usage, wall start, monotonic start),
+        ("again", seconds to wait) or ("lost",). A rate-limited refusal waits for the reset Devin named (at most
+        RATE_WAIT_CAP) plus RATE_JITTER seconds, an error RETRY_WAIT seconds; another refusal loses the sample. A
+        priming that was not one explicit model request (Muse's `calls: 0`, or no count) is no priming: tried again."""
+        t0, m0 = clock.now(), mono()
+        last = i + 1 >= PRIME_TRIES
+        try:
+            handle, usage = h.start(prompt)
+            if usage.get("calls") != 1:
+                raise C.ClientError(f"the priming made {usage.get('calls')!r} model requests, not 1",
+                                    kind="not-one-call")
+        except C.Refused as e:
+            kind = failed(f"priming {name}", e)
+            ends = e.kind == "quota" or (e.kind == "rate-limited" and in_a_row[0] + 1 >= RATE_LIMITED_STOP)
+            if e.kind == "rate-limited" and not last and not ends:
+                outcome(e)
+                wait = min(C.reset_wait(e.reset, clock.now()), RATE_WAIT_CAP) + rng.uniform(*RATE_JITTER)
+                log({"event": "retry", "age": name, "error_kind": kind, "try": i + 1, "waitSec": round(wait, 1)})
+                return ("again", wait)
+            if e.kind != "quota":
                 log({"event": "prime-refused", "age": name, "kind": kind})
+            outcome(e)
+            return ("lost",)
+        except Exception as e:  # noqa: BLE001 - any client failure: the priming again, in a new session
+            kind = failed(f"priming {name}", e)
+            outcome()
+            log({"event": "retry", "age": name, "error_kind": kind, "try": i + 1})
+            if last:
+                log({"event": "prime-failed", "age": name})
+                return ("lost",)
+            return ("again", RETRY_WAIT)
+        outcome()
+        watch(usage)
+        number(handle)
+        return ("ok", handle, usage, t0, m0)
+
+    def prime(prompt_of, name):
+        """(handle, usage, wall start, monotonic start) or None: the tries one after the other (baseline, controls).
+        `prompt_of(i)`: the prompt of try i (a new session each, and for a sample a new block)."""
+        for i in range(PRIME_TRIES):
+            r = attempt(prompt_of(i), name, i)
+            if r[0] == "ok":
+                return r[1:]
+            if r[0] == "lost":
                 return None
-            except Exception as e:  # noqa: BLE001 - any client failure: try the priming again
-                log({"event": "retry", "age": name, "error_kind": failed(f"priming {name}", e), "try": i + 1})
-                clock.sleep(RETRY_WAIT)
-                continue
-            watch(usage)
-            number(handle)
-            return handle, usage, t0
-        log({"event": "prime-failed", "age": name})
+            clock.sleep(r[1])
         return None
 
     def scan(handles, final=False):
@@ -328,30 +337,33 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
         if not final and (other or unreadable):
             raise Stop("other-model" if other else "unreadable-session")
 
-    def check(name, age, handle, primed, t0, baseline, rep=0, latest=None):
-        warm = check_once(name, age, handle, primed, t0, baseline, rep, latest)
+    def check(name, age, handle, primed, t0, m0, baseline, rep=0):
+        warm = check_once(name, age, handle, primed, t0, m0, baseline, rep)
         scan([handle])
         return warm
 
-    def check_once(name, age, handle, primed, t0, baseline, rep=0, latest=None):
-        """True / False for a counted check, None for one that is not (failed, invalid). Sent once (a rate limit's
-        refusal aside: no model read it; send)."""
-        base = {"age": name, "ageSec": age, "realAgeSec": round(clock.now() - t0), "session": number(handle)}
+    def check_once(name, age, handle, primed, t0, m0, baseline, rep=0):
+        """True / False for a counted check, None for one that is not (failed, invalid). Sent once, whatever happens:
+        a check that fails after it was sent (a refusal, a rate limit included, an error, a turn without an answer) is
+        `check-failed` and its sample is lost; its session is never resumed again (rule 2). Its age is measured by the
+        wall clock and by the monotonic one: apart by more than CLOCK_SKEW seconds (a clock step, a sleep), it is
+        `late` (rule 6)."""
+        started, m_started = clock.now(), mono()
+        real, m_real = started - t0, m_started - m0
+        base = {"age": name, "ageSec": age, "realAgeSec": round(real), "monoAgeSec": round(m_real),
+                "session": number(handle), "rep": rep}
         try:
-            r, started = send(lambda: h.resume(handle, OK_PROMPT), "check", name, rep, latest)
-            real = started - t0
-            base["realAgeSec"] = round(real)
+            r = h.resume(handle, OK_PROMPT)
         except C.Refused as e:
             kind = failed(f"check {name}", e)
-            if e.kind == "quota":
-                raise Stop("quota")
             log({"event": "check-failed", **base, "kind": kind})
+            outcome(e)
             return None
-        except Stop:
-            raise
         except Exception as e:  # noqa: BLE001 - a failed check is never sent again
             log({"event": "check-failed", **base, "error_kind": failed(f"check {name}", e)})
+            outcome()
             return None
+        outcome()
         if cumulative:
             r = dict(r, raw={k: r.get(k) for k in ("total", "cached", "write")},
                      **{k: (r.get(k) or 0) - (primed.get(k) or 0) for k in ("total", "cached", "write")})
@@ -370,12 +382,16 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
         watch(r)
         unique = max(primed["total"] - baseline, 1)
         warm = r["cached"] >= baseline + unique / 2
-        log({"event": "check", **base, "late": real > late_after(age), "warm": warm, "usage": r, "prime": primed,
-             "unique": unique})
+        skewed = abs(real - m_real) > CLOCK_SKEW
+        if skewed:
+            detail(f"check {name}: the wall clock says {real:.0f} s since its priming, the monotonic clock "
+                   f"{m_real:.0f} s: late")
+        late = skewed or max(real, m_real) > late_after(age)
+        log({"event": "check", **base, "late": late, "warm": warm, "usage": r, "prime": primed, "unique": unique})
         return warm
 
     try:
-        b = prime(baseline_prompt(salt), "baseline", 0)
+        b = prime(lambda i: baseline_prompt(salt), "baseline")
         if not b:
             raise Stop("baseline-failed")
         baseline = b[1]["total"]
@@ -383,17 +399,19 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
 
         def control(k):
             """The k-th control (0, then 1): its own session and unique block, primed, checked at 30 seconds."""
-            c = prime(prime_prompt(f"{salt}-0" if k == 0 else f"{salt}-c{k}", words, filler), "control", k)
+            first = f"{salt}-0" if k == 0 else f"{salt}-c{k}"
+            c = prime(lambda i: prime_prompt(first if i == 0 else f"{first}r{i}", words, filler), "control")
             if not c:
                 raise Stop("control-failed")
-            handle, primed, t0 = c
+            handle, primed, t0, m0 = c
             log({"event": "prime", "age": "control", "rep": k, "session": number(handle), "usage": primed})
             clock.sleep(t0 + CONTROL_AGE - clock.now())
-            if clock.now() - t0 > late_after(CONTROL_AGE):
-                # Checked late (a slow priming): the check would show nothing; it is not sent.
-                raise Stop("control-late", f"the control could be checked only {round(clock.now() - t0)} s after its "
-                                           "priming")
-            warm = check("control", CONTROL_AGE, handle, primed, t0, baseline, k, t0 + late_after(CONTROL_AGE))
+            real, m_real = clock.now() - t0, mono() - m0
+            if max(real, m_real) > late_after(CONTROL_AGE) or abs(real - m_real) > CLOCK_SKEW:
+                # Checked late (a slow priming, a clock step, a sleep): the check would show nothing; it is not sent.
+                raise Stop("control-late", f"the control could be checked only {round(real)} s (monotonic "
+                                           f"{round(m_real)} s) after its priming")
+            warm = check("control", CONTROL_AGE, handle, primed, t0, m0, baseline, k)
             if warm is None:
                 raise Stop("control-failed")
             return warm
@@ -411,37 +429,39 @@ def run_probe(h, *, ages, labels, replicas, words, salt, log, clock=None, filler
         # `wave_gap` seconds after the one before, and two replicas of one age primed at least `wave_gap` seconds
         # apart, whatever a slow priming did to the wave (M-3 of the parity design). Within a wave, long ages first,
         # so the short checks do not wait behind a long queue of primings; a check that falls due is made before the
-        # next priming.
+        # next priming, and before a priming tried again (its wait is the queue's, never a sleep that holds a check).
         waves = max(1, min(waves, replicas or 1))
-        samples = sorted([(x, ag, r, r % waves) for r in range(replicas) for x, ag in zip(labels, ages)],
+        samples = sorted([(x, ag, r, r % waves, 0, None) for r in range(replicas) for x, ag in zip(labels, ages)],
                          key=lambda s: (s[3], -s[1]))
         queue, due, n, wave_start, age_primed = list(samples), [], 0, {}, {}
         while queue or due:
             now = clock.now()
             if due and due[0][0] <= now:
-                _, _, name, age, rep, handle, primed, t0 = heapq.heappop(due)
-                check(name, age, handle, primed, t0, baseline, rep)
+                _, _, name, age, rep, handle, primed, t0, m0 = heapq.heappop(due)
+                check(name, age, handle, primed, t0, m0, baseline, rep)
                 continue
             if queue:
-                name, age, rep, wave = queue[0]
+                name, age, rep, wave, tries, not_before = queue[0]
                 ready = wave_start[wave - 1] + wave_gap if wave and wave - 1 in wave_start else None
                 if name in age_primed:
                     ready = max(ready or 0, age_primed[name] + wave_gap)
+                if not_before is not None:
+                    ready = max(ready or 0, not_before)
                 if ready is not None and now < ready:
                     clock.sleep(min(ready, due[0][0]) - now if due else ready - now)
                     continue
-                if pace and not pace("prime", due[0][0] if due else None):
-                    continue  # a check fell due while this priming waited for its turn: the check first
                 queue.pop(0)
                 n += 1
-                p = prime(prime_prompt(f"{salt}-{n}", words, filler), name, rep, paced=bool(pace))
-                if p:
-                    handle, primed, t0 = p
+                p = attempt(prime_prompt(f"{salt}-{n}", words, filler), name, tries)
+                if p[0] == "ok":
+                    _, handle, primed, t0, m0 = p
                     wave_start.setdefault(wave, t0)
                     age_primed[name] = t0
                     log({"event": "prime", "age": name, "rep": rep, "wave": wave, "session": number(handle),
                          "usage": primed})
-                    heapq.heappush(due, (t0 + age, n, name, age, rep, handle, primed, t0))
+                    heapq.heappush(due, (t0 + age, n, name, age, rep, handle, primed, t0, m0))
+                elif p[0] == "again":
+                    queue.insert(0, (name, age, rep, wave, tries + 1, clock.now() + p[1]))
                 else:
                     wave_start.setdefault(wave, clock.now())
             else:
@@ -508,12 +528,6 @@ def parser():
     ap.add_argument("--delay", type=float, default=0.0,
                     help="seconds to wait before the run's checks and first request (harness/night.py staggers starts)")
     ap.add_argument("--launch-id", help="harness/night.py's mark of the launch this run belongs to (process identity)")
-    ap.add_argument("--pace-rpm", type=int, default=0,
-                    help="the client's request budget per minute, shared by every run that names the same --pace-dir "
-                         "(harness/pacing.py); 0: none")
-    ap.add_argument("--pace-dir", metavar="DIR",
-                    help="the folder of the shared budget, under --client-home (harness/night.py: "
-                         "<client-home>/night-<date>/pacing; mode 700, files 600)")
     ap.add_argument("--dry-run", action="store_true", help="print the run's start event and plan; run nothing, send nothing")
     return ap
 
@@ -685,10 +699,6 @@ def _main(argv=None):
         start["isolation"] = dict(ISOLATION)
         start["confinement"] = CONFINEMENT if C.CONFINED else "none (not macOS): the environment's isolation only"
     start["waves"] = {"waves": max(1, min(a.waves, a.replicas or 1)), "gap_s": a.wave_gap}
-    if a.pace_rpm < 0 or (a.pace_rpm and not a.pace_dir):
-        raise SystemExit("--pace-rpm: a number of requests per minute (0: none), with --pace-dir")
-    if a.pace_rpm:
-        start["pacing"] = {"rpm": a.pace_rpm, "reserve_for_checks": pacing.reserve_of(a.pace_rpm)}
     if client.run_info():
         start[a.harness] = client.run_info()
     # The commands as the plan has them (no folder of this machine): the start record is complete before any client
@@ -702,11 +712,8 @@ def _main(argv=None):
         print(json.dumps(start))
         print(f"{a.label}: {a.harness} {a.model}: baseline, control (checked at 30 s; a second one in a fresh session "
               f"if it is cold), then {a.replicas} x {len(ages)} samples ({', '.join(labels)}): at most {requests} "
-              f"requests ({requests - 2} with a warm first control), and up to {RATE_TRIES - 1} more tries of one "
-              "request on a rate limit that names its reset.")
-        if a.pace_rpm:
-            print(f"{a.label}: paced: at most {a.pace_rpm} {a.harness} requests a minute with every run sharing "
-                  f"{a.pace_dir} (primings {a.pace_rpm - pacing.reserve_of(a.pace_rpm)} of them).")
+              f"requests ({requests - 2} with a warm first control), and up to {PRIME_TRIES - 1} more tries of a "
+              "priming, each in a new session.")
         if a.delay:
             print(f"{a.label}: starts {a.delay:g} s after its launch.")
         if client.isolated:
@@ -724,11 +731,6 @@ def _main(argv=None):
         # A staggered start (harness/night.py): waits first, so that the checks below are made just before the run.
         time.sleep(a.delay)
     keep = private_capture_folder(a.keep_raw, a.client_home, ROOT) if a.keep_raw else None
-    pace = None
-    if a.pace_rpm:
-        # The client's budget, shared with every run of the night (pacing.py): its folder checked as the raw output's.
-        folder = private_capture_folder(a.pace_dir, a.client_home, ROOT)
-        pace = pacing.Pacer(pacing.FileStore(folder, a.harness), a.pace_rpm, Clock()).acquire
     home = None
     if client.isolated:
         home = C.state_folder(client, a.client_home, ROOT, run=run)
@@ -779,7 +781,7 @@ def _main(argv=None):
 
         log({"event": "start"})
         run_probe(Harness(session), ages=ages, labels=labels, replicas=a.replicas, words=a.words, salt=salt, log=log,
-                  filler=a.filler, waves=a.waves, wave_gap=a.wave_gap, detail=note, pace=pace)
+                  filler=a.filler, waves=a.waves, wave_gap=a.wave_gap, detail=note)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
