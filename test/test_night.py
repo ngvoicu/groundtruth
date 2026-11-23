@@ -87,7 +87,7 @@ class Plan(unittest.TestCase):
         lines = []
         night.dry_run(night.select(["S2", "CX1", "DV9d"]), "2099-01-01", out=lines.append)
         text = "\n".join(lines)
-        self.assertIn("at most 3 requests", text)
+        self.assertIn("at most 5 requests (3 with a warm first control)", text)  # S2: the control's second chance
         self.assertIn('model_provider=\\"openai\\"', text)
         self.assertIn("nothing sent", text)
         self.assertFalse(os.path.exists(os.path.join(night.ROOT, "results", "own-clients-2099-01-01")))

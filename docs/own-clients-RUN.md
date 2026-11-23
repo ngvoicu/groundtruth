@@ -8,7 +8,7 @@ no Antigravity run. `harness/night.py` holds every command. Every command takes 
 do and does nothing else; nothing is sent without `--go`.
 
 There are three parts. **Only the first needs the owner**: his two logins, about 7 minutes, once. Anyone can do the
-night and the morning from the repository's root on the `own-clients` branch, with no login and no key.
+night and the morning from the repository's root on `main`, with no login and no key.
 
 ## You, once (about 7 minutes)
 
@@ -130,18 +130,24 @@ its priming is left out, so a sleeping computer loses checks, not truth.
 
 | # | Command | Time |
 |---|---|---|
-| 1 | `python3 harness/night.py --date $N --dry-run all` | 1 min, does nothing |
+| 1 | `python3 harness/night.py --date $N --dry-run all` (add `--at HH:MM` for clock times) | 1 min, does nothing; ends with the plan: each run's expected end with pacing, each client's requests |
 | 2 | `python3 harness/night.py --date $N --go smoke` | about 5 min, in the foreground |
 | 3 | The smoke review (below), then `python3 harness/night.py --date $N smoke-reviewed` | 10 min |
 | 4 | `python3 harness/night.py --date $N --go all` (or one client at a time: `--go codex`, `--go devin`) | returns at once; the runs take about 12 h 30 |
 
 - **`--go <client>`** starts each of that client's runs as its own background process and returns; closing the
-  terminal ends none of them. The starts are staggered (15 s apart, Devin's 20 s). Each client's launch is written
+  terminal ends none of them. The starts are staggered (15 s apart, Devin's 20 s), and all of Devin's runs share one
+  budget of 24 requests a minute (`$G/night-$N/pacing/`; `--pace devin=N` changes it): a run waits for its turn
+  before each request, checks before primings. Before anything starts, every run's model id is looked up in its
+  client's own list (Codex's bundled catalog, offline; Devin's account list, no prompt), and a run whose id is not
+  there is refused by name. Each client's launch is written
   once, in `$G/night-$N/launch/<client>.json`, with the launcher's own pid before any run starts and each run's pid
   as it starts; a second go of the same client for the same night is refused. `--go all` starts both, and refuses if
   either was started already.
 - **Watching**: `python3 harness/night.py --date $N status` lists each run as `alive` or `ended`, from its process:
-  its pid is alive and that process is that run of this launch. How a run ended is in its results file
+  its pid is alive and that process is that run of this launch. It reads `ps` in the C locale and compares start
+  times as times, so it gives the same answer from any shell, whatever its language, and for a launch file written
+  from a shell in another language (`Mon 23 Nov 13:02:41 2026` and `Mon Nov 23 13:02:41 2026` are one start). How a run ended is in its results file
   (`results/own-clients-$N/<id>.jsonl`), and its console output in `results/own-clients-$N/logs/<id>.log`.
 - **Stopping**: `python3 harness/night.py --date $N stop <client>` (or `stop all`) first sets the client's stop mark
   (`$G/night-$N/launch/<client>.stop`). **The mark is the authority**: a launcher starts no run after it, and every
@@ -157,17 +163,18 @@ its priming is left out, so a sleeping computer loses checks, not truth.
   client call` (or `not launched` when there is no launch file). It needs `GROUNDTRUTH_CLIENT_HOME` set as for the
   night (it refuses without it), and it refuses, writing nothing, when the marks' folder would be an everyday client
   folder (`~/.codex`, …), a synced folder, the repository or a checkout. Nothing more of that client starts that
-  night. `--dry-run stop all` names them and does nothing. A run also stops by itself on a quota refusal or a missed
-  or late control.
+  night. `--dry-run stop all` names them and does nothing. A run also stops by itself on a quota refusal (a plan's
+  limit), on two missed controls (a cold control gets one more, in a fresh session) or on a late control. A rate
+  limit that names its reset is no stop: the request waits for the reset and goes again (`rate-wait` lines).
 
 ### The smoke review (step 3)
 
 `--go smoke` runs S2 (Codex), S3 and S3b (Devin), one after the other, then checks them; `smoke-reviewed` checks them
 again and refuses to mark them while a check fails. The automatic checks, for each run: a first line with the
 isolation and no client version (a public result never carries one: it is in the console log and in
-`$G/private-runs/`); exactly one check, the control, made in time (not late), of a single model request and
-naming the model that answered; no failed, invalid, refused or retried request; the last line `done` with the control
-warm. S3b asks whether Devin still reports no cached token for `gpt-6-1-terra`: a cold control there, ending
+`$G/private-runs/`); exactly one check, the control (two when the first was cold: its second chance, in a fresh
+session, noted), made in time (not late), of a single model request and naming the model that answered; no failed,
+invalid, refused or retried request; the last line `done` with the last control warm. S3b asks whether Devin still reports no cached token for `gpt-6-1-terra`: a cold control there, ending
 `stop`/`no-observable-cache`, is the expected answer and is noted, not refused. A late control is refused everywhere,
 and so is a check whose answering model is not certain (`check-invalid`, `no-model`, `ambiguous-model` or
 `other-model`). For Codex a check counts only when its session file shows exactly one new turn for that invocation,
@@ -198,6 +205,30 @@ Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each inv
       home-folder and state-folder paths, and the clients' login and session files by name.
 - [ ] `python3 harness/night.py --date $N untouched --report` lists no Keychain item added or changed by Codex or
       Devin since the logins.
+
+## Re-running some runs
+
+Runs that stopped early (a rate limit taken for quota, one cold control, an unknown model id: the first night's 17)
+are run again by their ids, on a **new date folder**, with nothing else changed: the same logins in `$G`, the same
+isolation and sandbox, the same smoke rules. The new date is a new night: its own snapshot, smoke runs and review,
+then the go with the list. Start it once the night before has ended (`status` of that night shows no run `alive`):
+the budget is shared by the runs of one night only.
+
+```bash
+export GROUNDTRUTH_CLIENT_HOME="$HOME/groundtruth-clients" N=<the new YYYY-MM-DD>
+python3 harness/night.py --date $N untouched --save              # step 1 of that date; no new login
+python3 harness/night.py --date $N --dry-run CX1,CX3,DV1          # the plan: checks, ids, each run's end, requests
+python3 harness/night.py --date $N --go smoke                     # then the smoke review and `smoke-reviewed`
+python3 harness/night.py --date $N --go CX1,CX3,DV1               # those runs only, in the background
+```
+
+- The list is comma-separated run ids of the clients' runs (`CX1` – `CX6`, `DV1` – `DV18`, `DV9d`); a client's name
+  takes all its runs (`--go devin,CX1`). Smoke ids are refused: the smoke runs go with `--go smoke`.
+- Each client of the list gets its launch file, `$G/night-$N/launch/<client>.json`, recording only the listed runs;
+  `status` and `stop` work on them as on a whole night. A client already launched that date is refused, as always.
+- A run that has results on that date already (`results/own-clients-$N/<id>.jsonl`) is refused: a re-run never
+  appends to an earlier file.
+- The runs start staggered in the list's order (Codex 15 s apart, Devin 20 s), Devin's paced as every Devin run.
 
 ## The morning
 
@@ -248,7 +279,7 @@ files and console logs stay where they are: nothing of them is copied into the r
       `"unreadable": false`, and no line of it is `stop` with `other-model` or `unreadable-session`. (A `model-scan`
       line carries no text from any session file: only `final`, the count `other_models` and `unreadable`. The names
       themselves are in the run's console log only, on a `detail: model-scan:` line, for this audit.)
-- [ ] The `check-invalid`, `check-failed`, `retry` and `stop` lines are understood; a run whose checks are mostly
+- [ ] The `check-invalid`, `check-failed`, `retry`, `rate-wait` and `stop` lines are understood; a run whose checks are mostly
       invalid goes under `excluded` with the reason.
 
 **B. Codex's session files, for reroutes** (`$G/codex-cli/sessions/`, private: read here, never copied).

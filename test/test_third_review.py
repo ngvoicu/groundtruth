@@ -19,6 +19,8 @@ from contextlib import redirect_stdout, redirect_stderr
 from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# No client is run to list its models (harness/model_ids.py): the checked list, also in the children.
+os.environ.setdefault("GROUNDTRUTH_MODEL_LIST", "checked")
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, "harness"))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))

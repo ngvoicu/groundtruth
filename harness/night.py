@@ -56,6 +56,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import clients as C  # noqa: E402
+import model_ids as M  # noqa: E402
+import pacing as P  # noqa: E402
 
 STD65 = "10m,15m,20m,25m,30m,40m,50m,60m,65m,75m,90m,120m"
 PROXY_VARS = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy",
@@ -89,7 +91,8 @@ DEVIN = [("DV1", "claude-opus-5-5-low", "std"), ("DV2", "claude-sonnet-5-5-low",
          ("DV7", "gpt-6-luna-low", "std"),
          ("DV8", "deepseek-v4-1-flash-1017-low", "long"), ("DV9", "glm-5-3-low", "std"), ("DV10", "kimi-k3-1-pro-low", "long"),
          ("DV11", "nemotron-3-5-super-none", "long"),
-         ("DV12", "deepseek-v4-pro-low", "std"), ("DV13", "gemini-4-argon-low", "std"), ("DV14", "grok-4-7-low", "std"),
+         # DV12: DeepSeek V4 Pro has no `low` on Devin ("Unknown model" on 2026-11-23): `high` is its lowest level.
+         ("DV12", "deepseek-v4-pro-high", "std"), ("DV13", "gemini-4-argon-low", "std"), ("DV14", "grok-4-7-low", "std"),
          ("DV15", "kimi-k3-low", "std"), ("DV16", "muse-wonder-1-0-low", "std"), ("DV17", "swe-2-medium", "std"),
          ("DV18", "gemini-4-neon-low", "std")]
 # DV9d: DV9 again with Devin's own process model and keepalive (pair DV-5 compares the two; both are Devin runs).
@@ -110,6 +113,10 @@ PART_OF = {s["id"]: part for part in ORDER for s in PARTS[part]}
 # Seconds between two starts of one client's runs (Devin's as on 8 November).
 SPACING = {"devin": 20}
 SPACING_DEFAULT = 15
+# Each client's request budget per minute, shared by all its runs of a night (harness/pacing.py; `--pace devin=N`).
+PACE = dict(P.PACE_RPM)
+# Seconds one request takes, for the dry run's plan (tonight's median gap between two primings: Devin 3, Codex 5).
+TOOK = {"devin": 4.0, "codex": 6.0}
 STATE_FOLDERS = tuple(C.CLIENTS[h].client_id for h in CLIENT_PARTS)
 LOGINS = {"codex": ["codex", "login", "-c", 'cli_auth_credentials_store="file"', "-c", 'model_provider="openai"'],
           "devin": ["devin", "auth", "--process-model", "in-process", "login"]}
@@ -200,16 +207,60 @@ def delay_of(step, index):
 
 
 def command(step, date, launch_id=None, delay=None):
-    """The argument list of a step, run from the repository's root."""
+    """The argument list of a step, run from the repository's root. A launched run of a client with a budget (PACE)
+    shares it with the client's other runs of the night, in <client-home>/night-<date>/pacing."""
     folder = folder_of(step, date)
     argv = [sys.executable, "harness/probe.py", *step["args"], "--out", folder]
     if step["kind"] == "smoke":
         argv += ["--keep-raw", os.path.join(night_dir(date), "raw", step["id"])]
+    elif PACE.get(step["harness"]):
+        argv += ["--pace-rpm", str(PACE[step["harness"]]), "--pace-dir", os.path.join(night_dir(date), "pacing")]
     if delay:
         argv += ["--delay", str(delay)]
     if launch_id:
         argv += ["--launch-id", launch_id]
     return argv
+
+
+def runs_of(items):
+    """{client: [its steps, in the plan's order]} of `--go`'s or `--dry-run`'s words: a client (all its runs), `all`
+    (both clients), or run ids of the clients' parts, comma-separated or not (`CX1,CX3,DV1`). SystemExit on any other
+    word: a smoke run, an unknown id."""
+    words = [w for item in items for w in item.split(",") if w]
+    refuse_other_clients("--go", words)
+    if not words:
+        raise SystemExit("--go: a client, all, or a list of run ids")
+    chosen = set()
+    for w in words:
+        if w == "all":
+            chosen |= {s["id"] for n in CLIENT_PARTS for s in PARTS[n]}
+        elif w in CLIENT_PARTS:
+            chosen |= {s["id"] for s in PARTS[w]}
+        elif PART_OF.get(w) in CLIENT_PARTS:
+            chosen.add(w)
+        else:
+            raise SystemExit(f"--go: smoke, or one of {', '.join(CLIENT_PARTS)}, or all (the two), or run ids of theirs "
+                             f"(CX1,DV1): {w} is none of them (the smoke runs go alone, with `--go smoke`)")
+    return {n: [s for s in PARTS[n] if s["id"] in chosen] for n in CLIENT_PARTS
+            if any(s["id"] in chosen for s in PARTS[n])}
+
+
+def whole(selection):
+    """Whether a selection is every run of each client it names (a plain `--go codex|devin|all`)."""
+    return all(len(steps) == len(PARTS[n]) for n, steps in selection.items())
+
+
+def check_ids(steps, what, live=False, lister=None, out=print):
+    """Refuses (SystemExit, naming them) the runs whose model id their client does not list (harness/model_ids.py):
+    nothing is started or planned for them. Returns {client: where its list came from}; `out` is told only what a
+    dry run shows, or a list that is not the client's own (--go)."""
+    bad, sources = M.unknown(steps, live=live, client_home=client_home(), lister=lister)
+    for c, (src, own) in sources.items():
+        if not live or not own:
+            out(f"  model ids of {c}: {src}")
+    if bad:
+        raise SystemExit(f"{what}: refused: model ids the client does not list: {', '.join(bad)}; nothing started")
+    return sources
 
 
 def select(names):
@@ -530,9 +581,9 @@ COLD_EXPECTED = {"S3b"}
 
 def smoke_verdict(date):
     """(problems, notes) of the smoke results. Each run: a start line with the isolation (and no client version), one
-    check (the control), one model request, made in time (not late), no failed or retried request, and a last line
-    `done` with the check warm. S3b may instead end `stop`/`no-observable-cache` with its control cold: the expected
-    answer to its question, noted. A late control, or a control that did not end the run as above, is a problem."""
+    check (the control; two when the first was cold: its second chance, noted), each one model request, made in time
+    (not late), no failed or retried request, and a last line `done` with the last check warm. S3b may instead end
+    `stop`/`no-observable-cache` with its controls cold: the expected answer to its question, noted. A late control, or a control that did not end the run as above, is a problem."""
     problems, notes = [], []
     folder = os.path.join(ROOT, folders(date)["smoke"])
     for step in PARTS["smoke"]:
@@ -558,23 +609,33 @@ def smoke_problems(sid, ev, cold_expected=False):
     bad = sorted({e.get("event") for e in ev if e.get("event") in BAD_EVENTS})
     if bad:
         problems.append(f"{sid}: {', '.join(bad)}")
+    waits = sum(1 for e in ev if e.get("event") == "rate-wait")
+    if waits:
+        notes.append(f"{sid}: {waits} wait{'s' if waits > 1 else ''} on a rate limit that named its reset (rate-wait)")
     if last.get("event") == "stop" and last.get("reason") == "control-late":
         problems.append(f"{sid}: the control could not be checked in time (control-late)")
         return problems, notes
     checks = [e for e in ev if e.get("event") == "check"]
-    if len(checks) != 1:
-        problems.append(f"{sid}: {len(checks)} checks, not the control alone")
+    # The control, and its second chance when it was cold (harness/probe.py, rule 3): one or two checks, both controls.
+    if not 1 <= len(checks) <= 2 or any(c.get("age") != "control" for c in checks):
+        problems.append(f"{sid}: {len(checks)} checks, not the control alone (or the control and its second chance)")
         return problems, notes
-    c = checks[0]
-    if c.get("age") != "control" or (c.get("usage") or {}).get("calls") != 1:
-        problems.append(f"{sid}: its check is not the control's single model request")
-    if c.get("late") is not False:
-        problems.append(f"{sid}: the control was checked late ({c.get('realAgeSec')} s after its priming)")
+    if len(checks) == 2 and checks[0].get("warm") is not False:
+        problems.append(f"{sid}: a second control after a first that was not cold")
         return problems, notes
+    for c in checks:
+        if (c.get("usage") or {}).get("calls") != 1:
+            problems.append(f"{sid}: its check is not the control's single model request")
+        if c.get("late") is not False:
+            problems.append(f"{sid}: the control was checked late ({c.get('realAgeSec')} s after its priming)")
+            return problems, notes
+    c = checks[-1]
     if last.get("event") == "done" and c.get("warm") is True:
+        if len(checks) == 2:
+            notes.append(f"{sid}: the first control was cold, the second (a fresh session) warm: noted")
         return problems, notes
     if cold_expected and last.get("event") == "stop" and last.get("reason") == "no-observable-cache" \
-            and c.get("warm") is False:
+            and all(x.get("warm") is False for x in checks):
         notes.append(f"{sid}: the control was cold (stop/no-observable-cache): the expected answer, noted")
         return problems, notes
     problems.append(f"{sid}: ended {last.get('event')}{'/' + str(last.get('reason')) if last.get('reason') else ''}"
@@ -589,6 +650,7 @@ def go_smoke(date, run=None, out=print):
     need_hook("--go smoke")
     if not os.path.exists(everyday_path(date)):
         raise SystemExit("--go smoke: no snapshot of the everyday state (`untouched --save`, step 1): nothing started")
+    check_ids(PARTS["smoke"], "--go smoke", live=True, out=out)
     make_night_dir(date)
     for step in PARTS["smoke"]:
         if os.path.exists(os.path.join(ROOT, folder_of(step, date), step["id"] + ".jsonl")):
@@ -651,10 +713,14 @@ def refuse_other_clients(what, names):
         raise SystemExit(f"{what}: {' and '.join(other)} not in the first night (Codex and Devin only)")
 
 
-def guard(names, date):
+def guard(names, date, steps=()):
     refuse_other_clients("--go", names)
     if not names or any(n not in CLIENT_PARTS for n in names):
-        raise SystemExit(f"--go: smoke, or one of {', '.join(CLIENT_PARTS)}, or all (the two)")
+        raise SystemExit(f"--go: smoke, or one of {', '.join(CLIENT_PARTS)}, or all (the two), or a list of run ids")
+    done = [s["id"] for s in steps if os.path.lexists(os.path.join(ROOT, folder_of(s, date), s["id"] + ".jsonl"))]
+    if done:
+        raise SystemExit(f"--go: {', '.join(done)} have results for {date} already: a run is re-run on a new date "
+                         "folder (docs/own-clients-RUN.md, 'Re-running some runs'); nothing started")
     need_client_home("--go")
     need_hook("--go")
     if not os.path.exists(everyday_path(date)):
@@ -690,7 +756,7 @@ def stop_path(date, client):
     return os.path.join(night_dir(date), "launch", client + ".stop")
 
 
-def launch(name, date, popen=None, out=print):
+def launch(name, date, popen=None, out=print, steps=None):
     """One client's runs, each its own background process (harness/probe.py itself, which keeps the computer awake
     with `caffeinate -w` on its own pid). The lock file is created exclusively, with the launcher's own pid, start
     time and command line, before the first run starts, and rewritten with each run's pid and start time as soon as
@@ -698,6 +764,7 @@ def launch(name, date, popen=None, out=print):
     starts. A run started meanwhile, or one whose launcher ended before recording it, ends by itself: it looks for the
     mark before each client call and waits for its pid to be recorded before the first (harness/probe.py)."""
     popen = popen or subprocess.Popen
+    steps = PARTS[name] if steps is None else steps
     d = make_night_dir(date)
     launch_dir = os.path.join(d, "launch")
     C.check_folder("<client-home>/night-<date>/launch", launch_dir, ROOT, os.path.realpath(os.path.expanduser("~")))
@@ -717,9 +784,15 @@ def launch(name, date, popen=None, out=print):
         json.dump(lock, f)
     logs = os.path.join(ROOT, folders(date)["own"], "logs")
     os.makedirs(logs, exist_ok=True)
-    for i, step in enumerate(PARTS[name]):
+    if PACE.get(name):
+        pace_dir = os.path.join(d, "pacing")
+        C.check_folder("<client-home>/night-<date>/pacing", pace_dir, ROOT, os.path.realpath(os.path.expanduser("~")))
+        if not os.path.isdir(pace_dir):
+            os.mkdir(pace_dir, 0o700)
+        C.check_private("<client-home>/night-<date>/pacing", pace_dir)
+    for i, step in enumerate(steps):
         if os.path.lexists(stop_path(date, name)):
-            raise SystemExit(f"--go {name}: stopped (`stop`) after {len(lock['runs'])} of {len(PARTS[name])} runs: "
+            raise SystemExit(f"--go {name}: stopped (`stop`) after {len(lock['runs'])} of {len(steps)} runs: "
                              "nothing more starts")
         delay = delay_of(step, i)
         argv = command(step, date, launch_id=launch_id, delay=delay)
@@ -732,10 +805,22 @@ def launch(name, date, popen=None, out=print):
     return lock
 
 
-def go_clients(names, date, popen=None, out=print):
-    names = list(CLIENT_PARTS) if names == ["all"] else names
-    guard(names, date)
-    locks = [launch(n, date, popen=popen, out=out) for n in names]
+def go_clients(names, date, popen=None, out=print, lister=None):
+    """`--go codex|devin|all`, or `--go CX1,CX3,DV1` (some runs, on a new date folder: the same logins, isolation and
+    smoke rules). Each client's model ids are checked against its own list first (check_ids; Devin's read live)."""
+    if names and all(n in CLIENT_PARTS for n in names) or names == ["all"]:
+        names = list(CLIENT_PARTS) if names == ["all"] else names
+        selection = {n: PARTS[n] for n in names}
+        guard(names, date, [s for n in names for s in PARTS[n]])
+    else:
+        selection = runs_of(names)
+        guard(list(selection), date, [s for steps in selection.values() for s in steps])
+        names = list(selection)
+    notes = []  # said after the starts: a run's first line is its pid
+    check_ids([s for steps in selection.values() for s in steps], "--go", live=True, lister=lister, out=notes.append)
+    locks = [launch(n, date, popen=popen, out=out, steps=selection[n]) for n in names]
+    for note in notes:
+        out(note)
     out(f"started: {', '.join(names)}; the terminal may be closed. `python3 harness/night.py --date {date} status` "
         "shows which runs are alive.")
     return locks
@@ -753,7 +838,7 @@ def alive(run_id, info, launch_id, ps=None, started=None):
     pid, when = info.get("pid"), info.get("started")
     if not isinstance(pid, int) or pid <= 1 or pid == os.getpid() or not isinstance(when, str) or not when:
         return False
-    if (started or process_started)(pid) != when:
+    if not same_start((started or process_started)(pid), when):
         return False
     seen = " " + (ps or process_command)(pid) + " "
     return f" --label {run_id} " in seen and f" --launch-id {launch_id} " in seen
@@ -790,10 +875,43 @@ def status(date, ps=None, out=print, started=None):
 
 
 def process_started(pid):
-    """When process `pid` started, as `ps -o lstart=` gives it ('' when there is no such process): with the pid, the
-    identity of a process (a pid reused later has another start time)."""
-    p = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True, text=True)
+    """When process `pid` started, as `ps -o lstart=` gives it in the C locale ('' when there is no such process): with
+    the pid, the identity of a process (a pid reused later has another start time). LC_ALL=C, whatever the shell's
+    language: `Mon Nov 23 13:02:41 2026`, never `Mon 23 Nov 13:02:41 2026` (same_start reads both)."""
+    env = dict(os.environ, LC_ALL="C", LANG="C")
+    p = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True, text=True, env=env)
     return p.stdout.strip() if p.returncode == 0 else ""
+
+
+MONTHS = ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
+
+
+def lstart_time(text):
+    """(year, month, day, hour, minute, second) of a `ps -o lstart` text, in either order of day and month
+    (`Mon Nov 23 13:02:41 2026`, `Mon 23 Nov 13:02:41 2026`) and with English month names; None when it is not one."""
+    parts = (text or "").replace(",", " ").replace(".", " ").split()
+    clock = [p for p in parts if p.count(":") == 2]
+    month = [MONTHS.index(p[:3].lower()) + 1 for p in parts if p[:3].lower() in MONTHS and p.isalpha()]
+    numbers = [int(p) for p in parts if p.isdigit()]
+    years = [n for n in numbers if n >= 1970]
+    days = [n for n in numbers if 1 <= n <= 31]
+    if len(clock) != 1 or len(month) != 1 or len(years) != 1 or len(days) != 1:
+        return None
+    try:
+        h, m, s = (int(x) for x in clock[0].split(":"))
+    except ValueError:
+        return None
+    return years[0], month[0], days[0], h, m, s
+
+
+def same_start(seen, recorded):
+    """Whether a process's start time `seen` (process_started) is the one a lock `recorded`: the same moment when both
+    can be read as times (a lock written by a shell in another language, tonight's own among them), else the same
+    text. Nothing for an empty one."""
+    if not seen or not recorded:
+        return False
+    a, b = lstart_time(seen), lstart_time(recorded)
+    return a == b if a and b else seen == recorded
 
 
 def launcher_alive(lock, started=None, ps=None):
@@ -805,7 +923,7 @@ def launcher_alive(lock, started=None, ps=None):
         return False
     if not (isinstance(when, str) and when and isinstance(cmd, str) and cmd):
         return False
-    return (started or process_started)(pid) == when and (ps or process_command)(pid) == cmd
+    return same_start((started or process_started)(pid), when) and (ps or process_command)(pid) == cmd
 
 
 def runs_alive(lock, ps=None, started=None):
@@ -892,10 +1010,65 @@ def stop(target, date, ps=None, kill=None, out=print, dry=False, started=None):
     return signalled
 
 
-def dry_run_go(names, date, out=print):
-    names = list(CLIENT_PARTS) if names == ["all"] else names
-    out(f"`--go {' '.join(names)}`: checks (this checkout's own commit hook, step 1's snapshot, the smoke results "
-        "marked, no launch yet and no stop mark of the client(s) for this night), then creates <client-home>/night-"
+def sim_runs(selection):
+    """The runs of a selection as pacing.plan takes them: each one's start after the go, its ages and waves."""
+    import probe as PR
+    runs = []
+    for name, steps in selection.items():
+        for i, s in enumerate(steps):
+            a = PR.parser().parse_args([*s["args"], "--out", "-"])
+            ages, labels = PR.ages_of(a.schedule, a.ages)
+            runs.append({"id": s["id"], "client": name, "delay": delay_of(s, i), "ages": ages, "labels": labels,
+                         "replicas": a.replicas, "waves": a.waves, "wave_gap": a.wave_gap})
+    return runs
+
+
+def hm(seconds):
+    m = int(round(seconds / 60))
+    return f"{m // 60} h {m % 60:02d}" if m >= 60 else f"{m} min"
+
+
+def plan_report(selection, out=print, at=None):
+    """The expected times of a selection with pacing (pacing.plan: the real loop on a simulated clock, every cache
+    warm, each request TOOK seconds): per client, its requests, its busiest minute, when its last run ends; and the
+    whole night's end. `at`: the go's time (epoch seconds), to give clock times too. Returns {client: (end, requests)}."""
+    runs = sim_runs(selection)
+    result, times = P.plan(runs, {n: PACE.get(n, 0) for n in selection}, TOOK)
+    ends, total = {}, 0
+    for name in selection:
+        mine = [result[r["id"]] for r in runs if r["client"] == name]
+        end, requests = max(x["end"] for x in mine), sum(x["requests"] for x in mine)
+        total += requests
+        late = sum(x["late"] for x in mine)
+        ends[name] = (end, requests)
+        when = f" ({time.strftime('%Y-%m-%d %H:%M', time.localtime(at + end))})" if at else ""
+        out(f"  {name}: {len(mine)} runs, {requests} requests with every control warm the first time (each run "
+            "at most 2 more for a second control), " + (f"paced at {PACE[name]} a minute (primings "
+            f"{PACE[name] - P.reserve_of(PACE[name])})" if PACE.get(name) else "not paced")
+            + f"; busiest minute {P.busiest_minute(times[name])} requests; the last run ends {hm(end)} after the go"
+            + when + (f"; {late} checks would be late" if late else "; no check late"))
+        out("    each run ends: " + ", ".join(f"{r['id']} {hm(result[r['id']]['end'])} ({result[r['id']]['requests']})"
+                                       for r in runs if r["client"] == name))
+    end = max(e for e, _ in ends.values())
+    out(f"  expected: {total} requests; the last run ends {hm(end)} after the go"
+        + (f" ({time.strftime('%Y-%m-%d %H:%M', time.localtime(at + end))})" if at else "")
+        + "; longer by each rate-limit wait (at most 10 min a sample) and each retried priming (30 s).")
+    return ends
+
+
+def dry_run_go(names, date, out=print, lister=None, at=None):
+    """`--dry-run codex|devin|all`, or `--dry-run CX1,CX3,DV1`: the checks --go makes, each run's own dry run, the
+    model ids against each client's list (refused, named, when one is not there), and the expected times with
+    pacing (plan_report). Nothing run, nothing sent, nothing written."""
+    if names == ["all"] or (names and all(n in CLIENT_PARTS for n in names)):
+        names = list(CLIENT_PARTS) if names == ["all"] else names
+        selection = {n: PARTS[n] for n in names}
+    else:
+        selection = runs_of(names)
+    shown_names = " ".join(names) if whole(selection) else ",".join(s["id"] for v in selection.values() for s in v)
+    out(f"`--go {shown_names}`: checks (this checkout's own commit hook, step 1's snapshot, the smoke results "
+        "marked, no launch yet and no stop mark of the client(s) for this night, no results yet of these runs on this "
+        "date, every model id in its client's own list), then creates <client-home>/night-"
         f"{date}/launch/<client>.json exclusively with the launcher's pid, starts each run as its own background "
         "process (caffeinate -w, a session of its own), looking for the stop mark before each start, and returns. "
         "Each run waits for its pid in the lock before its first client call and looks for the stop mark before "
@@ -903,12 +1076,15 @@ def dry_run_go(names, date, out=print):
     why = hook_problem()
     out("  the commit hook: `git config core.hooksPath` is `scripts`: this checkout's own scripts/pre-commit" if not why
         else f"  the commit hook: --go would refuse: {why}")
-    for n in names:
-        out(f"  {n}: " + ", ".join(f"{s['id']} (+{delay_of(s, i)} s)" for i, s in enumerate(PARTS[n])))
-    for n in names:
-        dry_run(PARTS[n], date, out=out)
-    total = sum(len(PARTS[n]) for n in names)
-    out(f"Dry run of `--go {' '.join(names)}`: {total} runs; nothing run, nothing sent, nothing written.")
+    steps = [s for v in selection.values() for s in v]
+    check_ids(steps, "--dry-run", live=False, lister=lister, out=out)
+    for n, v in selection.items():
+        out(f"  {n}: " + ", ".join(f"{s['id']} (+{delay_of(s, i)} s)" for i, s in enumerate(v)))
+    for n, v in selection.items():
+        dry_run(v, date, out=out)
+    out("The plan (every cache warm, so every run goes to its end; pacing as each run is told):")
+    plan_report(selection, out=out, at=at)
+    out(f"Dry run of `--go {shown_names}`: {len(steps)} runs; nothing run, nothing sent, nothing written.")
 
 
 def main(argv=None):
@@ -917,11 +1093,20 @@ def main(argv=None):
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true", help="say what the command would do; do nothing")
     mode.add_argument("--go", action="store_true", help="run them")
-    ap.add_argument("what", nargs="+", help="smoke | codex | devin | all; or: untouched, login codex|devin, "
-                                             "smoke-reviewed, status, stop codex|devin|all")
+    ap.add_argument("what", nargs="+", help="smoke | codex | devin | all | run ids (CX1,CX3,DV1); or: untouched, "
+                                             "login codex|devin, smoke-reviewed, status, stop codex|devin|all")
     ap.add_argument("--save", action="store_true")
     ap.add_argument("--report", action="store_true")
+    ap.add_argument("--pace", action="append", default=[], metavar="CLIENT=N",
+                    help=f"a client's request budget per minute, shared by its runs (default {PACE}; 0: none)")
+    ap.add_argument("--at", metavar="HH:MM", help="--dry-run: the go's local time on --date, for clock times")
     a = ap.parse_args(argv)
+    for item in a.pace:
+        client, _, n = item.partition("=")
+        if client not in CLIENT_PARTS or not n.isdigit():
+            raise SystemExit(f"--pace {item}: CLIENT=N, a client of {', '.join(CLIENT_PARTS)} and a whole number")
+        PACE[client] = int(n)
+    at = time.mktime(time.strptime(f"{a.date} {a.at}", "%Y-%m-%d %H:%M")) if a.at else None
     head, dry = a.what[0], a.dry_run
     if head in ("audit", "manifest"):
         import weekly  # the Tuesday commands of every night folder (docs/weekly-night.md)
@@ -951,6 +1136,7 @@ def main(argv=None):
         return
     if a.what == ["smoke"]:
         if dry:
+            check_ids(PARTS["smoke"], "--dry-run smoke")
             dry_run(PARTS["smoke"], a.date)
             print(f"Dry run of the smoke runs: {len(PARTS['smoke'])} runs, in the foreground; nothing run, nothing sent.")
         elif a.go:
@@ -959,11 +1145,11 @@ def main(argv=None):
             for s in PARTS["smoke"]:
                 print(f"{s['id']}: {shown(command(s, a.date))}")
         return
-    names = a.what
+    names = [w for item in a.what for w in item.split(",") if w]
     refuse_other_clients("--go" if a.go else "night.py", names)
     if dry:
-        if names == ["all"] or all(n in CLIENT_PARTS for n in names):
-            dry_run_go(names, a.date)
+        if all(n == "all" or n in CLIENT_PARTS or PART_OF.get(n) in CLIENT_PARTS for n in names):
+            dry_run_go(names, a.date, at=at)
         else:
             steps = select(names)
             dry_run(steps, a.date)

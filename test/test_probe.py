@@ -90,13 +90,14 @@ class Loop(unittest.TestCase):
         self.assertEqual(checks(ev), [("control", True), ("2.5m", True), ("5m", True), ("7.5m", False)])
         self.assertEqual(ev[-1]["event"], "done")
 
-    def test_the_control_comes_first_and_a_miss_ends_after_three_requests(self):
+    def test_the_control_comes_first_and_two_misses_end_after_five_requests(self):
         clock = FakeClock()
         c = FakeClient(clock, ttl=10)
         reason, ev = go(c, clock)
         self.assertEqual(reason, "no-observable-cache")
-        self.assertEqual(c.requests, 3)  # baseline, the control's priming, its check
-        self.assertEqual([e["event"] for e in ev], ["baseline", "prime", "check", "stop"])
+        # Baseline, the control's priming, its check; then the second control (a fresh session), primed and checked.
+        self.assertEqual(c.requests, 5)
+        self.assertEqual([e["event"] for e in ev], ["baseline", "prime", "check", "prime", "check", "stop"])
         self.assertEqual(ev[-1]["reason"], "no-observable-cache")
 
     def test_the_control_is_checked_before_any_other_priming(self):

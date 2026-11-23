@@ -75,7 +75,7 @@ def walk(session, model, client_id, version, record, hi=HI, small=SMALL, accepte
         try:
             _, u = session.start(prompt(n))
         except C.Refused as e:
-            if e.kind in ("client-cap", "quota"):
+            if e.kind in ("client-cap", "quota", "rate-limited"):
                 raise End(f"{kind} N={n:,}: {e.kind} refusal ({e.text[:200]}): the walk ends, no row")
             row = {"kind": kind, "model": model, "n": n, "status": status_of(e.text), "promptTokens": None,
                    "message": scrub(e.text), "exit": getattr(e, "code", None)}

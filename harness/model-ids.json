@@ -1,0 +1,45 @@
+{
+ "note": "The checked model ids of the own clients (harness/model_ids.py). A run whose id is not in its client's own list (Codex: its bundled catalog, offline; Devin: the account's list, at --go) is refused; this file is what a dry run reads for Devin, and what --go reads when a client's own list cannot be read. Add an id only with how it was checked.",
+ "devin": {
+  "checked": "2026-11-23",
+  "ids": {
+   "claude-opus-5-5-low": "answered DV1's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "claude-sonnet-5-5-low": "answered DV2's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "claude-haiku-5-5-low": "answered DV3, S3's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "gpt-6-1-sol-low": "answered DV4's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "gpt-6-1-terra-low": "answered DV5, S3b's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "gpt-6-astra-low": "answered DV6's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "gpt-6-luna-low": "answered DV7's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "deepseek-v4-1-flash-1017-low": "answered DV8's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "glm-5-3-low": "answered DV9, DV9d's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "kimi-k3-1-pro-low": "answered DV10's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "nemotron-3-5-super-none": "answered DV11's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "gemini-4-argon-low": "answered DV13's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "grok-4-7-low": "answered DV14's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "kimi-k3-low": "answered DV15's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "muse-wonder-1-0-low": "answered DV16's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "swe-2-medium": "answered DV17's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "gemini-4-neon-low": "answered DV18's baseline through the Devin CLI on 2026-11-23 (results/own-clients-2026-11-23, model_matches true)",
+   "deepseek-v4-pro-high": "DeepSeek V4 Pro on Devin has the levels high and max only, no low: Devin's catalog as Provimux keeps it (provimux internal/registry/models/devin_models.json, 2026-11-09); Provimux sends devin/deepseek-v4-pro with no level as deepseek-v4-pro-high (devin_models_test.go, since 2026-09-13), and Devin answered it so in LD2 of 2026-11-17. Not yet sent through the Devin CLI: --go reads Devin's own list first"
+  }
+ },
+ "codex": {
+  "checked": "2026-11-23",
+  "ids": {
+   "gpt-6.2-sol": "in `codex debug models --bundled` of codex-cli 0.171.0; answered on 2026-11-23 (results/own-clients-2026-11-23)",
+   "gpt-6.2-astra": "in `codex debug models --bundled` of codex-cli 0.171.0; answered on 2026-11-23 (results/own-clients-2026-11-23)",
+   "gpt-6-astra": "in `codex debug models --bundled` of codex-cli 0.171.0; answered on 2026-11-23 (results/own-clients-2026-11-23)",
+   "gpt-6.1-sol": "in `codex debug models --bundled` of codex-cli 0.171.0; answered on 2026-11-23 (results/own-clients-2026-11-23)",
+   "gpt-6.1-terra": "in `codex debug models --bundled` of codex-cli 0.171.0; answered on 2026-11-23 (results/own-clients-2026-11-23)",
+   "gpt-6-sol": "in `codex debug models --bundled` of codex-cli 0.171.0",
+   "gpt-6-luna": "in `codex debug models --bundled` of codex-cli 0.171.0; answered on 2026-11-23 (results/own-clients-2026-11-23)",
+   "gpt-5.6-sol": "in `codex debug models --bundled` of codex-cli 0.171.0",
+   "gpt-5.6-terra": "in `codex debug models --bundled` of codex-cli 0.171.0",
+   "gpt-5.6-luna": "in `codex debug models --bundled` of codex-cli 0.171.0",
+   "gpt-daybreak-blue-latest": "in `codex debug models --bundled` of codex-cli 0.171.0",
+   "gpt-daybreak-red-latest": "in `codex debug models --bundled` of codex-cli 0.171.0",
+   "gpt-5.5": "in `codex debug models --bundled` of codex-cli 0.171.0",
+   "codex-auto-review": "in `codex debug models --bundled` of codex-cli 0.171.0"
+  }
+ }
+}

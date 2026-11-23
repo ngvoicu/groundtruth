@@ -4,6 +4,16 @@ A design, written on 2026-11-22. Nothing in it has been run: no request was sent
 It says how groundtruth measures each login through the client its vendor ships, how OpenRouter's proxy-only
 entries are measured again directly, what changes in `observed.json`, which runs are owed and what has to be built.
 
+**Since the first night (2026-11-23), where 17 of the 25 runs stopped early.** Seven Devin runs ended `quota` on a
+rate limit that named its reset, six Devin and three Codex runs on one cold control, DV12 on an unknown model id. So
+(section 1, rules 3 and 5 to 7): a rate limit that says when it resets is `rate-limited`, waited for and sent again
+(5 tries, 10 minutes a sample, a `rate-wait` line per wait), and a plan's limit stays `quota`; a client's runs share
+one request budget per minute across processes (Devin 24, from the night's own counts); a cold control gets one more
+in a fresh session, and only two cold controls end a run; every model id is checked against the client's own list
+before the go (DV12 is now `deepseek-v4-pro-high`). `night.py status` and `stop` read `ps` in the C locale and
+compare start times as times, so a lock written by a shell in another language still matches; `--go CX1,CX3,DV1`
+re-runs chosen runs on a new date folder (`own-clients-RUN.md`, "Re-running some runs").
+
 **Since the final check (2026-11-22): the first night is Codex CLI and Devin CLI only** (the owner's decision: the
 two logins where differences were seen). Claude Code and Muse Code wait for a later night: their smoke and cache runs,
 `login claude`, the Muse Keychain item and its fingerprint, and the Claude overage logic are out of every night
@@ -144,7 +154,8 @@ short message, and the cached-token count the client reports for that request is
 cache covers the part every session shares (the client's own system prompt and tools) and at least half of the
 sample's block: `cached >= baseline + unique / 2`.
 
-Four rules are new, for every client:
+Four rules are new, for every client, and three more came from the first own-client night (2026-11-23, where 17 of
+25 runs stopped early: a rate limit taken for quota, one cold control, an unknown model id):
 
 1. **One model request per check.** A client that makes two requests in one turn (a tool call, then the answer)
    reports their sum, and the second request reads what the first one wrote: a cold check would count as warm. A
@@ -152,11 +163,52 @@ Four rules are new, for every client:
    `check-invalid` and left out.
 2. **A check is never sent twice.** Today a failed resume is retried after 30 seconds. If the first try reached the
    provider, the second measures a re-send, not the age. A check that fails is logged as `check-failed` and its
-   sample is lost. A priming may be retried.
+   sample is lost. A priming may be retried. The one exception is a rate limit (rule 5): the vendor refused the
+   request before any model read it, so sending it again measures the age, not a re-send.
 3. **The control comes first.** The control sample is primed, checked at 30 seconds, and only then are the others
-   primed. A control that misses ends the run (`no-observable-cache`, as the method says) after three requests
-   instead of ninety.
-4. **A quota refusal ends the run.** It is never retried (`--stop-on-refusal` in the TypeScript probe).
+   primed. **One cold sample is not enough to give up on a model**: a control that misses gets one more control, in a
+   fresh session with a block of its own (`prime` and `check` lines with `"age": "control"`, `"rep": 1`). The run
+   ends (`no-observable-cache`, as the method says) only when both miss, after five requests instead of ninety; both
+   controls are recorded, and the builder counts both (`control: {warm, total}`). On 2026-11-23 the Codex runs that
+   went on were warm in 22 to 28 of 27 to 29 checks, and gpt-6-luna, warm in the smoke run an hour before, stopped
+   on one cold control (CX6).
+4. **A quota refusal ends the run.** It is never retried (`--stop-on-refusal` in the TypeScript probe). A quota
+   refusal is a plan's limit: "usage limit", "quota", "out of credits", "insufficient credits", "billing period",
+   "hit your …", whatever the text says of a reset (`harness/clients.py`, `PLAN_LIMIT`).
+5. **A rate limit waits; it is not quota.** A refusal that names a rate limit ("rate limit", "too many requests",
+   429) *and* says when it resets ("reset in N seconds", "retry in N s", "try again in N minutes", "Retry-After: N",
+   "at HH:MM UTC") is `rate-limited` (`clients.classify`, `rate_reset`). The request waits until the reset (the later
+   of the two when both are named) plus 1 to 5 random seconds and is sent again: at most 5 tries for one request and
+   at most 10 minutes of such waits for one sample. Each wait is a public `rate-wait` line (`age`, `rep`, `try`,
+   `waitSec`). A check that a wait made late keeps the `late` rule (age x 1.1 + 90 s); a control that would be checked
+   late ends the run (`control-late`). Past either limit the request is lost like any refused one (a priming
+   `prime-refused`, a check `check-failed`, both of kind `rate-limited`); the run goes on. A rate limit that names no
+   reset stays `quota`. On 2026-11-23 Devin refused seven runs within nine seconds with "Reached request rate limit.
+   … Your limit will reset in 2 seconds (at 11:15 UTC)": each of those runs ended `quota`.
+6. **Pacing: a client's runs share one request budget.** All of one client's runs of a night ask one budget before
+   every request (`harness/pacing.py`): at most N requests in any 60 seconds, all runs together; two requests at least
+   60/N seconds apart, so that the waves of many runs are spread instead of bunched; the primings use at most
+   N - N/4 of them, the rest is kept for checks, and a check that waits for its turn goes before any priming. A run
+   never holds a check that falls due while its own priming waits for a turn. The budget is kept across processes in
+   `<client-home>/night-<date>/pacing/<client>.json` under an exclusive lock (`.lock`), mode 600, folder 700.
+   Devin's is 24 a minute (`night.py --pace devin=N` changes it; Codex has none). Where it comes from: the `prime`,
+   `check`, `baseline` and `retry` lines of all DV runs of 2026-11-23, by minute up to the first refusal (UTC):
+   11:02 2, 11:03 27, 11:04 33, 11:05 21, 11:06 28, 11:07 40, **11:08 68**, 11:09 55, 11:10 14, 11:11 30, 11:12 37,
+   **11:13 63**, 11:14 15 answered and 7 refused (the first refusal at 11:14:14). No per-minute ceiling shows: 68 and
+   63 passed, and the refused minute had 22. What the refusals came after is 430 requests in 11 minutes 26 seconds
+   (11:02:48 to 11:14:14, 37.6 a minute), all in the quarter hour that ended at 11:15, the reset Devin named. 24 a
+   minute is 360 in a quarter hour, below those 430, and below any minute that passed. The runs that went on did
+   about 20 a minute from 11:15 to 11:19 without a refusal. `--dry-run` runs the whole selection on a simulated
+   clock with this budget and the real loop, and gives each run's expected end and each client's request total.
+7. **Model ids are checked before the go.** Every run's model id must be in its client's own model list, read
+   without a prompt (`harness/model_ids.py`): Codex's bundled catalog (`codex debug models --bundled`, offline, run in
+   a throwaway `CODEX_HOME` with the network denied) and Devin's account list (`devin models list --format json`: it
+   asks Devin's server, no prompt, no session; run in the state folder and sandbox, and only with its login there).
+   `--dry-run` runs no client: it reads the checked list, `harness/model-ids.json`, each id with how it was checked;
+   `--go` reads the client's own and falls back to that list when it cannot be read, saying so. A run whose id is not
+   listed is refused, by name, before anything starts. On 2026-11-23 DV12 asked Devin for `deepseek-v4-pro-low`
+   ("Unknown model", three times): DeepSeek V4 Pro on Devin has the levels `high` and `max` only, so DV12 is
+   `deepseek-v4-pro-high`.
 
 Ages count from the start of the priming request, as the README says; `probe.py` counts from its end today.
 
@@ -473,7 +525,7 @@ at $4, the prices read again before each run, as on 18 November.
 | OpenRouter, 9 window requests | 10 minutes | |
 | Claude Code, 4 runs together | 2 h 10 min | then the 4 short runs, 25 minutes |
 | Codex CLI, 6 runs together | 12 h 10 min | |
-| Devin CLI, 18 runs together | 2 h 10 min for 14, 12 h 10 min for 4 | started 20 seconds apart, as on 8 November |
+| Devin CLI, 19 runs together | 2 h 30 min to 3 h 05 for 16, 12 h 46 min for 3 | started 20 seconds apart, as on 8 November, and paced at 24 requests a minute (rule 6; `--dry-run` plans it) |
 | Muse Code, 3 runs together | 2 h 10 min | minutes if the control misses |
 | Limits walks | 10 to 20 minutes per model, one after the other per login | a request of a million tokens takes minutes |
 
@@ -626,7 +678,7 @@ answered requests and one refused. They settle every *(open)* of section 1 and g
 | DV1 – DV3 | `devin` | `devin-cli` | `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` | `std` | default |
 | DV4 – DV7 | | | `gpt-6-1-sol`, `gpt-6-1-terra`, `gpt-6-astra`, `gpt-6-luna` | `std` | |
 | DV8 – DV11 | | | `deepseek-v4-1-flash-1017`, `glm-5-3`, `kimi-k3-1-pro`, `nemotron-3-5-super` | `long` | warm at 2 h in November's runs |
-| DV12 – DV18 | | | `deepseek-v4-pro`, `gemini-4-argon`, `grok-4-7`, `kimi-k3`, `muse-wonder-1-0`, `swe-2`, `gemini-4-neon` | `std` | |
+| DV12 – DV18 | | | `deepseek-v4-pro`, `gemini-4-argon`, `grok-4-7`, `kimi-k3`, `muse-wonder-1-0`, `swe-2`, `gemini-4-neon` | `std` | DV12 at `high` (`deepseek-v4-pro-high`): the model has no `low` on Devin (rule 7) |
 | MC1 – MC3 | `meta-subscription` | `muse-code` | `muse-wonder-1.0`, `muse-ember-1.0`, `muse-spark-1.3` | `std` | default |
 | AG1 | `antigravity` | `antigravity-cli` | `gemini-3.8-flash-high` | `std` | only if S5 settles 1.5 |
 
@@ -683,8 +735,8 @@ Steps 1 to 5 send nothing and are tested without a network. Step 6 is the first 
    `tier-changed`), ages from the start of the priming, `--filler list`, and a `start` event that records
    `client` (never its version: console log and private record only), the command with `<prompt>` in the prompt's place, and `isolation`
    (`{"home": "dedicated", "HOME": "throwaway", "work": "temporary"}`; never a path). *Tests:* the loop against a fake client and a
-   fake clock: a cache that lives 5 minutes gives warm, warm, cold in order; a control that misses ends after
-   three requests; a failed check is not sent again; a quota refusal during priming ends the run and the primed
+   fake clock: a cache that lives 5 minutes gives warm, warm, cold in order; two controls that miss end the run after
+   five requests; a failed check is not sent again; a quota refusal during priming ends the run and the primed
    samples are not checked; a two-request check is not counted; a late check is flagged.
 3. **`harness/client_limits.py`** (new; `harness/limits.py` stays the plain-request walk). It walks an input size
    through a client, with the adapters of step 1, and writes the rows `build_observed.py` reads today (`kind`,

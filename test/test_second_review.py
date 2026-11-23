@@ -18,6 +18,8 @@ from types import SimpleNamespace
 from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# No client is run to list its models (harness/model_ids.py): the checked list, also in the children.
+os.environ.setdefault("GROUNDTRUTH_MODEL_LIST", "checked")
 sys.path.insert(0, os.path.join(HERE, "..", "harness"))
 sys.path.insert(0, HERE)
 import clients as C  # noqa: E402
