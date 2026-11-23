@@ -1,6 +1,6 @@
 # Measuring a login through its vendor's own client
 
-A design, written on 2026-11-22. Nothing in it has been run: no request was sent to a provider or a login for it.
+A design, written on 2026-11-22. Its first night, the cache runs of Codex CLI and Devin CLI, ran on 2026-11-23.
 It says how groundtruth measures each login through the client its vendor ships, how OpenRouter's proxy-only
 entries are measured again directly, what changes in `observed.json`, which runs are owed and what has to be built.
 
@@ -87,7 +87,7 @@ It supersedes what the list below says of pi, Provimux, OpenRouter and the super
   (`control-late`).
 - **M-3**: two replicas of one age are primed at least five minutes apart, whatever a slow priming did to its wave.
 
-**Since the review of the build (2026-11-22).** What changed against the text below, as built on this branch:
+**Since the review of the build (2026-11-22).** What changed against the text below, as built:
 
 - **The first night is narrowed** (the chief's decision): no input limit through an own client. The limits walks of
   4.4 and the refused request of each smoke run (4.2) are out of the plan; `harness/client_limits.py` stays, not yet
