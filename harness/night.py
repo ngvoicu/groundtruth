@@ -113,7 +113,7 @@ PART_OF = {s["id"]: part for part in ORDER for s in PARTS[part]}
 # Seconds between two starts of one client's runs (Devin's as on 8 November).
 SPACING = {"devin": 20}
 SPACING_DEFAULT = 15
-# Each client's request limits, per window of seconds (harness/night_plan.py; `--limit devin=40/300`): every run's
+# Each client's request limits, per window of seconds (harness/night_plan.py; `--limit devin=36/270`): every run's
 # start is planned so that the client's whole schedule keeps under them.
 LIMITS = {c: dict(v) for c, v in NP.LIMITS.items()}
 STATE_FOLDERS = tuple(C.CLIENTS[h].client_id for h in CLIENT_PARTS)
