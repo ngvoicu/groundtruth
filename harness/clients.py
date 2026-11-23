@@ -923,27 +923,47 @@ def login_ok(client, code, out, err):
             return "the status does not say 'Logged in using ChatGPT'"
         return None
     if client.harness == "devin":
-        # Only a status that is wholly one of the accepted lines, read with every control character removed (C0, C1
-        # and the escape sequences of both): no mention of an API, a token, a key, a PAT or a personal access; no
-        # other line. Anything else is refused and shown to the owner as it reads once cleaned. The exit code alone is
-        # never a login.
+        # Read with every control character removed (C0, C1 and the escape sequences of both). The first line is one
+        # of the accepted login lines and mentions no API, token, key, PAT or personal access; every other line is a
+        # section header or a labelled line of DEVIN_SECTIONS / DEVIN_FIELDS (a label's value may be anything), and no
+        # label names a key, a token, a PAT or a personal access. Nothing may be hidden in escape sequences. Anything
+        # else is refused and shown to the owner as it reads once cleaned. The exit code alone is never a login.
         plain = strip_controls(text)
         lines = [line.strip() for line in plain.splitlines() if line.strip()]
         shown = json.dumps(plain.strip()[:300])
-        if DEVIN_REFUSED.search(plain) or DEVIN_REFUSED.search(CONTROLS.sub("", text)):
+        if len(DEVIN_REFUSED.findall(CONTROLS.sub("", text))) > len(DEVIN_REFUSED.findall(plain)):
+            return f"the status hides a mention of an API, a token, a key, a PAT or a personal access: {shown}"
+        if lines and DEVIN_REFUSED.search(lines[0]):
             return f"the status mentions an API, a token, a key, a PAT or a personal access: {shown}"
-        if not lines or not all(DEVIN_LOGGED_IN.fullmatch(line) for line in lines):
-            return ("the status is not one of `Logged in`, `Logged in.`, `Logged in as <one word>`, `Logged in (via "
-                    f"browser|web|oauth)`: {shown}")
+        for line in lines[1:]:
+            m = DEVIN_LABELLED.fullmatch(line)
+            if m and DEVIN_SECRET_LABEL.search(m.group(1)):
+                return f"the status has a label naming a key, a token, a PAT or a personal access: {shown}"
+        if not lines or not DEVIN_LOGGED_IN.fullmatch(lines[0]):
+            return ("the status does not begin with one of `Logged in`, `Logged in.`, `Logged in as <one word>`, "
+                    f"`Logged in (via Devin|browser|web|oauth)`: {shown}")
+        for line in lines[1:]:
+            m = DEVIN_LABELLED.fullmatch(line)
+            if not m or not ((m.group(1) in DEVIN_SECTIONS and not m.group(2))
+                             or m.group(1) in DEVIN_FIELDS):
+                return f"the status has a line that is not one Devin prints for a subscription login: {shown}"
         return None
     if re.search(r"api[ _-]?key", text, re.I):
         return "the status names an API key"
     return None
 
 
-# The Devin CLI's status, the only lines accepted (whole lines, after strip_controls).
-DEVIN_LOGGED_IN = re.compile(r"Logged in(?:\.| as \S+| \(via (?:browser|web|oauth)\))?")
+# The Devin CLI's status (whole lines, after strip_controls): its first line, then only these section headers (bare)
+# and labelled lines, as Devin CLI 3000.14 prints them for a browser (subscription) login.
+DEVIN_LOGGED_IN = re.compile(r"Logged in(?:\.| as \S+| \(via (?:Devin|browser|web|oauth)\)\.?)?")
+DEVIN_SECTIONS = frozenset({"Credentials", "User", "Account", "Team settings"})
+DEVIN_FIELDS = frozenset({"File", "API server", "Devin webapp", "Devin API",
+                          "Name", "Email", "User ID",
+                          "Tier", "Plan", "Team ID", "Team membership", "Enterprise", "Telemetry",
+                          "Allowed models", "MCP servers", "Sandbox", "Fetched at"})
+DEVIN_LABELLED = re.compile(r"([^:]+?)\s*:(?:\s*(.*))?")
 DEVIN_REFUSED = re.compile(r"api|token|key|\bpat\b|personal\s*access", re.I)
+DEVIN_SECRET_LABEL = re.compile(r"token|key|\bpat\b|personal\s*access", re.I)
 # Escape sequences (7-bit: ESC [ ... final, ESC ] ... BEL/ST, ESC + one; 8-bit: CSI 0x9b, OSC 0x9d ... ST 0x9c), then
 # every remaining control character but the newline: C0 (0x00-0x1f), DEL and C1 (0x80-0x9f).
 ESCAPES = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x9b[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b\x9c]*(?:\x07|\x1b\\|\x9c)?"
