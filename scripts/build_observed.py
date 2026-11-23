@@ -179,6 +179,10 @@ def read_harness(path):
         rows = [json.loads(line) for line in f if line.strip()]
     start = next(r for r in rows if r["event"] == "start")
     control, checks, late = [], {}, 0
+    # Controls that are no valid control: late, or not one model request (check-invalid). Counted for the reason a
+    # run without a valid warm control is refused (build_cache).
+    control_late = sum(1 for r in rows if r["event"] == "check" and r.get("age") == "control" and r.get("late"))
+    control_invalid = sum(1 for r in rows if r["event"] == "check-invalid" and r.get("age") == "control")
     # Every reply's usage: whether any reported a cached token, and which lifetime its cache writes had.
     usages = [r["usage"] for r in rows if isinstance(r.get("usage"), dict)]
     ttls = set()
@@ -234,6 +238,8 @@ def read_harness(path):
         "date": start["at"][:10],
         "started": start["at"],
         "control": control,
+        "control_late": control_late,
+        "control_invalid": control_invalid,
         "checks": checks,
         "late": late,
         "effort": start.get("effort"),
@@ -392,6 +398,14 @@ def build_cache(manifest):
         if CLIENT_KINDS.get(client) == "own_client" and not data.get("client"):
             raise SystemExit(f"{run['id']}: an own-client entry needs a raw file of harness/probe.py that records the "
                              f"client; {path} records none")
+        if data.get("own_since") and data["checks"] and not any(data["control"]):
+            # An own-client run's samples (harness/probe.py, from OWN_CLIENTS_SINCE) count only beside a valid warm
+            # control (not late, one model request): without one, nothing shows that the cache was observable when
+            # they were primed. (Earlier runs, published before the rule, are as they were.)
+            n = sum(len(v) for v in data["checks"].values())
+            raise SystemExit(f"{run['id']}: no valid warm control (valid controls {len(data['control'])}, warm 0; "
+                             f"late {data['control_late']}, invalid {data['control_invalid']}): its {n} samples are "
+                             "not counted; the whole run goes in excluded")
         if data.get("stop") == "tier-changed":
             raise SystemExit(f"{run['id']}: the run stopped because its replies changed the lifetime they wrote "
                              f"(tier-changed); its checks mix two lifetimes: it goes in excluded")

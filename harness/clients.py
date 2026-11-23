@@ -134,19 +134,24 @@ def same_model(reported, requested, exact=False):
 INPUT_TOO_LONG = re.compile(r"prompt is too long|input is too long|too many (?:input )?tokens|context[ _]?(?:length|window)"
                             r"(?:[ _]exceeded| is exceeded)?|maximum context|contextoverflow|context overflow"
                             r"|exceeds? (?:the )?(?:model'?s? )?(?:maximum|context|limit)", re.I)
-QUOTA = re.compile(r"usage limit|rate[ _]limit|quota|too many requests|\b429\b|out of (?:credits|usage)|limit reached"
+# A plan's limit (it does not reset in seconds): any of these words makes a text `quota`, even beside Devin's rate-limit
+# wording (a mixed diagnostic).
+PLAN_LIMIT = re.compile(r"billing (?:period|cycle)|monthly|\bcredits?\b|usage limit|\bACUs?\b|out of (?:credits|usage)"
+                        r"|quota|insufficient[ _](?:credits|balance|funds)|plan limit|subscription limit", re.I)
+QUOTA = re.compile(r"usage limit|rate[ _-]?limit|quota|too many requests|\b429\b|out of (?:credits|usage)|limit reached"
                    r"|hit your|insufficient[ _](?:credits|balance|quota)", re.I)
 # Devin's own rate limit, the one shape known (2026-11-23, seven runs within nine seconds): "Error: Agent error: Reached
 # request rate limit. Please switch to a different model or contact support. Your limit will reset in 2 seconds (at
-# 11:15 UTC)." Only this is `rate-limited`; every other text that QUOTA matches stays `quota` and ends the run.
-DEVIN_RATE_LIMIT = re.compile(r"Reached request rate limit\b.*?reset in (\d+(?:\.\d+)?) seconds?\s*"
-                              r"\(at (\d{1,2}):(\d{2}) UTC\)", re.I | re.S)
+# 11:15 UTC)." Only this, within one line and with no PLAN_LIMIT word anywhere in the text, is `rate-limited`; every
+# other text that QUOTA or PLAN_LIMIT matches is `quota` and ends the run.
+DEVIN_RATE_LIMIT = re.compile(r"Reached request rate limit\b[^\n]*?reset in (\d+(?:\.\d+)?) seconds?[ \t]*"
+                              r"\(at (\d{1,2}):(\d{2}) UTC\)", re.I)
 
 
 def rate_reset(text):
     """{"in": seconds, "at": the UTC second of the day} of Devin's rate-limit refusal, or None for any other text."""
     m = DEVIN_RATE_LIMIT.search(text or "")
-    if not m or int(m.group(2)) > 23 or int(m.group(3)) > 59:
+    if not m or PLAN_LIMIT.search(text) or int(m.group(2)) > 23 or int(m.group(3)) > 59:
         return None
     return {"in": float(m.group(1)), "at": int(m.group(2)) * 3600 + int(m.group(3)) * 60}
 
@@ -173,7 +178,7 @@ def classify(text):
     reset = rate_reset(text)
     if reset:
         return Refused("rate-limited", text, reset=reset)
-    if QUOTA.search(text):
+    if QUOTA.search(text) or PLAN_LIMIT.search(text):
         return Refused("quota", text)
     return ClientError(text or "no output")
 

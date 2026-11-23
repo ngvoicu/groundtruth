@@ -336,7 +336,8 @@ class Review(unittest.TestCase):
         return rows
 
     def test_a_late_control_is_no_control(self):
-        with self.assertRaisesRegex(SystemExit, "must start with a control"):
+        # Refused either way: by the ladder rule, or (an own-client run) for having no valid warm control.
+        with self.assertRaisesRegex(SystemExit, "must start with a control|no valid warm control .*late 1"):
             self.build(self.rows(control_late=True))
         e = self.build(self.rows())
         self.assertEqual(e["control"], {"warm": 1, "total": 1})

@@ -604,6 +604,9 @@ def smoke_problems(sid, ev, cold_expected=False):
     if last.get("event") == "stop" and last.get("reason") == "control-late":
         problems.append(f"{sid}: the control could not be checked in time (control-late)")
         return problems, notes
+    if last.get("event") == "stop" and last.get("reason") == "failing":
+        problems.append(f"{sid}: the run ended on failed requests in a row (failing; harness/probe.py, rule 4)")
+        return problems, notes
     checks = [e for e in ev if e.get("event") == "check"]
     # The control, and its second chance when it was cold (harness/probe.py, rule 3): one or two checks, both controls.
     if not 1 <= len(checks) <= 2 or any(c.get("age") != "control" for c in checks):

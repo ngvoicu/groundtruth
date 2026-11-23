@@ -139,7 +139,11 @@ its priming is left out, so a sleeping computer loses checks, not truth.
   terminal ends none of them. The starts are planned before the go: Codex's 15 s apart; Devin's at least 20 s apart
   and later where needed, so that Devin's whole schedule keeps under 36 requests in any 60 s and 270 in any 15
   minutes (`--limit devin=N60/N900` changes them); `--go` refuses a schedule over them. Nothing paces a run while it
-  runs. Before anything starts, every run's model id is looked up in `harness/model-ids.json`, the checked list, and
+  runs. **The plan's peaks are an estimate, not a bound**: real request times differ from the simulated ones, and
+  the real peaks can be somewhat higher (the second review replayed the planned starts and found up to 49 in 60 s and 271
+  in 15 minutes; see `own-clients.md`, section 1, rule 6). The safety comes from the margin to Devin's observed
+  limit (it refused only after about 430 requests in 15 minutes; windows of 79 in 60 s passed) and from the
+  rate-limit handling below, not from the planned numbers. Before anything starts, every run's model id is looked up in `harness/model-ids.json`, the checked list, and
   a run whose id is not there is refused by name. Each client's launch is written
   once, in `$G/night-$N/launch/<client>.json`, with the launcher's own pid before any run starts and each run's pid
   as it starts; a second go of the same client for the same night is refused. `--go all` starts both, and refuses if
@@ -164,8 +168,9 @@ its priming is left out, so a sleeping computer loses checks, not truth.
   night (it refuses without it), and it refuses, writing nothing, when the marks' folder would be an everyday client
   folder (`~/.codex`, …), a synced folder, the repository or a checkout. Nothing more of that client starts that
   night. `--dry-run stop all` names them and does nothing. A run also stops by itself on a quota refusal (a plan's
-  limit, or three of Devin's rate-limit refusals in a row), on two missed controls (a cold control gets one more, in
-  a fresh session) or on a late control. A check that fails is lost and its session never resumed; a priming that
+  limit, or three of Devin's rate-limit refusals in a row), on five failed requests in a row of any kind (`failing`),
+  on two missed controls (a cold control gets one more, in a fresh session) or on a control that would be late (it
+  is not sent: `control-late`). A check that fails is lost and its session never resumed; a priming that
   fails is tried again in a new session (a `retry` line).
 
 ### The smoke review (step 3)
@@ -257,7 +262,8 @@ python3 harness/night.py --date $N --go CX1,CX3,DV1               # those runs o
      check that was not one explicit model request, or whose own turn did not name the requested model
      (`model_matches` not true), or whose line still carries a model's text, or a run whose model is not the
      manifest's, or (Codex) whose model is not bound to its own turn (`model_evidence` `own-turn`), and a Codex
-     run whose session files named another model anywhere (`model-scan`); it publishes no client version for an own
+     run whose session files named another model anywhere (`model-scan`), and the whole of a run with samples but no
+     valid warm control (warm, not late, not `check-invalid`), naming why; it publishes no client version for an own
      client, and nothing of a night without its `AUDIT.md`.
 
 ### The audit checklist
