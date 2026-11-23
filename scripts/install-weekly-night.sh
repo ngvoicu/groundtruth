@@ -47,7 +47,8 @@ fi
 python=$(command -v python3)
 case $home in /*) ;; *) echo "--client-home must be an absolute path" >&2; exit 2 ;; esac
 [ -d "$home" ] || { echo "$home does not exist: create it first (mkdir -m 700), as docs/weekly-night.md says" >&2; exit 1; }
-perm=$(stat -f %Lp "$home" 2>/dev/null || stat -c %a "$home")
+# GNU's form first: GNU stat takes -f too (a file system's status, exit 0), so BSD's form first never falls back.
+perm=$(stat -c %a "$home" 2>/dev/null || stat -f %Lp "$home")
 [ "$perm" = 700 ] || { echo "$home is mode $perm, not 700: refused" >&2; exit 1; }
 for v in "$repo" "$home" "$python" "$PATH"; do
   case $v in *'&'*|*'<'*|*'>'*|*'|'*) echo "a path with &, <, > or | cannot go into the plist: $v" >&2; exit 1 ;; esac
@@ -57,7 +58,9 @@ plist=$(sed -e "s|__PYTHON__|$python|g" -e "s|__MODE__|$mode|g" -e "s|__REPO__|$
 if [ $print -eq 1 ]; then printf '%s\n' "$plist"; exit 0; fi
 mkdir -p "$target"
 printf '%s\n' "$plist" > "$dest.tmp"
-plutil -lint "$dest.tmp" >/dev/null
+# plutil is macOS's; elsewhere (the tests on CI's Linux) Python's plistlib parses it instead.
+if command -v plutil >/dev/null; then plutil -lint "$dest.tmp" >/dev/null
+else "$python" -c 'import plistlib, sys; plistlib.load(open(sys.argv[1], "rb"))' "$dest.tmp"; fi
 mv "$dest.tmp" "$dest"
 echo "wrote $dest (the night: $mode, Mondays at 23:00)"
 if [ $load -eq 1 ]; then
