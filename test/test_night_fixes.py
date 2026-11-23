@@ -239,15 +239,21 @@ class Schedule(unittest.TestCase):
         self.assertEqual(NP.window_max([0, 1, 59.9, 60, 120], 60), 3)
         self.assertEqual(NP.window_max([], 60), 0)
 
-    def test_the_devin_schedule_keeps_under_40_a_minute_and_300_a_quarter_hour(self):
+    def test_the_devin_schedule_keeps_under_36_a_minute_and_270_a_quarter_hour(self):
+        self.assertEqual(NP.LIMITS["devin"], {60: 36, 900: 270})
+        self.assertEqual(NP.TOOK["devin"][:2], (1.0, 2.0))  # the densest cases checked
         sel = night.runs_of(["devin"])
         p = night.plan(sel)["devin"]
-        self.assertLessEqual(p["max"][60], 40)
-        self.assertLessEqual(p["max"][900], 300)
+        self.assertLessEqual(p["max"][60], 36)
+        self.assertLessEqual(p["max"][900], 270)
+        for took in NP.TOOK["devin"]:  # every request time keeps under the limits, not only the usual one
+            times = [p["starts"][r["id"]] + x for r in night.sim_runs(sel["devin"]) for x in NP.profile(r, took)[0]]
+            self.assertLessEqual(NP.window_max(times, 60), 36, took)
+            self.assertLessEqual(NP.window_max(times, 900), 270, took)
         starts = list(p["starts"].values())
         self.assertEqual(starts, sorted(starts))
         self.assertTrue(all(b - a >= 20 for a, b in zip(starts, starts[1:])))
-        self.assertEqual(p["requests"], 16 * 87 + 3 * 105)
+        self.assertEqual(p["requests"], 16 * 89 + 3 * 107)  # every first control cold: 2 more a run
 
     def test_the_limits_are_configurable_and_the_go_refuses_a_schedule_over_them(self):
         with mock.patch.dict(night.LIMITS, {"devin": {60: 30, 900: 200}}):
@@ -268,17 +274,17 @@ class Schedule(unittest.TestCase):
     def test_the_plan_is_the_real_loop(self):
         run = night.sim_runs([night.ALL_STEPS["DV1"]])[0]
         times, end = NP.profile(run, 4.0)
-        self.assertEqual(len(times), 87)
+        self.assertEqual(len(times), 89)  # 87, and the second control's two: the plan's first control is cold
         self.assertTrue(2 * 3600 < end < 2.5 * 3600)
 
     def test_the_dry_run_reports_the_schedule_and_its_maxima(self):
         out = []
         planned = night.plan_report(night.runs_of(["DV1,DV2,DV3"]), out=out.append)
         text = "\n".join(out)
-        self.assertIn("(limit 40)", text)
-        self.assertIn("(limit 300)", text)
+        self.assertIn("(limit 36)", text)
+        self.assertIn("(limit 270)", text)
         self.assertIn("DV3 +", text)
-        self.assertEqual(planned["devin"]["requests"], 3 * 87)
+        self.assertEqual(planned["devin"]["requests"], 3 * 89)
 
 # --- 3. the control's second chance -------------------------------------------------------------------------------
 

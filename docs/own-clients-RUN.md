@@ -137,7 +137,7 @@ its priming is left out, so a sleeping computer loses checks, not truth.
 
 - **`--go <client>`** starts each of that client's runs as its own background process and returns; closing the
   terminal ends none of them. The starts are planned before the go: Codex's 15 s apart; Devin's at least 20 s apart
-  and later where needed, so that Devin's whole schedule keeps under 40 requests in any 60 s and 300 in any 15
+  and later where needed, so that Devin's whole schedule keeps under 36 requests in any 60 s and 270 in any 15
   minutes (`--limit devin=N60/N900` changes them); `--go` refuses a schedule over them. Nothing paces a run while it
   runs. Before anything starts, every run's model id is looked up in `harness/model-ids.json`, the checked list, and
   a run whose id is not there is refused by name. Each client's launch is written

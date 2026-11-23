@@ -1044,9 +1044,8 @@ def plan_report(selection, out=print, at=None, planned=None):
         mx = ", ".join(f"{p['max'][w]} in any {hm(w) if w >= 60 else str(w) + ' s'}"
                        + (f" (limit {lim[w]})" if w in lim else "") for w in sorted(p["max"]))
         end = max(p["ends"].values())
-        out(f"  {name}: {len(p['starts'])} runs, {p['requests']} requests with every control warm the first time "
-            f"(at most 2 more a run for a second control); most requests: {mx}; the last run ends {hm(end)} after "
-            f"the go{clock(end)}")
+        out(f"  {name}: {len(p['starts'])} runs, {p['requests']} requests with every first control cold (2 fewer a "
+            f"run when it is warm); most requests: {mx}; the last run ends {hm(end)} after the go{clock(end)}")
         out("    each run (start + m:ss, end after the go): " + ", ".join(
             f"{rid} +{int(st) // 60}:{int(st) % 60:02d} to {hm(p['ends'][rid])}" for rid, st in p["starts"].items()))
     end = max(max(p["ends"].values()) for p in planned.values())
@@ -1084,7 +1083,8 @@ def dry_run_go(names, date, out=print, at=None):
         out(f"  {n}: " + ", ".join(f"{s['id']} (+{int(starts[s['id']])} s)" for s in v))
     for n, v in selection.items():
         dry_run(v, date, out=out, delays=starts)
-    out("The plan (every cache warm, so every run goes to its end; each run starts at its planned offset):")
+    out("The plan (every first control cold, so every second control is in; every other cache warm, so every run "
+        "goes to its end; requests taking 1, 2 and 4 s checked; each run starts at its planned offset):")
     plan_report(selection, out=out, at=at, planned=planned)
     over = [f"{n}: {p['max'][w]} in {w} s, over {lim}" for n, p in planned.items() for w, lim in p["limits"].items()
             if p["max"][w] > lim]
@@ -1105,7 +1105,7 @@ def main(argv=None):
     ap.add_argument("--report", action="store_true")
     ap.add_argument("--limit", action="append", default=[], metavar="CLIENT=N60/N900",
                     help="a client's most requests in any 60 s and any 15 minutes, for the planned schedule (default "
-                         "devin=40/300; 0/0: none)")
+                         "devin=36/270; 0/0: none)")
     ap.add_argument("--at", metavar="HH:MM", help="--dry-run: the go's local time on --date, for clock times")
     a = ap.parse_args(argv)
     for item in a.limit:

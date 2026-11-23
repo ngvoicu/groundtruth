@@ -9,7 +9,7 @@ rate limit that named its reset, six Devin and three Codex runs on one cold cont
 simplified after the first review (section 1, rules 2 to 8): a check is sent once and its session never resumed again,
 whatever its failure; a priming may be tried again only in a new session; only Devin's own rate-limit text is
 `rate-limited`, and three of them in a row end a run as `quota`; nothing paces a run while it runs, the night plans
-each run's start instead so that a client's schedule keeps under 40 requests in any 60 s and 300 in any 15 minutes;
+each run's start instead so that a client's schedule keeps under 36 requests in any 60 s and 270 in any 15 minutes;
 a cold control gets one more in a fresh session; model ids are checked against the repository's checked list only
 (DV12 is now `deepseek-v4-pro-high`); a check whose wall and monotonic clocks disagree is late. `night.py status` and
 `stop` read `ps` in the C locale and compare start times as times; `--go CX1,CX3,DV1` re-runs chosen runs on a new
@@ -186,18 +186,20 @@ first review:
    `rate-limited` refusals in a row end the run as `quota`**, so it never loops. Every other text that names a
    quota, a usage limit, a rate limit or a 429 stays `quota` and ends the run, as before.
 6. **The schedule is planned before the go; nothing paces a run while it runs.** The night gives each run of a
-   client its start offset (`harness/night_plan.py`), so that the client's whole schedule keeps at or under **40
-   requests in any 60 s and 300 in any 15 minutes** (Devin; `night.py --limit devin=N60/N900` changes them; Codex has
-   none). A run's request times are those of the real loop (`run_probe`) on a simulated clock, every cache warm,
-   each request taking 2 s (the densest case: the first night's tenth percentile) and 4 s (about its median, for the
-   end times); the runs are placed in order, each at the earliest start at least 20 s after the one before at which
-   both cases keep under the limits. `--dry-run` reports each run's start and end, the requests and the schedule's
+   client its start offset (`harness/night_plan.py`), so that the client's whole schedule keeps at or under **36
+   requests in any 60 s and 270 in any 15 minutes** (Devin; `night.py --limit devin=N60/N900` changes them; Codex has
+   none). A run's request times are those of the real loop (`run_probe`) on a simulated clock, with every first
+   control cold (so each run's second control, 2 requests, is in) and every other cache warm (every run goes to its
+   end), each request taking 1 s, 2 s (the first night's tenth percentile was 2 s) and 4 s (about its median, for
+   the end times); the runs are placed in order, each at the earliest start at least 20 s after the one before at
+   which all three cases keep under the limits. `--dry-run` reports each run's start and end, the requests and the schedule's
    most requests in any 60 s and any 15 minutes; `--go` refuses a schedule over the limits. Where the limits come
    from: the `prime`, `check`, `baseline` and `retry` lines of all DV runs of 2026-11-23, by minute up to the first
    refusal (UTC): 11:02 2, 11:03 27, 11:04 33, 11:05 21, 11:06 28, 11:07 40, 11:08 68, 11:09 55, 11:10 14,
    11:11 30, 11:12 37, 11:13 63, 11:14 15 answered and 7 refused (the first at 11:14:14). Windows of up to 79 in
    60 s passed; the refusals came after 430 requests in 11 minutes 26 seconds, all in the quarter hour that ended at
-   11:15, the reset Devin named. A second control (2 requests) or a priming tried again adds to the planned schedule.
+   11:15, the reset Devin named: 36 and 270 leave room below both. A priming tried again (a new session) adds to the
+   planned schedule; a warm first control takes 2 requests from it.
 7. **Model ids are checked before the go, offline.** Every run's model id must be in the repository's checked list,
    `harness/model-ids.json` (each id with how it was checked; `harness/model_ids.py`); `--dry-run` and `--go` refuse
    a run whose id is not there, by name. No client is run to list models. A listed id that is wrong still fails at
@@ -522,7 +524,7 @@ at $4, the prices read again before each run, as on 18 November.
 | OpenRouter, 9 window requests | 10 minutes | |
 | Claude Code, 4 runs together | 2 h 10 min | then the 4 short runs, 25 minutes |
 | Codex CLI, 6 runs together | 12 h 10 min | |
-| Devin CLI, 19 runs together | 2 h 11 to 3 h 12 for 16, 12 h 26 to 12 h 39 for 3 | started over about an hour at planned offsets, at least 20 s apart, so that Devin gets at most 40 requests in any 60 s and 300 in any 15 minutes (rule 6; `--dry-run` plans it) |
+| Devin CLI, 19 runs together | 2 h 11 to 3 h 26 for 16, 12 h 29 to 12 h 47 for 3 | started over about 75 minutes at planned offsets, at least 20 s apart, so that Devin gets at most 36 requests in any 60 s and 270 in any 15 minutes, second controls included (rule 6; `--dry-run` plans it) |
 | Muse Code, 3 runs together | 2 h 10 min | minutes if the control misses |
 | Limits walks | 10 to 20 minutes per model, one after the other per login | a request of a million tokens takes minutes |
 

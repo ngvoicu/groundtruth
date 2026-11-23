@@ -4,20 +4,21 @@
 On 2026-11-23 nineteen Devin runs primed their waves at once on one account, and Devin refused seven of them after
 about 430 requests in one quarter hour; windows of 79 requests in 60 s had passed before. Nothing paces a run while it
 runs: instead the night gives each run of a client its start, ahead of time, so that the client's whole schedule stays
-at or under a limit per 60 s and per 15 minutes (LIMITS; `night.py --limit devin=40/300`).
+at or under a limit per 60 s and per 15 minutes (LIMITS; `night.py --limit devin=36/270`).
 
 How: every run's own request times are those of the real loop (harness/probe.py run_probe) on a simulated clock, with
-every cache warm (every run goes to its end) and each request taking a fixed time; a run's times move only with its
-start. The starts are chosen in the plan's order, each the earliest at least the client's spacing after the one before
-at which the combined schedule keeps under the limits, for requests taking 2 s (the night's tenth percentile: the
-densest) and 4 s (about its median: the end times). Nothing is sent, nothing written.
+the first control cold (so the second control's two requests are in) and every other cache warm (every run goes to its
+end), each request taking a fixed time; a run's times move only with its start. The starts are chosen in the plan's
+order, each the earliest at least the client's spacing after the one before at which the combined schedule keeps under
+the limits, for requests taking 1 s and 2 s (the night's tenth percentile was 2 s: the densest cases) and 4 s (about
+its median: the end times). Nothing is sent, nothing written.
 """
 import random
 
 # Requests at most, per client, in any window of so many seconds (60 s and 15 minutes). Codex: none.
-LIMITS = {"devin": {60: 40, 900: 300}}
-# Seconds one request takes in the plan: the densest case (limits) and the usual one (end times).
-TOOK = {"devin": (2.0, 4.0), "codex": (3.0, 6.0)}
+LIMITS = {"devin": {60: 36, 900: 270}}
+# Seconds one request takes in the plan: every value is checked against the limits; the last one gives the end times.
+TOOK = {"devin": (1.0, 2.0, 4.0), "codex": (3.0, 6.0)}
 STEP = 10.0  # seconds by which a run's start is pushed later until the schedule keeps under the limits
 
 
@@ -38,7 +39,8 @@ class SimClock:
 
 
 class SimClient:
-    """A client every cache of which is warm, every request taking `took` seconds; records each request's start."""
+    """A client whose first control reads cold (the plan counts the second control) and every other cache warm, every
+    request taking `took` seconds; records each request's start."""
 
     def __init__(self, clock, took):
         self.clock, self.took, self.n, self.times = clock, took, 0, []
@@ -50,12 +52,15 @@ class SimClient:
     def start(self, prompt):
         self._send()
         self.n += 1
+        if "Reference document plan-0," in prompt:
+            self.cold = f"s{self.n}"
         return f"s{self.n}", {"total": 2000 + (6000 if "<doc>" in prompt else 0), "cached": 2000, "write": 0,
                               "calls": 1, "model": "m"}
 
     def resume(self, handle, prompt):
         self._send()
-        return {"total": 8020, "cached": 8000, "write": 20, "calls": 1, "model": "m"}
+        cached = 2000 if handle == getattr(self, "cold", None) else 8000
+        return {"total": 8020, "cached": cached, "write": 20, "calls": 1, "model": "m"}
 
 
 _profiles = {}
@@ -109,12 +114,11 @@ def schedule(runs, limits, took, spacing):
 
 
 def report(runs, starts, limits, took):
-    """{"times": the client's request times (usual case), "max": {window: most requests in it, densest case},
-    "ends": {run id: its end after the go}, "requests": how many}."""
-    dense, usual = took[0], took[-1]
-    times_dense = [starts[r["id"]] + x for r in runs for x in profile(r, dense)[0]]
-    times = [starts[r["id"]] + x for r in runs for x in profile(r, usual)[0]]
+    """{"times": the client's request times (the last of `took`), "max": {window: most requests in it, over every
+    value of `took`}, "ends": {run id: its end after the go}, "requests": how many, the second controls in}."""
+    every = {t: [starts[r["id"]] + x for r in runs for x in profile(r, t)[0]] for t in took}
+    usual = took[-1]
     ends = {r["id"]: starts[r["id"]] + profile(r, usual)[1] for r in runs}
     windows = sorted(set(limits) | {60, 900})
-    return {"times": times, "requests": len(times), "ends": ends,
-            "max": {w: max(window_max(times_dense, w), window_max(times, w)) for w in windows}}
+    return {"times": every[usual], "requests": len(every[usual]), "ends": ends,
+            "max": {w: max(window_max(every[t], w) for t in took) for w in windows}}
