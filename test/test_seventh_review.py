@@ -263,18 +263,19 @@ class Point3Gate(unittest.TestCase):
             git = lambda *a: subprocess.run(["git", *a], cwd=clone, env=env, check=True)  # noqa: E731
             git("add", "-A")
             git("-c", "user.name=t", "-c", "user.email=t" + "@" + "example.invalid", "commit", "-q", "--no-verify", "--allow-empty", "-m", "code")
-            write(os.path.join(clone, "results", "own-clients-2026-11-23", "CX6.jsonl"), '{"event": "done"}\n')
-            git("add", "results/own-clients-2026-11-23/CX6.jsonl")
+            # A night no real one can have: the clone carries the published, audited nights of the repository.
+            write(os.path.join(clone, "results", "own-clients-2099-01-01", "CX6.jsonl"), '{"event": "done"}\n')
+            git("add", "results/own-clients-2099-01-01/CX6.jsonl")
             hook = lambda: subprocess.run(["bash", "scripts/pre-commit"], cwd=clone, env=env,  # noqa: E731
                                           capture_output=True, text=True)
             r = hook()
             self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
             self.assertIn("audit gate: refused", r.stderr)
-            write(os.path.join(clone, "results", "own-clients-2026-11-23", "AUDIT.md"), "# Pending audit\n")
-            git("add", "results/own-clients-2026-11-23/AUDIT.md")
+            write(os.path.join(clone, "results", "own-clients-2099-01-01", "AUDIT.md"), "# Pending audit\n")
+            git("add", "results/own-clients-2099-01-01/AUDIT.md")
             self.assertNotEqual(hook().returncode, 0)
-            write(os.path.join(clone, "results", "own-clients-2026-11-23", "AUDIT.md"), B.AUDIT_FIRST_LINE + "\n")
-            git("add", "results/own-clients-2026-11-23/AUDIT.md")
+            write(os.path.join(clone, "results", "own-clients-2099-01-01", "AUDIT.md"), B.AUDIT_FIRST_LINE + "\n")
+            git("add", "results/own-clients-2099-01-01/AUDIT.md")
             r = hook()
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 

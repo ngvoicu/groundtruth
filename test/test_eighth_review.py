@@ -298,7 +298,8 @@ class Point2Hook(unittest.TestCase):
             git(main, "commit", "-q", "--no-verify", "-am", "older main", env=env)
             os.symlink("../../scripts/pre-commit", os.path.join(main, ".git", "hooks", "pre-commit"))
             git(main, "worktree", "add", "-q", wt, "candidate", env=env)
-            raw = os.path.join("results", "own-clients-2026-11-23")
+            # A night no real one can have: the clone carries the published, audited nights of the repository.
+            raw = os.path.join("results", "own-clients-2099-01-01")
             write(os.path.join(wt, raw, "CX6.jsonl"), '{"event": "done"}\n')
             git(wt, "add", "--", os.path.join(raw, "CX6.jsonl"), env=env)
             # Before: Git runs the main checkout's older hook, and the night would start.

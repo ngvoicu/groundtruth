@@ -83,9 +83,10 @@ class Point1HookGitRuns(unittest.TestCase):
 
     def go(self, what):
         """`night.py --go <what>` in the worktree, with an empty campaign folder: (exit, output, files made)."""
+        # A night no real one can have: the worktree carries the published nights, whose results --go refuses first.
         with tempfile.TemporaryDirectory() as campaign:
             os.chmod(campaign, 0o700)
-            r = subprocess.run([sys.executable, "-B", "harness/night.py", "--date", "2026-11-23", "--go", what],
+            r = subprocess.run([sys.executable, "-B", "harness/night.py", "--date", "2099-01-01", "--go", what],
                                cwd=self.wt, env=dict(GIT_ENV, GROUNDTRUTH_CLIENT_HOME=campaign), capture_output=True,
                                text=True, timeout=60)
             return r.returncode, r.stdout + r.stderr, os.listdir(campaign)
@@ -106,7 +107,7 @@ class Point1HookGitRuns(unittest.TestCase):
         command = re.search(r"`(git -C [^`]+ config core\.hooksPath scripts)`", why).group(1)
         subprocess.run(command, shell=True, check=True, env=GIT_ENV)
         self.assertIsNone(self.problem())
-        raw = os.path.join("results", "own-clients-2026-11-23", "CX6.jsonl")
+        raw = os.path.join("results", "own-clients-2099-01-01", "CX6.jsonl")
         write(os.path.join(self.wt, raw), '{"event": "done"}\n')
         git(self.wt, "add", "--", raw)
         r = git(self.wt, "commit", "-q", "-m", "raw only", check=False)
