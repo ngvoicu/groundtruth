@@ -1,6 +1,6 @@
 #!/bin/bash
 # Blocks a commit when a file of an own-client night is in the tree before its audit (results/own-clients-<date>/
-# AUDIT.md), or when the files about to be committed hold a credential, a home-folder path, a client's state or
+# AUDIT.md), when listed.json fails its schema, or when the files about to be committed hold a credential, a home-folder path, a client's state or
 # session file, or when observed.json doesn't match the raw results. Install once per clone:
 #     git config core.hooksPath scripts
 # A relative path: Git runs, in each worktree, that worktree's own scripts/pre-commit (a hook linked under .git/hooks
@@ -14,5 +14,8 @@ git checkout-index -a --prefix="$tmp/"
 # Nothing of an own-client night is committed before its audit: AUDIT.md, with its fixed first line, in the tree.
 python3 "$root/scripts/build_observed.py" --audit-gate "$tmp"
 python3 "$root/harness/scan_secrets.py" "$tmp"
+# Discovery's file, as staged, by the staged tree's own checker: its schema (no field outside it, no identity); an
+# absent file passes. A tree from before discovery has neither.
+if [ -f "$tmp/harness/listed_schema.py" ]; then (cd "$tmp" && python3 harness/listed_schema.py listed.json); fi
 python3 "$root/harness/scan_secrets.py" --git "$root"
 (cd "$tmp" && python3 scripts/build_observed.py --check)

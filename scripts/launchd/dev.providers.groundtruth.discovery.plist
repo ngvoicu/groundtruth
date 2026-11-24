@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  groundtruth's daily discovery (harness/discover.py, docs/discovery.md). A template: scripts/install-discovery.sh
+  fills the __PLACEHOLDERS__ in and installs it, with the owner's OK only. Every day at 22:30 in the Mac's own time
+  zone it reads the owner's Provimux on this Mac (one local request; nothing is sent to a vendor) and writes
+  listed.json; installed with the publish option, it also commits and pushes the file when it changed.
+  A run missed while the Mac slept runs when it wakes; no wake is scheduled for it. The management key is read by the
+  command itself (CPA_MGMT_KEY is not set here; ~/.cli-proxy-api/keys.txt), never written into this file.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.providers.groundtruth.discovery</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__PYTHON__</string>
+    <string>-B</string>
+    <string>harness/discover.py</string>
+    <string>__PUBLISH__</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__REPO__</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>GROUNDTRUTH_CLIENT_HOME</key>
+    <string>__CLIENT_HOME__</string>
+    <key>PATH</key>
+    <string>__PATH__</string>
+    <key>LANG</key>
+    <string>en_US.UTF-8</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>22</integer>
+    <key>Minute</key>
+    <integer>30</integer>
+  </dict>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>__CLIENT_HOME__/discovery.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__CLIENT_HOME__/discovery.out.log</string>
+</dict>
+</plist>

@@ -37,7 +37,8 @@ method is named in the plan, never left out without a word.
 - `plan/values.json` is written at each publication (`python3 harness/plan.py --date <today> --site-data <copy>
   --write-values`): per value its count, date, last value and what the two sources stated on the day we measured it.
   Its first version (2026-11-22, dataset `0b47455c15b331fa`) records that day's sources for every existing value.
-- Until discovery (step G1) writes `listed.json`, a login's offered models are providers.dev's entries of the login.
+- Until discovery (step G1, `harness/discover.py`, [`discovery.md`](discovery.md)) writes `listed.json`, a login's
+  offered models are providers.dev's entries of the login.
 
 ## The caps
 

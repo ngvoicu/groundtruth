@@ -22,6 +22,9 @@ jobs:
       - run: python3 scripts/build_observed.py --check
       # Nothing of an own-client night is merged before its audit (results/own-clients-<date>/AUDIT.md).
       - run: python3 scripts/build_observed.py --audit-gate .
+      # Discovery's file (harness/discover.py): its schema, providers.dev's ListedFile or stricter: no field outside
+      # it, no identity (e-mail, credential, file name) anywhere. An absent file passes (no discovery yet).
+      - run: python3 harness/listed_schema.py listed.json
       # The pre-commit scan, for a pull request whose author did not install it: credentials, e-mail addresses,
       # home-folder paths, session files. The tree as committed, as the hook checks it.
       - run: git checkout-index -a --prefix="$RUNNER_TEMP/tree/" && python3 harness/scan_secrets.py "$RUNNER_TEMP/tree"

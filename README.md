@@ -231,6 +231,12 @@ To add a run: publish its files under `results/`, add it to [`observed/manifest.
 (route, model, options: nothing that is a result), then run `python3 scripts/build_observed.py`. CI fails when
 `observed.json` doesn't match the raw files.
 
+## listed.json
+
+What each of the owner's logins offers, read daily from his Provimux (the vendors' own model lists, no account):
+`listed.json` at the repository root (once discovery runs), written by `harness/discover.py`. providers.dev publishes it as each provider's model
+list. [`docs/discovery.md`](docs/discovery.md) has the rules and the schema.
+
 ## Contributing a measurement
 
 Anyone can contribute a measurement, providers included. providers.dev takes no payment for listing, correcting or
