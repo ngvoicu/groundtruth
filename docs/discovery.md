@@ -1,78 +1,90 @@
 # Daily discovery: `listed.json`
 
-Every day at 22:30 the owner's Mac writes what each of his logins' vendors offers into `listed.json` at the root of
-this repository on GitHub, and providers.dev publishes it as the provider's model list (`/api/v1/listings`) at its next
+Every day at 22:30 the owner's Mac adds what each of his logins' vendors offers to `listed.json` at the root of this
+repository on GitHub, and providers.dev publishes it as the provider's model list (`/api/v1/listings`) at its next
 daily sync. The design is section 9.1 (way A) of Provimux's `model-lists.md`; this is step G1 of its section 10.
 
 ## What the command does
 
-`python3 harness/discover.py` (its docstring has every rule):
+`python3 harness/discover.py` (its docstring has every rule). `$G` is `GROUNDTRUTH_CLIENT_HOME`, the nights' private
+folder; discovery keeps everything there and runs **no git command**: it has no clone and never touches a checkout.
 
 - **One local request**: `GET /v8/management/provimux/model-lists?view=live` to the owner's Provimux on this Mac
   (Provimux 8.1.1-pmx.2 or later). A URL that is not loopback is refused, and the request goes through an opener with
-  no proxy and no redirect (a redirect is an error), so the management key never leaves this Mac. The key is found as
-  `harness/pool.py` finds it and is never printed or written. **Nothing is sent to a vendor** and nothing is spent.
-- **Only the vendor's list**: per login, `live_list` (the vendor's answer as it arrived, unmerged), only while Provimux
-  holds it (`live.held`). From an entry only its id, name, window, output limit, modalities and reasoning levels.
-- **No identity**: a model whose id or name contains a login's label, e-mail (or its local part), file name (or its
-  stem), `auth_index` or the management key, without regard to case, is dropped; the log says a model was dropped,
-  never the value. Values of 3 characters or fewer and names of providers and services (`SERVICE_WORDS`: a login
-  labelled "Devin") drop nothing.
-- **Per listing**: Claude login → `claude-subscription`, Codex → `openai-codex`, Antigravity → `antigravity`, Devin →
-  `devin` (Devin's own ids, without Provimux's `devin/`), Meta login → `meta-subscription`.
-- **A provider changes only on a complete day**: when every enabled login of its type has a held live list. Their
-  lists are joined (the union; a field two logins state differently is left out; the date is the oldest list's).
-  Otherwise, and when no login of the type answered, yesterday's part stays as it was, date included, and the log says
-  how many logins lacked a list.
-- **Refused before it is written, as providers.dev would refuse it**: the schema (`harness/listed_schema.py`, the
-  site's `ListedFile` or stricter, with its safe-integer bounds), more than 8 MiB, the key anywhere in the text, or more
-  than 40 % of the providers or models lost against the file it replaces (with `--publish`: GitHub's).
-- **Ages**: every provider's age goes to `$G/discovery.log`. A provider older than 3 days is an ask: an `ASK:` line in
-  the log and in the command's last words.
+  no proxy and no redirect, so the management key never leaves this Mac. **Nothing is sent to a vendor.**
+- **Four listings only**: Claude login → `claude-subscription`, Codex → `openai-codex`, Devin → `devin` (Devin's own
+  ids, without Provimux's `devin/`), Meta login → `meta-subscription`. Per login only its `live_list` (the vendor's
+  answer as it arrived), and of an entry only its id, name, window, output limit, modalities and reasoning levels.
+- **Privacy by allowlist**:
+  - modalities only from `text`, `image`, `audio`, `video`, `pdf` (a media type read as its kind) and reasoning
+    levels only from `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`: providers.dev's `LISTED_MODALITIES`
+    and `LISTED_LEVELS` (`src/core/listings.ts`), the levels being Provimux's `liveModelListLevels`
+    (`sdk/cliproxy/live_model_lists.go`). Any other word is dropped;
+  - a model whose id or name holds an identity value as a whole word or token sequence, of any length, is dropped:
+    a login's label, e-mail and its local part, file name and its stem, `auth_index` (of every row of the answer),
+    and the management key from `CPA_MGMT_KEY` and from `~/.cli-proxy-api/keys.txt` (the key also as a plain
+    substring). A value made only of service names (`SERVICE_WORDS`: a login labelled "Devin") never counts. The log
+    says a model was dropped, never the value. The published models are checked again every day, so a label added
+    later removes a model that holds it;
+  - before an upload, an identity check and `harness/scan_secrets.py` run on the exact bytes that are sent.
+- **Complete lists; discovery never removes a model**:
+  - a login's list is complete when Provimux holds it (held, not expired), it is not empty, and it has as many models
+    as Provimux says it listed (`live.listed_models`);
+  - the logins of each type are remembered, hashed, in `$G/discovery-state.json` (private, never published). A login
+    remembered but absent from today's answer counts as incomplete; one removed on purpose is forgotten with
+    `--forget-absent`;
+  - a provider's new part is the union of the published models and today's complete lists. A field stated today
+    replaces the published value (where today's logins state it differently, the published value stays);
+  - its date advances, to the oldest of today's lists, only when every enabled login of the type, and every remembered
+    one, gave a complete list. A provider not yet published appears on its first complete day;
+  - **a retired model is removed only by hand** (an edit of `listed.json` on `main`). So the published file only
+    grows, and providers.dev's rule against a file that lost more than 40 % of its models cannot trip from one day to
+    the next, whatever day the site last synced.
+- **Other providers**: any other provider of the published file is carried forward as it is. Copilot and Antigravity
+  rows are left out (below).
+- **The base is GitHub's file**, read through `gh` (`GET /repos/ngvoicu/groundtruth/contents/listed.json`, its bytes
+  checked against its blob sha). The new file is refused, as providers.dev would refuse it, if it fails the schema
+  (`harness/listed_schema.py`), is over 8 MiB, or lost more than 40 % against GitHub's file.
+- **`$G/listed.json`**: every run that read Provimux and GitHub writes its result there, published or not. The weekly
+  night plans from it.
+- **Ages, from the last published file**: every provider's age goes to `$G/discovery.log`. A provider older than 3 days
+  on GitHub is an `ASK:` line, and one macOS notification per stale part. A failed `--publish` is an `ASK:` line too.
 - **One run at a time**: a lock in `$G` (`discovery.lock`) makes a second run exit at once.
 
-Without `--publish` it writes `--out` (default: `./listed.json`) and commits nothing.
+### `--publish`: GitHub's contents API, never git
 
-### `--publish`: discovery's own clone, never the main checkout
-
-- Discovery keeps its own clone of groundtruth at `$G/discovery-repo`, made from GitHub (`upstream`) on first use.
-- Each run: `git fetch upstream`, `reset --hard upstream/main`, `clean -fdx`; it writes `listed.json` there and stops
-  when it equals GitHub's.
-- Otherwise `harness/scan_secrets.py` must pass on the file, and `listed.json` alone is committed, as
-  `groundtruth discovery <office@providers.dev>` (never the Mac's own Git identity), through the clone's commit hook,
-  and pushed with `git push upstream HEAD:main`, never forced.
-- A refused push is redone once from a fresh fetch; a second refusal is exit 1. Nothing is left over: the next day
-  starts again from GitHub.
-- `--out` is refused with `--publish`; the checkout the command runs from is never written.
-- **GitHub only.** The NAS copy follows GitHub by itself (`.forgejo/workflows/follow-github.yml`), so discovery
-  never pushes to it. providers.dev reads GitHub.
+- When the new file differs from GitHub's, `PUT /repos/ngvoicu/groundtruth/contents/listed.json` through `gh api`, with
+  the exact bytes checked, GitHub's `sha` of the file it read, `branch: main`, the message `discovery: listed.json`,
+  and author and committer `groundtruth discovery <office@providers.dev>`. Nothing of the Mac's Git configuration is
+  read: there is no Git.
+- A `409` or `422` (the file changed meanwhile): it reads the file again and rebuilds once, from what GitHub now has; a
+  second one is exit 1, and the next run starts again from GitHub.
+- **GitHub only.** The NAS copy follows GitHub by itself (`.forgejo/workflows/follow-github.yml`).
 
 CI checks the committed file (`python3 harness/listed_schema.py listed.json`), and so does the commit hook.
 
 ## Login types left out, and why
 
-- **Copilot, for now.** Provimux 8.1.1-pmx.2 puts every model of the account's answer into the status endpoint's
-  list, also the ones the account does not offer: `sdk/cliproxy/provimux_live_copilot.go` lines 70–71 append each
-  model to `entry.models` before line 72 tests `provimuxCopilotOffered` (disabled by policy, hidden from the picker,
-  embedding models, no chat endpoint), and `sdk/cliproxy/provimux_model_list_status.go` lines 91–99 put every one of
-  them on the wire; lines 102–110 of the first file also give every model `TEXT` modalities the account did not state.
-  models.dev covers Copilot (`github-copilot`). It comes back with one line in `LISTINGS` once Provimux lists only the
-  offered models.
+- **Copilot.** Provimux 8.1.1-pmx.2 puts every model of the account's answer into the status endpoint's list, also the
+  ones the account does not offer: `sdk/cliproxy/provimux_live_copilot.go` lines 70–71 append each model to
+  `entry.models` before line 72 tests `provimuxCopilotOffered` (disabled by policy, hidden from the picker, embedding
+  models, no chat endpoint), and `sdk/cliproxy/provimux_model_list_status.go` lines 91–99 put every one of them on the
+  wire. models.dev covers Copilot (`github-copilot`).
+- **Antigravity.** Provimux keeps one description per model id for all Antigravity logins
+  (`sdk/auth/provimux_antigravity_models.go` lines 49–60: each answer overwrites the shared map), and the status
+  endpoint reads that same description for every login (`sdk/cliproxy/provimux_model_list_status.go` lines 109–115).
+  Two logins that state different windows would arrive as one value, the newest answer's.
 - **Kimi** (Provimux does not ask it yet, `model-lists.md` 13.4), **xAI**, **Gemini keys**, **Vertex** and
   **AI Studio**: their listings come from models.dev (`model-lists.md` 4.1).
 
-**Antigravity's caveat.** Provimux keeps one description per model id for all Antigravity logins
-(`sdk/auth/provimux_antigravity_models.go` lines 49–60: each answer overwrites the shared map), and the status endpoint
-reads that same description for every login (`sdk/cliproxy/provimux_model_list_status.go` lines 109–115). So two
-logins that state different windows arrive as one value, the newest answer's: the join cannot see the disagreement,
-and the window written is the last login's to answer. The ids are each login's own.
+An earlier file's Copilot or Antigravity rows are left out at the next publication. GitHub has no `listed.json` yet,
+so there are none.
 
 ## The Monday night
 
-**Requirement for the weekly night (branch `weekly-night`, not merged): `harness/weekly.py night` must run
-`python3 harness/discover.py --publish` as its first step, before planning (design 9.1), and plan from the file it
-wrote.** Until then the night plans from the `listed.json` of its checkout. A stale provider is, for now, only the
-`ASK:` line in the log and the exit message.
+`harness/weekly.py night` runs discovery first (the copy in `$G/bin` when installed, else the checkout's), without
+`--publish`: it refreshes `$G/listed.json`, and the night plans from `$G/listed.json` when it exists, else from the
+checkout's `listed.json`. A failed discovery is a line in the night's output; the night plans from the last file.
 
 ## The file
 
@@ -88,21 +100,22 @@ wrote.** Until then the night plans from the `listed.json` of its checkout. A st
 }
 ```
 
-`date` is the day the oldest joined list was read; `client` is `provimux` (providers.dev's measurement labels). A
-field the vendor's list does not state is left out, never guessed.
+`date` is the day of the oldest list of the last complete day; `client` is `provimux` (providers.dev's measurement
+labels). A field the vendor's list does not state is left out, never guessed.
 
 ## Once, with the owner's OK
 
 ```bash
 export GROUNDTRUTH_CLIENT_HOME="$HOME/groundtruth-clients"      # exists, mode 700 (the night's folder)
-# 1. a first run by hand: reads his Provimux, writes $G/listed.json only, commits nothing
-python3 harness/discover.py --out "$GROUNDTRUTH_CLIENT_HOME/listed.json"
-# 2. the first publication by hand: makes $G/discovery-repo from GitHub, pushes listed.json to GitHub's main
+# 1. a first run by hand, reading only: Provimux and GitHub's file; writes $G/listed.json; publishes nothing
+python3 harness/discover.py
+# 2. the first publication by hand: puts listed.json on GitHub's main (gh must be logged in)
 python3 harness/discover.py --publish
 # 3. the agent, daily at 22:30 (a run missed while the Mac slept runs when it wakes)
-scripts/install-discovery.sh --print --publish        # shows the plist; changes nothing
-scripts/install-discovery.sh --owner-ok --publish     # writes and loads ~/Library/LaunchAgents/dev.providers.groundtruth.discovery.plist
-scripts/install-discovery.sh --uninstall --owner-ok   # removes it
+scripts/install-discovery.sh --print --publish        # shows what it would copy and the plist; changes nothing
+scripts/install-discovery.sh --owner-ok --publish     # copies discover.py into $G/bin, writes and loads the agent
+scripts/install-discovery.sh --uninstall --owner-ok   # removes the agent
 ```
 
-The agent's output goes to `$G/discovery.out.log`; the command's own log is `$G/discovery.log`.
+The agent runs `$G/bin/discover.py`, the copy made at install, never a checkout's file: to update it, install again.
+Its output goes to `$G/discovery.out.log`; the command's own log is `$G/discovery.log`.

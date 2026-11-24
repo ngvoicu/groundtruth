@@ -1,12 +1,10 @@
 """harness/discover.py and harness/listed_schema.py (step G1, Provimux's model-lists.md 9.1 and 10): discovery of each
-login's offered models into listed.json, from a saved Provimux answer or a fake Provimux on a free local port. Nothing
-is sent anywhere else: every connection a test opens is recorded and checked.
+login's offered models into listed.json, from a saved Provimux answer or a fake Provimux on a free local port, with a
+fake `gh` for GitHub (test/discover_fakes.py). Nothing is sent anywhere else.
 
     python3 -m unittest discover -s test -p "test_*.py"
 """
 import contextlib
-import copy
-import http.server
 import io
 import json
 import os
@@ -15,258 +13,153 @@ import socket
 import subprocess
 import sys
 import tempfile
-import threading
 import unittest
-from unittest import mock
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)
-sys.path.insert(0, os.path.join(ROOT, "harness"))
-import discover as D  # noqa: E402
+from discover_fakes import (ANSWER, ROOT, TODAY, YESTERDAY, Base, Connections, D, dump, load, provimux, read)
 import listed_schema as S  # noqa: E402
 
-FIX = os.path.join(HERE, "fixtures", "discovery")
-ANSWER = os.path.join(FIX, "provimux-model-lists-live.json")
-YESTERDAY = os.path.join(FIX, "listed-yesterday.json")
-TODAY = "2026-11-24"
 KEY = "test-management-key-0123456789"
 
 
-def load(path):
-    with open(path) as f:
-        return json.load(f)
-
-
-def read(path):
-    with open(path) as f:
-        return f.read()
-
-
-def dump(doc, path):
-    with open(path, "w") as f:
-        json.dump(doc, f)
-
-
-class Connections:
-    """Records every outgoing connection; refuses any that is not to the allowed local port."""
-
-    def __init__(self, allowed_port=None):
-        self.allowed, self.seen = allowed_port, []
-
-    @contextlib.contextmanager
-    def watching(self):
-        real = socket.socket.connect
-
-        def connect(sock, address):
-            self.seen.append(address)
-            if self.allowed is None or address[1] != self.allowed or address[0] not in ("127.0.0.1", "::1"):
-                raise ConnectionRefusedError("the test allows no such connection")
-            return real(sock, address)
-        socket.socket.connect = connect
-        try:
-            yield self
-        finally:
-            socket.socket.connect = real
-
-
-class FakeProvimux:
-    """A Provimux on a free port of 127.0.0.1 that answers the fixture (or a status) and records each request."""
-
-    def __init__(self, body=None, status=200):
-        self.requests = []
-        outer = self
-
-        class Handler(http.server.BaseHTTPRequestHandler):
-            def do_GET(self):
-                outer.requests.append({"path": self.path, "auth": self.headers.get("Authorization")})
-                data = json.dumps(body if body is not None else load(ANSWER)).encode()
-                self.send_response(status)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(data)))
-                self.end_headers()
-                self.wfile.write(data)
-
-            def log_message(self, *args):
-                pass
-        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        self.port = self.server.server_address[1]
-        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
-
-    def __enter__(self):
-        self.thread.start()
-        return self
-
-    def __exit__(self, *exc):
-        self.server.shutdown()
-        self.server.server_close()
-
-
-class Base(unittest.TestCase):
-    def setUp(self):
-        # Never the Mac's own night folder, Provimux address or key.
-        env = mock.patch.dict(os.environ)
-        env.start()
-        self.addCleanup(env.stop)
-        for name in ("GROUNDTRUTH_CLIENT_HOME", "CPA_BASE_URL", "CPA_MGMT_KEY"):
-            os.environ.pop(name, None)
-        self.tmp = tempfile.TemporaryDirectory()
-        self.dir = self.tmp.name
-        self.out = os.path.join(self.dir, "listed.json")
-        self.log = os.path.join(self.dir, "discovery.log")
-
-    def tearDown(self):
-        self.tmp.cleanup()
-
-    def yesterday(self):
-        with open(self.out, "w") as f:
-            f.write(D.text_of(load(YESTERDAY)))
-
-    def args(self, *extra, answer=ANSWER, base=None):
-        argv = ["--out", self.out, "--log", self.log, "--date", TODAY]
-        if answer:
-            argv += ["--answer", answer]
-        if base:
-            argv += ["--base-url", base]
-        return D.parser().parse_args(argv + list(extra))
-
-    def run_quiet(self, args, **kw):
-        err = io.StringIO()
-        with contextlib.redirect_stderr(err):
-            code, words = D.run(args, **kw)
-        return code, words, err.getvalue()
-
-    def written(self):
-        return load(self.out)
+def changed(edit):
+    answer = load(ANSWER)
+    edit(answer)
+    return answer
 
 
 class FromTheAnswer(Base):
     def test_two_logins_of_one_type_are_joined_and_named_by_devin_s_own_ids(self):
-        self.yesterday()
-        code, words, _ = self.run_quiet(self.args())
+        code, words = self.from_answer(ANSWER)
         self.assertEqual(code, 0, words)
         devin = self.written()["providers"]["devin"]
         self.assertEqual((devin["date"], devin["client"]), (TODAY, "provimux"))
         # login a: argon, neon, swe-2; login b: opus, argon, swe-2. The union, by Devin's ids (no devin/ prefix).
         self.assertEqual([m["id"] for m in devin["models"]], ["claude-opus-5-5", "gemini-4-argon", "gemini-4-neon", "swe-2"])
-        argon = devin["models"][1]
-        self.assertEqual(argon, {"id": "gemini-4-argon", "name": "Gemini 4 Argon", "context_window": 1048576,
-                                 "max_output": 65536, "input_modalities": ["text", "image"],
-                                 "reasoning": {"levels": ["low", "medium", "high"]}})
-        # The two logins state swe-2's window differently: neither is written; what they agree on is.
+        self.assertEqual(devin["models"][1], {"id": "gemini-4-argon", "name": "Gemini 4 Argon", "context_window": 1048576,
+                                              "max_output": 65536, "input_modalities": ["text", "image"],
+                                              "reasoning": {"levels": ["low", "medium", "high"]}})
         swe = devin["models"][3]
-        self.assertNotIn("context_window", swe)
-        self.assertEqual(swe["reasoning"], {"levels": ["low", "high", "max-fast"]})
-        self.assertIn("swe-2 context_window", read(self.log))
+        self.assertNotIn("context_window", swe)  # the two logins state it differently, and nothing was published
+        self.assertEqual(swe["reasoning"], {"levels": ["low", "high"]})  # "max-fast" is not a level: dropped
+        self.assertIn("disagree on: swe-2 context_window", self.logged())
 
-    def test_each_login_type_goes_to_its_listing_and_the_others_are_not_written(self):
-        code, _, _ = self.run_quiet(self.args())
+    def test_only_the_four_listings_are_written(self):
+        code, _ = self.from_answer(ANSWER)
         self.assertEqual(code, 0)
         providers = self.written()["providers"]
-        # No earlier file: only the types with a held live list today. Gemini keys and Vertex have no listed listing.
+        # Antigravity, Gemini keys and Vertex are not discovery's; Meta has no held list and was never published.
         self.assertEqual(sorted(providers), ["claude-subscription", "devin", "openai-codex"])
-        self.assertEqual(len(providers["openai-codex"]["models"]), 3)
-        # A list that states no output limit or levels states nothing: no empty list, no zero.
         sol = providers["openai-codex"]["models"][0]
-        self.assertNotIn("max_output", sol)
+        self.assertNotIn("max_output", sol)  # a list that states no output limit states nothing
         self.assertNotIn("output_modalities", sol)
-
-    def test_a_login_without_a_live_list_adds_nothing_and_its_provider_keeps_yesterday_s_part(self):
-        self.yesterday()
-        before = load(YESTERDAY)["providers"]
-        code, _, _ = self.run_quiet(self.args())
-        self.assertEqual(code, 0)
-        after = self.written()["providers"]
-        # Meta's only login has no live list (a 503): its part and date are yesterday's, unchanged.
-        self.assertEqual(after["meta-subscription"], before["meta-subscription"])
-        # Devin's third login is disabled (and has no list): it does not count; the part is the two others', today's.
-        self.assertEqual(after["devin"]["date"], TODAY)
-        self.assertIn("meta-subscription: 1 of 1 enabled logins have no live list today", read(self.log))
+        self.assertIn("meta-subscription: not published yet, and not a complete day: it waits for one", self.logged())
 
     def test_a_list_provimux_no_longer_holds_is_not_read(self):
-        answer = load(ANSWER)
-        for row in answer["logins"]:
-            if row["provider"] == "claude":
-                row["live"]["held"], row["live"]["expired"] = False, True
-        path = os.path.join(self.dir, "answer.json")
-        dump(answer, path)
-        self.run_quiet(self.args(answer=path))
+        def expire(a):
+            for r in a["logins"]:
+                if r["provider"] == "claude":
+                    r["live"]["held"], r["live"]["expired"] = False, True
+        self.from_answer(changed(expire))
         self.assertNotIn("claude-subscription", self.written()["providers"])
 
-    def test_a_list_older_than_the_part_already_written_keeps_the_part(self):
+    def test_the_part_s_date_is_the_oldest_of_the_joined_lists_and_never_goes_back(self):
+        def older(a):
+            for r in a["logins"]:
+                if r["auth_index"] == "b39e04c6f1d7a218":
+                    r["live"]["fetched_at"] = "2026-11-22T23:59:00Z"
+        self.from_answer(changed(older))
+        self.assertEqual(self.written()["providers"]["devin"]["date"], "2026-11-22")
         later = load(YESTERDAY)
         later["providers"]["devin"]["date"] = "2026-11-25"
-        with open(self.out, "w") as f:
-            f.write(D.text_of(later))
-        self.run_quiet(self.args())
-        self.assertEqual(self.written()["providers"]["devin"], later["providers"]["devin"])
-
-    def test_the_part_s_date_is_the_oldest_of_the_joined_lists(self):
-        answer = load(ANSWER)
-        for row in answer["logins"]:
-            if row["auth_index"] == "b39e04c6f1d7a218":
-                row["live"]["fetched_at"] = "2026-11-22T23:59:00Z"
-        path = os.path.join(self.dir, "answer.json")
-        dump(answer, path)
-        self.run_quiet(self.args(answer=path))
-        self.assertEqual(self.written()["providers"]["devin"]["date"], "2026-11-22")
+        self.github(later)
+        self.from_answer(changed(older))
+        self.assertEqual(self.written()["providers"]["devin"]["date"], "2026-11-25")
 
     def test_an_id_the_site_would_refuse_is_left_out_and_the_rest_is_written(self):
-        answer = load(ANSWER)
-        devin = next(r for r in answer["logins"] if r["auth_index"] == "a8d167b7d82c8c15")
-        devin["live_list"].append({"id": "devin/Big-Model", "display_name": None, "context": None, "output": None,
+        def big(a):
+            r = next(r for r in a["logins"] if r["auth_index"] == "a8d167b7d82c8c15")
+            r["live_list"].append({"id": "devin/Big-Model", "display_name": None, "context": None, "output": None,
                                    "input_modalities": [], "output_modalities": [], "reasoning_levels": []})
-        path = os.path.join(self.dir, "answer.json")
-        dump(answer, path)
-        code, _, _ = self.run_quiet(self.args(answer=path))
+            r["live"]["listed_models"] += 1
+        code, _ = self.from_answer(changed(big))
         self.assertEqual(code, 0)
-        self.assertNotIn("Big-Model", json.dumps(self.written()))
-        self.assertIn("left out Big-Model: not a model id", read(self.log))
+        self.assertNotIn("Big-Model", read(self.out))
+        self.assertIn("left out Big-Model: not a model id", self.logged())
 
-    def test_the_same_answer_twice_leaves_the_file_as_it_was(self):
-        self.yesterday()
-        self.run_quiet(self.args())
-        first = read(self.out)
-        code, words, _ = self.run_quiet(self.args())
-        self.assertEqual((code, read(self.out)), (0, first))
+    def test_the_same_answer_twice_publishes_once(self):
+        self.github(load(YESTERDAY))
+        self.assertEqual(self.from_answer(ANSWER, "--publish")[0], 0)
+        code, words = self.from_answer(ANSWER, "--publish")
+        self.assertEqual(code, 0, words)
         self.assertIn("(unchanged)", words)
+        self.assertEqual(len(self.commits()), 1)
+
+
+class Union(Base):
+    def test_the_published_models_stay_and_today_s_are_added_with_today_s_values(self):
+        published = load(YESTERDAY)
+        published["providers"]["devin"]["models"] = [{"id": "devin-retired", "name": "Retired"},
+                                                     {"id": "gemini-4-argon", "context_window": 5}]
+        self.github(published)
+        code, words = self.from_answer(ANSWER, "--publish")
+        self.assertEqual(code, 0, words)
+        devin = self.github_file()["providers"]["devin"]
+        self.assertEqual([m["id"] for m in devin["models"]],
+                         ["claude-opus-5-5", "devin-retired", "gemini-4-argon", "gemini-4-neon", "swe-2"])
+        self.assertEqual(devin["date"], TODAY)  # both enabled logins gave a complete list
+        argon = next(m for m in devin["models"] if m["id"] == "gemini-4-argon")
+        self.assertEqual(argon["context_window"], 1048576)  # today's value replaces the published one
+        # Meta: its only login has no list today: the published part and date stay.
+        self.assertEqual(self.github_file()["providers"]["meta-subscription"],
+                         load(YESTERDAY)["providers"]["meta-subscription"])
+
+    def test_a_published_value_stays_where_today_s_logins_disagree(self):
+        published = load(YESTERDAY)
+        published["providers"]["devin"]["models"] = [{"id": "swe-2", "context_window": 131072}]
+        self.github(published)
+        self.from_answer(ANSWER)
+        swe = next(m for m in self.written()["providers"]["devin"]["models"] if m["id"] == "swe-2")
+        self.assertEqual(swe["context_window"], 131072)
 
 
 class Ages(Base):
-    def test_a_provider_older_than_three_days_is_an_ask_in_the_log_and_the_last_words(self):
-        self.yesterday()
-        code, words, _ = self.run_quiet(self.args())
-        self.assertEqual(code, 0)
-        log = read(self.log)
-        for provider, days in (("antigravity", 5), ("meta-subscription", 1), ("devin", 0)):
-            self.assertRegex(log, rf"age: {provider} {days} days?\b")
-        ask = "ASK: discovery has no fresh list for antigravity: 5 days old (more than 3)"
-        self.assertIn(ask, log)
+    def test_age_comes_from_github_s_file_one_ask_and_one_notification_per_stale_part(self):
+        published = load(YESTERDAY)
+        published["providers"]["meta-subscription"]["date"] = "2026-11-19"
+        self.github(published)
+        code, words = self.from_answer(ANSWER)
+        self.assertEqual(code, 0, words)
+        ask = "ASK: discovery has no fresh list for meta-subscription: 5 days old on GitHub (more than 3)"
         self.assertIn(ask, words)
-        self.assertNotIn("ASK: discovery has no fresh list for meta-subscription", words)
-        self.assertTrue(words.splitlines()[0].endswith("1 ask"))
-        # The part is kept as it was: an ask, not a deletion.
-        self.assertEqual(self.written()["providers"]["antigravity"]["date"], "2026-11-19")
+        self.assertIn(ask, self.logged())
+        self.assertRegex(self.logged(), r"age: devin 1 day \(published 2026-11-23\)")  # GitHub's, not today's
+        self.assertEqual(len(self.notifications()), 1)
+        self.assertIn("meta-subscription", self.notifications()[0][-1])
+        code, words = self.from_answer(ANSWER)  # the next run: the ask again, no second notification
+        self.assertIn(ask, words)
+        self.assertEqual(len(self.notifications()), 1)
 
     def test_three_days_is_not_yet_an_ask(self):
-        self.yesterday()
-        args = self.args()
-        args.date = "2026-11-22"  # antigravity's part (11-19) is 3 days old
-        _, words, _ = self.run_quiet(args)
+        self.github(load(YESTERDAY))
+        _, words = self.from_answer(ANSWER, date="2026-11-26")
         self.assertNotIn("ASK", words)
+        self.assertEqual(self.notifications(), [])
 
-    def test_provimux_unreachable_keeps_the_file_and_still_reports_ages_and_asks(self):
-        self.yesterday()
+    def test_provimux_unreachable_reports_the_ages_last_seen_on_github(self):
+        published = load(YESTERDAY)
+        published["providers"]["meta-subscription"]["date"] = "2026-11-19"
+        self.github(published)
+        self.from_answer(ANSWER)
         before = read(self.out)
         with socket.socket() as s:  # a free port nobody listens on
             s.bind(("127.0.0.1", 0))
             port = s.getsockname()[1]
-        conns = Connections(allowed_port=port)
-        with conns.watching():
-            code, words, _ = self.run_quiet(self.args(answer=None, base=f"http://127.0.0.1:{port}"),
-                                            key_finder=lambda: KEY)
+        with Connections(allowed_port=port).watching():
+            code, words = self.run_with(["--base-url", f"http://127.0.0.1:{port}", "--date", TODAY],
+                                        key_finder=lambda: KEY)
         self.assertEqual(code, 1)
         self.assertIn("Provimux could not be reached", words)
-        self.assertIn("ASK: discovery has no fresh list for antigravity", words)
+        self.assertIn("ASK: discovery has no fresh list for meta-subscription", words)
         self.assertEqual(read(self.out), before)
 
 
@@ -287,8 +180,7 @@ class Schema(unittest.TestCase):
         for change in cases:
             doc = self.good()
             change(doc)
-            errors = S.validate(doc)
-            self.assertTrue(any("is not in the schema" in e for e in errors), errors)
+            self.assertTrue(any("is not in the schema" in e for e in S.validate(doc)))
 
     def test_identity_shapes_are_refused_wherever_they_are(self):
         for change in (
@@ -333,22 +225,36 @@ class Schema(unittest.TestCase):
     def test_ci_and_the_commit_hook_run_it(self):
         self.assertIn("python3 harness/listed_schema.py listed.json",
                       read(os.path.join(ROOT, ".github", "workflows", "ci.yml")))
-        self.assertIn('(cd "$tmp" && python3 harness/listed_schema.py listed.json)', read(os.path.join(ROOT, "scripts", "pre-commit")))
+        self.assertIn('(cd "$tmp" && python3 harness/listed_schema.py listed.json)',
+                      read(os.path.join(ROOT, "scripts", "pre-commit")))
 
-    def test_discovery_does_not_write_over_a_file_that_fails_its_schema(self):
-        with tempfile.TemporaryDirectory() as t:
-            out = os.path.join(t, "listed.json")
-            doc = self.good()
-            doc["providers"]["devin"]["models"][0]["first_seen"] = "2026-11-20"
-            dump(doc, out)
-            before = read(out)
-            args = D.parser().parse_args(["--answer", ANSWER, "--out", out, "--log", os.path.join(t, "l"),
-                                          "--date", TODAY])
-            with contextlib.redirect_stderr(io.StringIO()):
-                code, words = D.run(args)
-            self.assertEqual(code, 1)
-            self.assertIn("does not pass its schema", words)
-            self.assertEqual(read(out), before)
+
+class GithubFile(Base):
+    def test_a_github_file_that_fails_its_schema_stops_everything(self):
+        doc = load(YESTERDAY)
+        doc["providers"]["devin"]["models"][0]["first_seen"] = "2026-11-20"
+        self.github(json.dumps(doc))
+        code, words = self.from_answer(ANSWER, "--publish")
+        self.assertEqual(code, 1)
+        self.assertIn("does not pass its schema", words)
+        self.assertEqual(self.puts(), [])
+        self.assertFalse(os.path.exists(self.out))
+
+    def test_a_large_file_is_read_by_its_blob_and_checked_against_its_sha(self):
+        self.github(load(YESTERDAY))
+        open(os.path.join(self.fake, "large"), "w").close()
+        code, words = self.from_answer(ANSWER)
+        self.assertEqual(code, 0, words)
+        self.assertIn("antigravity: in GitHub's file, not listed by discovery: left out", self.logged())
+        self.assertTrue(any("git/blobs/" in " ".join(c["argv"]) for c in self.calls()))
+
+    def test_without_publish_github_is_only_read(self):
+        self.github(load(YESTERDAY))
+        code, words = self.from_answer(ANSWER)
+        self.assertEqual(code, 0, words)
+        self.assertEqual(self.puts(), [])
+        self.assertTrue(all(c["argv"][c["argv"].index("--method") + 1] == "GET" for c in self.calls()))
+        self.assertEqual(self.github_file(), load(YESTERDAY))
 
 
 class Identity(Base):
@@ -360,9 +266,9 @@ class Identity(Base):
         return values
 
     def test_no_identity_field_of_the_answer_is_ever_written(self):
-        self.yesterday()
-        self.run_quiet(self.args())
-        text = read(self.out)
+        self.github(load(YESTERDAY))
+        self.from_answer(ANSWER, "--publish")
+        text = self.put_bytes()[0].decode()
         for value in self.identity_values():
             self.assertNotIn(value, text)
         for word in ("auth_index", "login", "email", "label", "registered_models", "learned_models", "fetched_at",
@@ -370,144 +276,120 @@ class Identity(Base):
             self.assertNotIn(f'"{word}"', text)
 
     def test_identity_smuggled_into_a_vendor_s_entry_is_not_written(self):
-        answer = load(ANSWER)
-        row = next(r for r in answer["logins"] if r["provider"] == "claude")
-        entry = row["live_list"][0]
-        entry.update({"email": "office@providers.dev", "account_id": "acct-123456", "owner": "login-b"})
-        row["live_list"][1]["display_name"] = "office@providers.dev"
-        row["live_list"][2]["input_modalities"] = ["text", "devin-login-b.json"]
-        path = os.path.join(self.dir, "answer.json")
-        dump(answer, path)
-        code, _, _ = self.run_quiet(self.args(answer=path))
+        def smuggle(a):
+            r = next(r for r in a["logins"] if r["provider"] == "claude")
+            r["live_list"][0].update({"email": "office@providers.dev", "account_id": "acct-123456", "owner": "login-b"})
+            r["live_list"][1]["display_name"] = "office@providers.dev"
+            r["live_list"][2]["input_modalities"] = ["text", "devin-login-b.json"]
+        code, _ = self.from_answer(changed(smuggle))
         self.assertEqual(code, 0)
         text = read(self.out)
         for value in ("office@providers.dev", "acct-123456", "login-b", "devin-login-b.json", "account_id"):
             self.assertNotIn(value, text)
-        # The entry whose name is an e-mail of the answer is dropped whole; the others stay.
         ids = [m["id"] for m in self.written()["providers"]["claude-subscription"]["models"]]
         self.assertEqual(ids, ["claude-haiku-5-5", "claude-sonnet-5-5"])
 
     def test_a_label_found_in_a_model_s_name_drops_that_model_only(self):
-        answer = load(ANSWER)
-        row = next(r for r in answer["logins"] if r["provider"] == "claude")
-        row["login"]["label"] = "Opus 5.5"
-        path = os.path.join(self.dir, "answer.json")
-        dump(answer, path)
-        code, words, _ = self.run_quiet(self.args(answer=path))
+        def label(a):
+            next(r for r in a["logins"] if r["provider"] == "claude")["login"]["label"] = "Opus 5.5"
+        code, words = self.from_answer(changed(label))
         self.assertEqual(code, 0, words)
         ids = [m["id"] for m in self.written()["providers"]["claude-subscription"]["models"]]
         self.assertEqual(ids, ["claude-haiku-5-5", "claude-sonnet-5-5"])
-        self.assertIn("left out a model whose id or name holds an identity value (not shown)", read(self.log))
-        self.assertNotIn("Opus 5.5", read(self.log))
+        self.assertIn("left out a model whose id or name holds an identity value (not shown)", self.logged())
+        self.assertNotIn("Opus 5.5", self.logged())
 
     def test_the_management_key_is_never_printed_or_logged(self):
-        with FakeProvimux() as fake:
-            out, err = io.StringIO(), io.StringIO()
-            with Connections(fake.port).watching(), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-                code, words = D.run(self.args(answer=None, base=f"http://127.0.0.1:{fake.port}"),
-                                    key_finder=lambda: KEY)
+        server = provimux(load(ANSWER))
+        self.addCleanup(server.close)
+        out = io.StringIO()
+        with Connections(server.port).watching(), contextlib.redirect_stdout(out):
+            code, words = self.run_with(["--base-url", f"http://127.0.0.1:{server.port}", "--date", TODAY,
+                                         "--publish"], key_finder=lambda: KEY)
         self.assertEqual(code, 0, words)
-        for text in (out.getvalue(), err.getvalue(), words, read(self.log), read(self.out)):
+        for text in (out.getvalue(), self.err, words, self.logged(), read(self.out),
+                     json.dumps(self.calls()), read(os.path.join(self.home, D.STATE))):
             self.assertNotIn(KEY, text)
+
+    def test_the_state_file_holds_no_identity(self):
+        self.from_answer(ANSWER)
+        state = read(os.path.join(self.home, D.STATE))
+        for value in self.identity_values():
+            self.assertNotIn(value, state)
 
 
 class NothingSentAnywhereElse(Base):
     def test_one_local_request_to_provimux_and_no_other_connection(self):
-        with FakeProvimux() as fake:
-            conns = Connections(allowed_port=fake.port)
-            with conns.watching():
-                code, words, _ = self.run_quiet(self.args(answer=None, base=f"http://127.0.0.1:{fake.port}"),
-                                                key_finder=lambda: KEY)
+        server = provimux(load(ANSWER))
+        self.addCleanup(server.close)
+        conns = Connections(allowed_port=server.port)
+        with conns.watching():
+            code, words = self.run_with(["--base-url", f"http://127.0.0.1:{server.port}", "--date", TODAY],
+                                        key_finder=lambda: KEY)
         self.assertEqual(code, 0, words)
-        self.assertEqual(conns.seen, [("127.0.0.1", fake.port)])
-        self.assertEqual(fake.requests, [{"path": "/v8/management/provimux/model-lists?view=live",
-                                          "auth": "Bearer " + KEY}])
-        self.assertEqual(sorted(self.written()["providers"]), ["claude-subscription", "devin", "openai-codex"])
+        self.assertEqual(conns.seen, [("127.0.0.1", server.port)])
+        self.assertEqual(server.requests, [{"path": "/v8/management/provimux/model-lists?view=live",
+                                            "auth": "Bearer " + KEY}])
 
     def test_a_host_that_is_not_this_mac_is_refused_before_any_connection(self):
         for base in ("https://api.x.ai", "http://192.168.1.10:8317", "http://provimux.example:8317",
                      "file:///etc/hosts"):
             conns = Connections()
             with conns.watching():
-                code, words, _ = self.run_quiet(self.args(answer=None, base=base), key_finder=lambda: KEY)
+                code, _ = self.run_with(["--base-url", base, "--date", TODAY], key_finder=lambda: KEY)
             self.assertEqual(code, 1, base)
             self.assertEqual(conns.seen, [], base)
 
-    def test_a_saved_answer_opens_no_connection_and_reads_no_key(self):
+    def test_a_saved_answer_opens_no_connection_and_sends_no_key(self):
         def no_key():
-            raise AssertionError("a saved answer needs no key")
+            raise AssertionError("a saved answer sends no key")
         conns = Connections()
         with conns.watching():
-            code, _, _ = self.run_quiet(self.args(), key_finder=no_key)
+            code, _ = self.from_answer(ANSWER, key_finder=no_key)
         self.assertEqual((code, conns.seen), (0, []))
 
     def test_an_error_answer_is_reported_by_its_status_only(self):
-        with FakeProvimux(body={"error": "secret-looking text office@providers.dev"}, status=401) as fake:
-            with Connections(fake.port).watching():
-                code, words, _ = self.run_quiet(self.args(answer=None, base=f"http://127.0.0.1:{fake.port}"),
-                                                key_finder=lambda: KEY)
+        server = provimux({"error": "secret-looking text office@providers.dev"}, status=401)
+        self.addCleanup(server.close)
+        with Connections(server.port).watching():
+            code, words = self.run_with(["--base-url", f"http://127.0.0.1:{server.port}", "--date", TODAY],
+                                        key_finder=lambda: KEY)
         self.assertEqual(code, 1)
         self.assertIn("HTTP 401", words)
-        self.assertNotIn("secret-looking", words + read(self.log))
+        self.assertNotIn("secret-looking", words + self.logged())
 
     def test_an_answer_without_view_live_is_refused(self):
-        answer = load(ANSWER)
-        for row in answer["logins"]:
-            row.pop("live_list")
-        path = os.path.join(self.dir, "answer.json")
-        dump(answer, path)
-        code, words, _ = self.run_quiet(self.args(answer=path))
+        def strip(a):
+            for r in a["logins"]:
+                r.pop("live_list")
+        code, words = self.from_answer(changed(strip))
         self.assertEqual(code, 1)
         self.assertIn("view=live", words)
 
-    def test_the_command_has_no_vendor_address(self):
+    def test_the_command_has_no_vendor_address_and_no_git(self):
         source = read(os.path.join(ROOT, "harness", "discover.py"))
         for host in ("anthropic.com", "openai.com", "chatgpt.com", "codeium.com", "githubcopilot", "googleapis",
-                     "meta.ai", "x.ai", "kimi.com", "providers.dev/api"):
+                     "meta.ai", "x.ai", "kimi.com", "providers.dev/api", "api.github.com"):
             self.assertNotIn(host, source)
+        self.assertNotIn('"git"', source)
+        self.assertNotIn("discovery-repo", source)
 
-
-class Shrinking(Base):
-    def test_a_file_providers_dev_would_refuse_as_shrunk_is_not_written(self):
-        big = load(YESTERDAY)
-        big["providers"]["devin"]["models"] = [{"id": f"m-{n}"} for n in range(40)]
-        with open(self.out, "w") as f:
-            f.write(D.text_of(big))
-        before = read(self.out)
-        code, words, _ = self.run_quiet(self.args())
+    def test_without_its_folder_it_does_nothing(self):
+        os.environ.pop("GROUNDTRUTH_CLIENT_HOME")
+        code, words = self.from_answer(ANSWER)
         self.assertEqual(code, 1)
-        self.assertIn("lost more than 40 %", words)
-        self.assertEqual(read(self.out), before)
+        self.assertIn("GROUNDTRUTH_CLIENT_HOME", words)
+        self.assertEqual(self.calls(), [])
 
 
-class Publish(Base):
-    def test_without_publish_nothing_is_committed_and_the_default_file_is_the_current_folder_s(self):
-        repo = os.path.join(self.dir, "repo")
-        subprocess.run(["git", "init", "-q", "-b", "main", repo], check=True)
-        cwd = os.getcwd()
-        os.chdir(repo)
-        try:
-            args = D.parser().parse_args(["--answer", ANSWER, "--log", self.log, "--date", TODAY])
-            code, _, _ = self.run_quiet(args)
-        finally:
-            os.chdir(cwd)
-        self.assertEqual(code, 0)
-        self.assertTrue(os.path.exists(os.path.join(repo, "listed.json")))
-        r = subprocess.run(["git", "-C", repo, "log", "--oneline"], capture_output=True, text=True)
-        self.assertNotEqual(r.returncode, 0)  # no commit at all
-
-    def test_the_real_scan_passes_on_a_written_file(self):
-        self.yesterday()
-        self.run_quiet(self.args())
-        env = dict(os.environ, SCAN_CLIENT_KEYS=os.path.join(self.dir, "none"),
-                   SCAN_KEYS_FILE=os.path.join(self.dir, "none"), SCAN_CONFIG=os.path.join(self.dir, "none"),
-                   SCAN_LOGINS=os.path.join(self.dir, "none", "*.json"),
-                   SCAN_FINGERPRINTS=os.path.join(self.dir, "none"))
-        env.pop("GROUNDTRUTH_CLIENT_HOME", None)
-        r = subprocess.run([sys.executable, os.path.join(ROOT, "harness", "scan_secrets.py"), self.out],
-                           capture_output=True, text=True, env=env)
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("CLEAN", r.stdout)
+class Scan(Base):
+    def test_the_real_scan_runs_on_the_bytes_sent_and_passes(self):
+        self.github(load(YESTERDAY))
+        code, words = self.from_answer(ANSWER, "--publish")
+        self.assertEqual(code, 0, words)
+        self.assertIn("checks of the exact bytes: 1 files scanned", self.logged())
+        self.assertIn("CLEAN", self.logged())
+        self.assertEqual([f for f in os.listdir(self.home) if f.startswith(".listed-upload-")], [])
 
 
 class Agent(unittest.TestCase):
@@ -515,12 +397,13 @@ class Agent(unittest.TestCase):
     PLIST = os.path.join(ROOT, "scripts", "launchd", LABEL + ".plist")
     INSTALL = os.path.join(ROOT, "scripts", "install-discovery.sh")
 
-    def test_the_template_runs_discovery_daily_at_22_30(self):
+    def test_the_template_runs_the_installed_copy_daily_at_22_30(self):
         with open(self.PLIST, "rb") as f:
             p = plistlib.load(f)
         self.assertEqual(p["Label"], self.LABEL)
         self.assertEqual(p["StartCalendarInterval"], {"Hour": 22, "Minute": 30})
-        self.assertEqual(p["ProgramArguments"][1:], ["-B", "harness/discover.py", "__ARG1__", "__ARG2__"])
+        self.assertEqual(p["ProgramArguments"][1:], ["-B", "__CLIENT_HOME__/bin/discover.py", "__ARG1__"])
+        self.assertEqual(p["WorkingDirectory"], "__CLIENT_HOME__")
         self.assertFalse(p["RunAtLoad"])
         self.assertNotIn("CPA_MGMT_KEY", json.dumps(p["EnvironmentVariables"]))
 
@@ -534,20 +417,23 @@ class Agent(unittest.TestCase):
             self.assertEqual(r.returncode, 1)
             self.assertIn("owner's OK", r.stderr)
             self.assertFalse(os.path.exists(target))
+            self.assertFalse(os.path.exists(os.path.join(home, "bin")))
             r = subprocess.run([self.INSTALL, "--print"], env=env, capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertEqual(plistlib.loads(r.stdout.encode())["ProgramArguments"][2:],
-                             ["harness/discover.py", "--out", os.path.join(home, "listed.json")])
+                             [os.path.join(home, "bin", "discover.py")])
+            self.assertFalse(os.path.exists(os.path.join(home, "bin")))
             r = subprocess.run([self.INSTALL, "--owner-ok", "--publish", "--target", target], env=env,
                                capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr)
             with open(os.path.join(target, self.LABEL + ".plist"), "rb") as f:
                 p = plistlib.load(f)
-            self.assertEqual(p["ProgramArguments"][2:], ["harness/discover.py", "--publish"])
-            self.assertEqual(p["WorkingDirectory"], os.path.realpath(ROOT))
+            self.assertEqual(p["ProgramArguments"][2:], [os.path.join(home, "bin", "discover.py"), "--publish"])
+            self.assertEqual(p["WorkingDirectory"], home)
             self.assertEqual(p["EnvironmentVariables"]["GROUNDTRUTH_CLIENT_HOME"], home)
             self.assertEqual(p["StandardOutPath"], os.path.join(home, "discovery.out.log"))
-            self.assertEqual(p["StartCalendarInterval"], {"Hour": 22, "Minute": 30})
+            for name in ("discover.py", "listed_schema.py", "scan_secrets.py"):
+                self.assertEqual(read(os.path.join(home, "bin", name)), read(os.path.join(ROOT, "harness", name)))
 
 
 if __name__ == "__main__":

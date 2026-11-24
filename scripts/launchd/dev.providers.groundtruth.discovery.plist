@@ -3,11 +3,11 @@
 <!--
   groundtruth's daily discovery (harness/discover.py, docs/discovery.md). A template: scripts/install-discovery.sh
   fills the __PLACEHOLDERS__ in and installs it, with the owner's OK only. Every day at 22:30 in the Mac's own time
-  zone it reads the owner's Provimux on this Mac (one local request; nothing is sent to a vendor). Installed with the
-  publish option it writes listed.json in its own clone ($G/discovery-repo) and pushes it to GitHub when it changed;
-  without it, it writes $G/listed.json only. It never writes in the checkout it runs from.
-  A run missed while the Mac slept runs when it wakes; no wake is scheduled for it. The management key is read by the
-  command itself (CPA_MGMT_KEY is not set here; ~/.cli-proxy-api/keys.txt), never written into this file.
+  zone it runs the copy of discover.py the installer put in $G/bin (never a checkout's file, whatever branch a
+  checkout is on), in $G. It reads the owner's Provimux on this Mac (one local request; nothing is sent to a vendor)
+  and GitHub's listed.json, and writes $G/listed.json; installed with the publish option it also puts listed.json on
+  GitHub's main through gh when it changed. A run missed while the Mac slept runs when it wakes; no wake is scheduled
+  for it. The management key is read by the command itself (~/.cli-proxy-api/keys.txt), never written here.
 -->
 <plist version="1.0">
 <dict>
@@ -17,12 +17,11 @@
   <array>
     <string>__PYTHON__</string>
     <string>-B</string>
-    <string>harness/discover.py</string>
+    <string>__CLIENT_HOME__/bin/discover.py</string>
     <string>__ARG1__</string>
-    <string>__ARG2__</string>
   </array>
   <key>WorkingDirectory</key>
-  <string>__REPO__</string>
+  <string>__CLIENT_HOME__</string>
   <key>EnvironmentVariables</key>
   <dict>
     <key>GROUNDTRUTH_CLIENT_HOME</key>

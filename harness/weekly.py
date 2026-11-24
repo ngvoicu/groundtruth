@@ -19,8 +19,11 @@ without --go; --dry-run sends nothing to any vendor, login, key or proxy and wri
 1. Its time: after 03:00 on the Tuesday it does not start (its state is written and the owner asked); after 01:00 no
    `long` run starts.
 2. One lock per night (`$G/night-<date>/weekly.json`, created exclusively): a second start of the night is refused.
-3. The everyday state's snapshot (`night.py untouched --save`).
-4. The plan (harness/plan.py), written to results/night-<date>/PLAN.md.
+3. Discovery (harness/discover.py, docs/discovery.md; the copy in $G/bin when installed): it refreshes
+   $G/listed.json from the owner's Provimux and publishes nothing. Then the everyday state's snapshot
+   (`night.py untouched --save`).
+4. The plan (harness/plan.py), written to results/night-<date>/PLAN.md, from $G/listed.json when it exists, else
+   the checkout's listed.json.
 5. The checks before anything is spent: each login's own status command; each key by a request that costs nothing;
    one smoke run per client, judged by the automatic checks. A failure stops that part only, and asks.
 6. The runs. A login's part: at most 6 cache runs a night (`long` ones first), each the probe of the first night,
@@ -238,11 +241,14 @@ class Night:
             return self.state
         self.take_lock(now)
         self.asks.passed("night-not-started", self.date)
+        self.discover()
         self.snapshot()
         site = self.w.site()
         observed = _load(os.path.join(self.root, "observed.json"), {})
         values = _load(os.path.join(self.root, "plan", "values.json"), {})
-        listed = _load(os.path.join(self.root, "listed.json"))
+        # Discovery's last version ($G/listed.json, docs/discovery.md) when there is one, else the checkout's file.
+        own = os.path.join(self.home, "listed.json")
+        listed = _load(own if os.path.isfile(own) else os.path.join(self.root, "listed.json"))
         plan = P.build(self.date, observed, site, values, listed, root=self.root)
         self.plan = plan
         self.plan_asks(plan, listed)
@@ -280,6 +286,16 @@ class Night:
             json.dump({"date": self.date, "pid": os.getpid(), "started": now.isoformat(), "only": list(self.only)}, f)
         self.state.update(started=True, at=now.isoformat())
         self.w.keep_awake()
+
+    def discover(self):
+        """Discovery first (docs/discovery.md): it reads Provimux and writes $G/listed.json; it publishes nothing."""
+        if self.dry:
+            self.say("would run discovery first (discover.py: reads Provimux, writes <client-home>/listed.json)")
+            return
+        run = getattr(self.w, "discover", None)
+        why = run() if run else None
+        if why:
+            self.say(f"discovery failed ({why}): the night plans from the last listed.json")
 
     def snapshot(self):
         if self.dry:
@@ -847,6 +863,17 @@ class World:
             return json.loads(data)
         index = get("/data/index.json")
         return P.site_from(index, lambda provider, shard: get(f"/data/entries/{provider}/{shard}.json"))
+
+    def discover(self):
+        """harness/discover.py as installed in $G/bin (else this checkout's), without --publish; None, or why not."""
+        installed = os.path.join(self.home, "bin", "discover.py")
+        script = installed if os.path.isfile(installed) else os.path.join(self.root, "harness", "discover.py")
+        try:
+            r = subprocess.run([sys.executable, "-B", script], cwd=self.home, capture_output=True, text=True,
+                               env=dict(os.environ, GROUNDTRUTH_CLIENT_HOME=self.home), timeout=600)
+        except (OSError, subprocess.TimeoutExpired) as e:
+            return type(e).__name__
+        return None if r.returncode == 0 else (r.stdout.strip().splitlines() or [f"exit {r.returncode}"])[0][:200]
 
     def untouched(self, date, mode):
         try:
