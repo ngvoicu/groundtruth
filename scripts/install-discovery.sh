@@ -7,10 +7,12 @@
 #   scripts/install-discovery.sh --uninstall --owner-ok
 #
 #   --owner-ok         required: says the owner agreed (nothing is written without it)
-#   --publish          the agent passes --publish: it commits and pushes listed.json when it changed (else it only
-#                      writes the file in this checkout)
+#   --publish          the agent passes --publish: it writes listed.json in $G/discovery-repo and pushes it to
+#                      GitHub when it changed (else it writes $G/listed.json only); never in this checkout
+#   --uninstall        removes the agent (with --owner-ok)
 #   --client-home DIR  where the logs go, $G (default: $GROUNDTRUTH_CLIENT_HOME, else ~/groundtruth-clients)
-#   --print            writes nothing: prints the plist it would install
+#   --print            changes nothing, whatever else is given: prints the plist it would install (or, with
+#                      --uninstall, what it would remove)
 #   --target DIR       another folder than ~/Library/LaunchAgents, and no launchctl (the tests)
 #
 # The repository is the checkout this script lies in.
@@ -34,8 +36,12 @@ done
 load=1
 if [ -n "$target" ]; then load=0; else target="$HOME/Library/LaunchAgents"; fi
 dest="$target/$LABEL.plist"
+if [ $print -eq 1 ] && [ $uninstall -eq 1 ]; then
+  echo "would remove $dest (and launchctl bootout gui/$(id -u)/$LABEL); nothing changed"
+  exit 0
+fi
 if [ $print -eq 0 ] && [ $ok -ne 1 ]; then
-  echo "refused: the discovery agent is installed only with the owner's OK (--owner-ok); nothing written" >&2
+  echo "refused: the discovery agent is installed or removed only with the owner's OK (--owner-ok); nothing changed" >&2
   exit 1
 fi
 if [ $uninstall -eq 1 ]; then
@@ -52,9 +58,10 @@ perm=$(stat -c %a "$home" 2>/dev/null || stat -f %Lp "$home")
 for v in "$repo" "$home" "$python" "$PATH"; do
   case $v in *'&'*|*'<'*|*'>'*|*'|'*) echo "a path with &, <, > or | cannot go into the plist: $v" >&2; exit 1 ;; esac
 done
-# Without --publish the agent's argument line is left out (not an empty argument).
-if [ $publish -eq 1 ]; then flag=--publish; edit="s|__PUBLISH__|--publish|"; else flag=''; edit='/<string>__PUBLISH__<\/string>/d'; fi
-plist=$(sed -e "$edit" -e "s|__PYTHON__|$python|g" -e "s|__REPO__|$repo|g" \
+# With --publish: `discover.py --publish`; without: `discover.py --out $G/listed.json`, never this checkout's file.
+if [ $publish -eq 1 ]; then flag=--publish; edit1="s|__ARG1__|--publish|"; edit2='/<string>__ARG2__<\/string>/d'
+else flag=''; edit1="s|__ARG1__|--out|"; edit2="s|__ARG2__|$home/listed.json|"; fi
+plist=$(sed -e "$edit1" -e "$edit2" -e "s|__PYTHON__|$python|g" -e "s|__REPO__|$repo|g" \
             -e "s|__CLIENT_HOME__|$home|g" -e "s|__PATH__|$PATH|g" "$template")
 if [ $print -eq 1 ]; then printf '%s\n' "$plist"; exit 0; fi
 mkdir -p "$target"

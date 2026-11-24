@@ -359,7 +359,7 @@
         "email": "office@providers.dev",
         "label": "login-d"
       },
-      "disabled": false,
+      "disabled": true,
       "source": "built-in",
       "live": {
         "supported": true,

@@ -10,6 +10,9 @@ and stricter where it costs nothing:
 - no string anywhere may look like an e-mail address, a credential or a file name: an account never gets in;
 - a model id is lower-case letters, digits and . _ : / -, at most 64 characters, once per provider;
 - a provider id is the catalog's shape; its part has a date, the client that read the list, and at least one model;
+- every whole number is a safe integer (zod's `z.int()`: at most 2^53 - 1), as providers.dev checks;
+- the file is at most 8 MiB (providers.dev's sync, `LISTED_MAX_BYTES`), names at least one provider, and every provider
+  at least one model;
 - the fields providers.dev accepts and never reads (owner, released, aliases, variants, description, disable_with)
   are accepted only as short plain values. Discovery writes none of them.
 
@@ -37,6 +40,11 @@ TOKEN_SHAPED = re.compile(r"(^|[^a-z0-9])(sk-|gh[opusr]_|github_pat_|xox[a-z]-|a
                           re.I)
 FILE_NAME = re.compile(r"\.(json|ya?ml|txt|env|key|pem)$", re.I)
 
+MAX_BYTES = 8 * 1024 * 1024  # providers.dev's LISTED_MAX_BYTES (scripts/lib/sync.ts)
+MAX_SAFE = 2 ** 53 - 1  # Number.MAX_SAFE_INTEGER: zod's z.int() refuses anything larger
+MAX_WORDS = 64  # providers.dev's `words`: at most 64 strings of at most 64 characters
+MAX_LEVELS = 16
+
 FILE_KEYS = {"schema", "repository", "providers"}
 PART_KEYS = {"date", "client", "models"}
 COUNTS = ("context_window", "max_input", "max_output")
@@ -50,7 +58,13 @@ REASONING_KEYS = {"supported", "levels", "budget_min", "budget_max", "can_disabl
 
 
 def is_count(value, minimum=1):
-    return isinstance(value, int) and not isinstance(value, bool) and value >= minimum
+    return isinstance(value, int) and not isinstance(value, bool) and minimum <= value <= MAX_SAFE
+
+
+def size_problem(text):
+    """Why a file's text is too large for providers.dev's sync, or None. The sync measures the body's length."""
+    n = max(len(text), len(text.encode("utf-8")))
+    return f"{n} bytes, more than 8 MiB" if n > MAX_BYTES else None
 
 
 def unsafe(text):
@@ -82,7 +96,7 @@ def word_problem(value):
     return unsafe(value)
 
 
-def _words(errors, where, value, limit=64):
+def _words(errors, where, value, limit=MAX_WORDS):
     if not isinstance(value, list) or len(value) > limit:
         errors.append(f"{where}: not a list of at most {limit} words")
         return
@@ -110,7 +124,7 @@ def _model(errors, where, model):
             errors.append(f"{where}.name: {problem}")
     for key in COUNTS:
         if key in model and not is_count(model[key]):
-            errors.append(f"{where}.{key}: not a positive whole number")
+            errors.append(f"{where}.{key}: not a whole number from 1 to 2^53 - 1")
     for key in WORD_LISTS:
         if key in model:
             _words(errors, f"{where}.{key}", model[key])
@@ -142,10 +156,10 @@ def _model(errors, where, model):
         for key in sorted(set(reasoning) - REASONING_KEYS):
             errors.append(f"{where}.reasoning: field {key!r} is not in the schema")
         if "levels" in reasoning:
-            _words(errors, f"{where}.reasoning.levels", reasoning["levels"], limit=16)
+            _words(errors, f"{where}.reasoning.levels", reasoning["levels"], limit=MAX_LEVELS)
         for key in ("budget_min", "budget_max"):
             if key in reasoning and not is_count(reasoning[key], minimum=0):
-                errors.append(f"{where}.reasoning.{key}: not a whole number")
+                errors.append(f"{where}.reasoning.{key}: not a whole number from 0 to 2^53 - 1")
         for key in ("supported", "can_disable", "dynamic"):
             if key in reasoning and not isinstance(reasoning[key], bool):
                 errors.append(f"{where}.reasoning.{key}: not true or false")
@@ -170,6 +184,8 @@ def validate(doc):
     if not isinstance(providers, dict):
         errors.append("providers: not an object")
         return errors
+    if not providers:
+        errors.append("providers: none (providers.dev refuses a file that lists no model)")
     for provider, part in providers.items():
         where = f"providers.{provider}"
         if not PROVIDER_ID.match(provider) or unsafe(provider):
@@ -208,11 +224,14 @@ def main(argv):
         return 0
     try:
         with open(path, encoding="utf-8") as f:
-            doc = json.load(f)
+            text = f.read()
+        doc = json.loads(text)
     except (OSError, ValueError) as err:
         print(f"{path}: not JSON ({type(err).__name__})")
         return 1
     errors = validate(doc)
+    if size_problem(text):
+        errors.insert(0, size_problem(text))
     for line in errors[:50]:
         print(f"{path}: {line}")
     if len(errors) > 50:

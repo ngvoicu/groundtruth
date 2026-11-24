@@ -17,6 +17,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -102,6 +103,12 @@ class FakeProvimux:
 
 class Base(unittest.TestCase):
     def setUp(self):
+        # Never the Mac's own night folder, Provimux address or key.
+        env = mock.patch.dict(os.environ)
+        env.start()
+        self.addCleanup(env.stop)
+        for name in ("GROUNDTRUTH_CLIENT_HOME", "CPA_BASE_URL", "CPA_MGMT_KEY"):
+            os.environ.pop(name, None)
         self.tmp = tempfile.TemporaryDirectory()
         self.dir = self.tmp.name
         self.out = os.path.join(self.dir, "listed.json")
@@ -171,9 +178,9 @@ class FromTheAnswer(Base):
         after = self.written()["providers"]
         # Meta's only login has no live list (a 503): its part and date are yesterday's, unchanged.
         self.assertEqual(after["meta-subscription"], before["meta-subscription"])
-        # Devin's third login has no list: the part is the two others', today's.
+        # Devin's third login is disabled (and has no list): it does not count; the part is the two others', today's.
         self.assertEqual(after["devin"]["date"], TODAY)
-        self.assertIn("skipped 1 row: devin: a login without a live list", read(self.log))
+        self.assertIn("meta-subscription: 1 of 1 enabled logins have no live list today", read(self.log))
 
     def test_a_list_provimux_no_longer_holds_is_not_read(self):
         answer = load(ANSWER)
@@ -376,20 +383,22 @@ class Identity(Base):
         text = read(self.out)
         for value in ("office@providers.dev", "acct-123456", "login-b", "devin-login-b.json", "account_id"):
             self.assertNotIn(value, text)
-        self.assertNotIn("name", self.written()["providers"]["claude-subscription"]["models"][1])
+        # The entry whose name is an e-mail of the answer is dropped whole; the others stay.
+        ids = [m["id"] for m in self.written()["providers"]["claude-subscription"]["models"]]
+        self.assertEqual(ids, ["claude-haiku-5-5", "claude-sonnet-5-5"])
 
-    def test_a_label_that_equals_a_model_s_name_stops_the_write(self):
-        # A last check, after the file is built from the vendor's fields only: a value of a login's identity that
-        # shows up as a whole value of the file (here a label someone named after a model) stops the write.
+    def test_a_label_found_in_a_model_s_name_drops_that_model_only(self):
         answer = load(ANSWER)
         row = next(r for r in answer["logins"] if r["provider"] == "claude")
-        row["login"]["label"] = "Claude Opus 5.5"
+        row["login"]["label"] = "Opus 5.5"
         path = os.path.join(self.dir, "answer.json")
         dump(answer, path)
         code, words, _ = self.run_quiet(self.args(answer=path))
-        self.assertEqual(code, 1)
-        self.assertIn("identity value", words)
-        self.assertFalse(os.path.exists(self.out))
+        self.assertEqual(code, 0, words)
+        ids = [m["id"] for m in self.written()["providers"]["claude-subscription"]["models"]]
+        self.assertEqual(ids, ["claude-haiku-5-5", "claude-sonnet-5-5"])
+        self.assertIn("left out a model whose id or name holds an identity value (not shown)", read(self.log))
+        self.assertNotIn("Opus 5.5", read(self.log))
 
     def test_the_management_key_is_never_printed_or_logged(self):
         with FakeProvimux() as fake:
@@ -472,56 +481,20 @@ class Shrinking(Base):
 
 
 class Publish(Base):
-    def git(self, repo, *args):
-        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-        r = subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True, env=env)
-        self.assertEqual(r.returncode, 0, r.stderr)
-        return r.stdout.strip()
-
-    def repo(self):
+    def test_without_publish_nothing_is_committed_and_the_default_file_is_the_current_folder_s(self):
         repo = os.path.join(self.dir, "repo")
-        remote = os.path.join(self.dir, "remote.git")
-        subprocess.run(["git", "init", "-q", "--bare", "-b", "main", remote], check=True)
         subprocess.run(["git", "init", "-q", "-b", "main", repo], check=True)
-        self.git(repo, "config", "user.name", "groundtruth test")
-        self.git(repo, "config", "user.email", "office@providers.dev")
-        self.git(repo, "config", "core.hooksPath", "/dev/null")
-        self.git(repo, "remote", "add", "upstream", remote)
-        self.out = os.path.join(repo, "listed.json")
-        self.yesterday()
-        with open(os.path.join(repo, "other.txt"), "w") as f:
-            f.write("a change of someone else's\n")
-        self.git(repo, "add", "listed.json")
-        self.git(repo, "commit", "-q", "-m", "start")
-        return repo, remote
-
-    def test_without_publish_nothing_is_committed(self):
-        repo, _ = self.repo()
-        self.run_quiet(self.args())
-        self.assertEqual(self.git(repo, "rev-list", "--count", "HEAD"), "1")
-        self.assertIn("listed.json", self.git(repo, "status", "--porcelain"))
-
-    def test_publish_scans_then_commits_listed_json_alone_and_pushes(self):
-        repo, remote = self.repo()
-        args = self.args("--publish", "--remote", "upstream")
-        code, words, _ = self.run_quiet(args, scan=[sys.executable, "-c", "print('1 files scanned: CLEAN')"])
-        self.assertEqual(code, 0, words)
-        self.assertEqual(self.git(repo, "log", "-1", "--format=%s"), f"discovery: listed.json of {TODAY}")
-        self.assertEqual(self.git(repo, "show", "--name-only", "--format=", "HEAD"), "listed.json")
-        self.assertEqual(self.git(remote, "rev-parse", "main"), self.git(repo, "rev-parse", "HEAD"))
-        self.assertIn("?? other.txt", self.git(repo, "status", "--porcelain"))
-        # Unchanged the next day: no commit.
-        code, _, _ = self.run_quiet(args, scan=[sys.executable, "-c", "print('CLEAN')"])
-        self.assertEqual((code, self.git(repo, "rev-list", "--count", "HEAD")), (0, "2"))
-
-    def test_a_scan_that_finds_something_stops_the_commit(self):
-        repo, _ = self.repo()
-        code, words, _ = self.run_quiet(self.args("--publish", "--remote", "upstream"),
-                                        scan=[sys.executable, "-c", "import sys; print('listed.json: an e-mail'); "
-                                              "sys.exit(1)"])
-        self.assertEqual(code, 1)
-        self.assertIn("scan_secrets.py found something", words)
-        self.assertEqual(self.git(repo, "rev-list", "--count", "HEAD"), "1")
+        cwd = os.getcwd()
+        os.chdir(repo)
+        try:
+            args = D.parser().parse_args(["--answer", ANSWER, "--log", self.log, "--date", TODAY])
+            code, _, _ = self.run_quiet(args)
+        finally:
+            os.chdir(cwd)
+        self.assertEqual(code, 0)
+        self.assertTrue(os.path.exists(os.path.join(repo, "listed.json")))
+        r = subprocess.run(["git", "-C", repo, "log", "--oneline"], capture_output=True, text=True)
+        self.assertNotEqual(r.returncode, 0)  # no commit at all
 
     def test_the_real_scan_passes_on_a_written_file(self):
         self.yesterday()
@@ -536,14 +509,6 @@ class Publish(Base):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("CLEAN", r.stdout)
 
-    def test_publish_refuses_another_branch(self):
-        repo, _ = self.repo()
-        self.git(repo, "checkout", "-q", "-b", "elsewhere")
-        code, words, _ = self.run_quiet(self.args("--publish", "--remote", "upstream"),
-                                        scan=[sys.executable, "-c", "pass"])
-        self.assertEqual(code, 1)
-        self.assertIn("main only", words)
-
 
 class Agent(unittest.TestCase):
     LABEL = "dev.providers.groundtruth.discovery"
@@ -555,7 +520,7 @@ class Agent(unittest.TestCase):
             p = plistlib.load(f)
         self.assertEqual(p["Label"], self.LABEL)
         self.assertEqual(p["StartCalendarInterval"], {"Hour": 22, "Minute": 30})
-        self.assertEqual(p["ProgramArguments"][1:3], ["-B", "harness/discover.py"])
+        self.assertEqual(p["ProgramArguments"][1:], ["-B", "harness/discover.py", "__ARG1__", "__ARG2__"])
         self.assertFalse(p["RunAtLoad"])
         self.assertNotIn("CPA_MGMT_KEY", json.dumps(p["EnvironmentVariables"]))
 
@@ -571,7 +536,8 @@ class Agent(unittest.TestCase):
             self.assertFalse(os.path.exists(target))
             r = subprocess.run([self.INSTALL, "--print"], env=env, capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertEqual(plistlib.loads(r.stdout.encode())["ProgramArguments"][2:], ["harness/discover.py"])
+            self.assertEqual(plistlib.loads(r.stdout.encode())["ProgramArguments"][2:],
+                             ["harness/discover.py", "--out", os.path.join(home, "listed.json")])
             r = subprocess.run([self.INSTALL, "--owner-ok", "--publish", "--target", target], env=env,
                                capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr)
