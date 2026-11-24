@@ -211,6 +211,23 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   the upstreams of its two controls (InferenceNet, Wafer); the folder's text omits them. Run L1 of
   `cpa-latest-2026-11-06` is excluded with what it showed (its control read 0 of 2,334 with the ~2.3k-token prefix;
   L1b's read 5,407 of 7,461 with ~8,000), no longer with a cause.
+- `own-clients-2026-11-23/` and `own-clients-2026-11-24/`: the first own-client nights ([`docs/own-clients.md`](../docs/own-clients.md)),
+  Codex CLI on the ChatGPT plan (`codex-cli`) and the Devin CLI on the Devin subscription (`devin-cli`), each through
+  its vendor's own client on the owner's login in a dedicated state folder, 3 samples per age from 2.5 minutes, each
+  night audited by hand before publication (`AUDIT.md`). The first night's 17 early stops (one cold control, a Devin
+  rate limit taken for quota, an unknown model id) are under `excluded`; 13 of them were run again the next day, and
+  2 of those (DV7, DV12) stopped at their two cold controls. **19 runs published.** Codex: GPT-6.2 Astra warm through
+  20 minutes, GPT-6.1 Terra through 25, GPT-6 Astra through 5 (3 of 3 still at 4 hours), GPT-6.2 Sol and GPT-6 Luna
+  through 2.5 (mixed after, cold from 75 and 60 minutes), GPT-6.1 Sol through 7.5 on single samples (11 late checks
+  not counted). Devin: Claude Opus 5.5 through 2.5 minutes, Sonnet and Haiku 5.5 through 5, all three cold from 7.5;
+  Kimi K3 through 50 minutes; Nemotron 3.5 Super (no reasoning) warm in every check to 12 hours; GLM-5.3 in-process
+  with the keepalive off (DV9) warm in every check to 2 hours, the end of its schedule, and with the client's daemon
+  and keepalive defaults (DV9d, the next day, a separate entry by its `options`) through 10 minutes; Grok 4.7 through
+  2.5, Gemini 4 Argon through 5 (after one cold control); DeepSeek V4.1 Flash, Kimi K3.1 Pro, Muse Wonder 1.0 and
+  Gemini 4 Neon no tested age through which every check hit, with hits out to 1 – 4 hours. GPT-6.1 Sol, GPT-6.1 Terra,
+  GPT-6 Astra and GPT-6 Luna (`-low`), DeepSeek V4 Pro (`-high`) and `swe-2` showed no usable cache through the Devin
+  CLI. These runs replace the earlier `codex-cli` and `devin-cli` runs of the same models and settings as `latest`
+  (H1, H3, H7, D1c, D2c, D6c, D8c, D9c, D10c, D11c, D13c), which stay in `observed.json`. See each folder's README.
 
 ## The limits rows of observed.json (2026-11-17)
 
