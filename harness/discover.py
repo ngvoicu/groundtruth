@@ -34,8 +34,8 @@ What it does, in order:
    resets the clone to `upstream/main` and cleans it, writes listed.json there, and stops if it equals GitHub's.
    Otherwise harness/scan_secrets.py must pass on the file, listed.json alone is committed (as "groundtruth discovery
    <office@providers.dev>", never the Mac's own identity) and pushed to GitHub's main, without force. A refused push
-   is redone once from a fresh fetch; a second refusal is exit 1, and the next day starts again from GitHub. The NAS
-   is not pushed (docs/discovery.md).
+   is redone once from a fresh fetch; a second refusal is exit 1, and the next day starts again from GitHub. Only
+   GitHub is pushed: the NAS copy follows it by itself (.forgejo/workflows/follow-github.yml).
 8. **One run at a time**: with $GROUNDTRUTH_CLIENT_HOME set, a lock (`discovery.lock`) makes a second run exit at
    once. Files are written through a temporary file unique to the run.
 

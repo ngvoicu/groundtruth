@@ -44,9 +44,8 @@ Without `--publish` it writes `--out` (default: `./listed.json`) and commits not
 - A refused push is redone once from a fresh fetch; a second refusal is exit 1. Nothing is left over: the next day
   starts again from GitHub.
 - `--out` is refused with `--publish`; the checkout the command runs from is never written.
-- **The NAS is not pushed.** groundtruth's NAS copy is "pushed to both by hand" (the brain's
-  `infrastructure/repositories.md`): it has no `follow-github` workflow, so until it gets one, or someone pushes it,
-  the NAS's `main` lags GitHub's by the discovery commits. providers.dev reads GitHub only.
+- **GitHub only.** The NAS copy follows GitHub by itself (`.forgejo/workflows/follow-github.yml`), so discovery
+  never pushes to it. providers.dev reads GitHub.
 
 CI checks the committed file (`python3 harness/listed_schema.py listed.json`), and so does the commit hook.
 
