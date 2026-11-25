@@ -15,6 +15,8 @@ folder; discovery keeps everything there and runs **no git command**: it has no 
 - **Four listings only**: Claude login → `claude-subscription`, Codex → `openai-codex`, Devin → `devin` (Devin's own
   ids, without Provimux's `devin/`), Meta login → `meta-subscription`. Per login only its `live_list` (the vendor's
   answer as it arrived), and of an entry only its id, name, window, output limit, modalities and reasoning levels.
+- **Only a described model; no Codex window** (below): an entry that carries nothing but its id is not published,
+  and a Codex login's window is never carried.
 - **Privacy by allowlist**:
   - modalities only from `text`, `image`, `audio`, `video`, `pdf` (a media type read as its kind) and reasoning
     levels only from `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`: providers.dev's `LISTED_MODALITIES`
@@ -29,7 +31,8 @@ folder; discovery keeps everything there and runs **no git command**: it has no 
   - before an upload, an identity check and `harness/scan_secrets.py` run on the exact bytes that are sent.
 - **Complete lists; discovery never removes a model**:
   - a login's list is complete when Provimux holds it (held, not expired), it is not empty, and it has as many models
-    as Provimux says it listed (`live.listed_models`);
+    as Provimux says it listed (`live.listed_models`). The count is of the whole list as it arrived, before any model
+    is left out: a hidden or undescribed model does not make a list incomplete;
   - the logins of each type are remembered, hashed, in `$G/discovery-state.json` (private, never published). A login
     remembered but absent from today's answer counts as incomplete; one removed on purpose is forgotten with
     `--forget-absent`;
@@ -62,6 +65,37 @@ folder; discovery keeps everything there and runs **no git command**: it has no 
 - **GitHub only.** The NAS copy follows GitHub by itself (`.forgejo/workflows/follow-github.yml`).
 
 CI checks the committed file (`python3 harness/listed_schema.py listed.json`), and so does the commit hook.
+
+## Only a described model, and no Codex window
+
+**Only a described model.** A model is published only when the gateway describes it: an entry of a login's list
+that carries nothing but its id (no name, window, output limit, modality or reasoning level) is left out. One rule,
+no list of names:
+
+- **Codex's hidden slugs.** Provimux records every slug of Codex's list but describes only the ones Codex shows in
+  its model picker (`parseCodexLiveModelList`, `sdk/cliproxy/live_model_lists.go`: an entry with `visibility: hide`
+  is counted, then skipped). So an id-only Codex entry is a hidden one, such as `gpt-reserve` (a fallback) or
+  `codex-auto-review`, which a user cannot pick.
+- **Meta: `meta-subscription` is not published.** Meta's `/v1/models` is ids only (`parseMetaLiveModelList`), and the
+  list holds image, voice, 3D-asset and segmentation models and "-contributor" tiers beside the chat models, with
+  nothing to tell them apart. Every Meta entry is id-only, so the provider has no model to publish, and a provider
+  with none is left out of the file, never published empty. If Meta's list is described one day, its described
+  models appear by themselves.
+
+The log says, per provider, how many models were left out as undescribed (a count, no login named). A model
+published once stays when a later list stops describing it: discovery never removes a model.
+
+**No Codex window.** A Codex login's `context_window` is not carried; its name, modalities and reasoning levels are.
+The figure Codex's list gives (`max_context_window`, 872,000 for GPT-6.x in 2026-11) is the most a user may set in
+the Codex client, not what the service accepts: measured on the Codex login, GPT-6.1 Sol, GPT-6 Astra and GPT-6 Luna
+accept about 921,500 input tokens and refuse 922,300 (`results/logins-2026-11-17/`), and OpenAI documents 922,000
+input. (`NO_WINDOW` in `harness/discover.py`.)
+
+What stays as it was: Claude's and Devin's rows; the completeness checks, which count the list as it arrived
+(`live.listed_models` against every entry, hidden or not); the remembered logins (a login whose models are all
+undescribed is remembered like any other); and the 40 % check, which compares the file with GitHub's file. A part
+already on GitHub is carried as it is (a hand edit may state an id-only model or a Codex window; the schema allows
+both, as providers.dev does).
 
 ## Login types left out, and why
 

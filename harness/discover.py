@@ -19,6 +19,10 @@ What it does, in order:
 2. **Four listings only**: Claude login -> claude-subscription, Codex -> openai-codex, Devin -> devin (Devin's own ids,
    without Provimux's `devin/`), Meta -> meta-subscription. Per login only its `live_list` (the vendor's answer as it
    arrived), and of an entry only its id, name, window, output limit, modalities and reasoning levels.
+   **Only a described model**: an entry that carries nothing but its id is left out (Provimux records every Codex
+   slug but describes only the ones Codex's picker shows; Meta's list is ids only), and a provider left with no model
+   is not in the file. **No Codex window**: Codex's figure is the most its client lets a user set, not what the
+   service accepts. The log counts, per provider, the models left out as undescribed (docs/discovery.md).
 3. **Privacy by allowlist**: modalities and reasoning levels only from fixed vocabularies (providers.dev's
    LISTED_MODALITIES with its kinds(), and LISTED_LEVELS, which are Provimux's liveModelListLevels); any other word is
    dropped. A model is dropped when its id or name holds an identity value as a whole token sequence, whatever its
@@ -26,7 +30,8 @@ What it does, in order:
    answer), and the management key from the environment and from the key file (also as a plain substring). An
    identity value made only of SERVICE_WORDS (a login labelled "Devin") never counts. Logged without the value.
 4. **Complete lists, never a removal**: a login's list is complete when Provimux holds it (held, not expired), it is
-   not empty, and it has as many models as Provimux says it listed (`live.listed_models`). The logins of each type are
+   not empty, and it has as many models as Provimux says it listed (`live.listed_models`), counted on the whole
+   list as it arrived, before any model is left out (a hidden or undescribed one does not make a list incomplete). The logins of each type are
    remembered (hashed) in `$G/discovery-state.json`; a login remembered but absent from today's answer counts as
    incomplete. A provider's new part is the union of the published part's models and today's complete lists; a field
    stated today replaces the published value (two logins stating it differently: the published value stays). Its
@@ -98,6 +103,9 @@ MESSAGE = "discovery: listed.json"
 IDENTITY = {"name": "groundtruth discovery", "email": "office@providers.dev"}
 STATE = "discovery-state.json"
 MODEL_FIELDS = ("id", "name", "context_window", "max_output", "input_modalities", "output_modalities", "reasoning")
+# Login types whose list's window is not carried. Codex's `max_context_window` (872,000 in 2026-11) is the most a user
+# may set in the Codex client, not what the service accepts (measured: about 921,500 accepted, 922,300 refused).
+NO_WINDOW = {"codex"}
 
 
 class Failure(Exception):
@@ -310,8 +318,9 @@ def vendor_model(login_type, entry, identities, dropped):
     if prefix and mid.lower().startswith(prefix):
         mid = mid[len(prefix):]
     name = entry.get("display_name")
+    window = None if login_type in NO_WINDOW else entry.get("context")
     return clean({"id": mid, "name": name.strip() if isinstance(name, str) else None,
-                  "context_window": entry.get("context"), "max_output": entry.get("output"),
+                  "context_window": window, "max_output": entry.get("output"),
                   "input_modalities": entry.get("input_modalities"),
                   "output_modalities": entry.get("output_modalities"),
                   "reasoning": {"levels": entry.get("reasoning_levels")}}, identities, dropped)
@@ -351,6 +360,8 @@ def today_lists(answer, known, identities, log, forget=False):
     enabled = {t: 0 for t in LISTINGS}
     lists = {t: [] for t in LISTINGS}
     why = {t: [] for t in LISTINGS}
+    described_ids = {t: set() for t in LISTINGS}
+    undescribed_ids = {t: set() for t in LISTINGS}
     skipped = 0
     for row in answer["logins"]:
         if not isinstance(row, dict):
@@ -376,11 +387,19 @@ def today_lists(answer, known, identities, log, forget=False):
         for d in sorted(set(dropped)):
             n = dropped.count(d)
             log(f"{LISTINGS[login_type]}: left out {d}" + (f" ({n} times)" if n > 1 else ""))
-        lists[login_type].append((day, models))
+        # Only what the gateway describes is published; the list still counts as complete (checked above, on all).
+        kept = [m for m in models if S.described(m)]
+        described_ids[login_type].update(m["id"] for m in kept)
+        undescribed_ids[login_type].update(m["id"] for m in models if not S.described(m))
+        lists[login_type].append((day, kept))
     if skipped:
         log(f"skipped {skipped} row{'s' if skipped > 1 else ''} of login types discovery does not list")
     out, remember = {}, {}
     for login_type, provider in LISTINGS.items():
+        undescribed = undescribed_ids[login_type] - described_ids[login_type]
+        if undescribed:
+            log(f"{provider}: left out {len(undescribed)} model{'' if len(undescribed) == 1 else 's'} the gateway "
+                "lists without describing (an id only)")
         before = set(known.get(login_type) or [])
         absent = before - seen[login_type]
         if absent and forget:
@@ -473,6 +492,7 @@ def merged(previous, today, identities, log):
             read = min(d for d, _ in t["lists"]).isoformat()
             date = max(date or read, read)
         if not models:
+            log(f"{provider}: no model the gateway describes: not in the file")
             continue
         providers[provider] = {"date": date, "client": CLIENT, "models": [ordered(models[k]) for k in sorted(models)]}
         log(f"{provider}: {len(models)} models ({added} new today), date {date}"

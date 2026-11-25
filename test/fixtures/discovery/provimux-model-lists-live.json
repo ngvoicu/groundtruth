@@ -146,7 +146,7 @@
         "fetched_at": "2026-11-24T16:55:02Z",
         "from_cache": false,
         "fetching": false,
-        "listed_models": 3,
+        "listed_models": 4,
         "last_failure": null
       },
       "registered_models": 3,
@@ -202,6 +202,9 @@
             "high",
             "xhigh"
           ]
+        },
+        {
+          "id": "gpt-reserve"
         }
       ]
     },

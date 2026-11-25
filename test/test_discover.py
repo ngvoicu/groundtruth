@@ -95,6 +95,88 @@ class FromTheAnswer(Base):
         self.assertEqual(len(self.commits()), 1)
 
 
+class Described(Base):
+    """Only a model the gateway describes is published; a Codex login's window never is (docs/discovery.md)."""
+
+    def test_a_hidden_codex_slug_is_left_out_and_its_list_is_still_complete(self):
+        # The fixture's Codex login lists four slugs (listed_models 4) and describes three: gpt-reserve is hidden.
+        code, words = self.from_answer(ANSWER, "--publish")
+        self.assertEqual(code, 0, words)
+        part = self.github_file()["providers"]["openai-codex"]
+        self.assertEqual([m["id"] for m in part["models"]], ["gpt-6.1-sol", "gpt-6.2-astra", "gpt-6.2-sol"])
+        self.assertEqual(part["date"], TODAY)  # a complete day: the count is the whole list's, the hidden one too
+        log = self.logged()
+        self.assertIn("openai-codex: left out 1 model the gateway lists without describing (an id only)", log)
+        self.assertNotIn("gpt-reserve", log)
+        self.assertNotIn("fewer or more models", log)
+        self.assertNotIn("openai-codex: 1 enabled login(s)", log)
+
+    def test_a_model_described_once_stays_when_codex_hides_it_later(self):
+        self.from_answer(ANSWER, "--publish")
+
+        def hide(answer):
+            codex = next(r for r in answer["logins"] if r["provider"] == "codex")
+            codex["live_list"][0] = {"id": codex["live_list"][0]["id"]}
+            for r in answer["logins"]:
+                if r["live"].get("fetched_at"):
+                    r["live"]["fetched_at"] = "2026-11-25T12:00:00Z"
+        code, words = self.from_answer(changed(hide), "--publish", date="2026-11-25")
+        self.assertEqual(code, 0, words)
+        part = self.github_file()["providers"]["openai-codex"]
+        self.assertEqual(part["date"], "2026-11-25")
+        sol = part["models"][0]
+        self.assertEqual((sol["id"], sol["name"]), ("gpt-6.1-sol", "GPT-6.1 Sol"))  # never removed by discovery
+
+    def test_a_provider_whose_list_is_ids_only_is_not_in_the_file(self):
+        def meta_ids_only(answer):
+            meta = next(r for r in answer["logins"] if r["provider"] == "meta")
+            meta["live_list"] = [{"id": i} for i in ("muse-spark-1.3", "muse-image-1.0", "sam-3.1")]
+            meta["live"].update(held=True, fetched_at="2026-11-24T18:22:00Z", listed_models=3, last_failure=None)
+        code, words = self.from_answer(changed(meta_ids_only), "--publish")
+        self.assertEqual(code, 0, words)
+        self.assertEqual(sorted(self.github_file()["providers"]), ["claude-subscription", "devin", "openai-codex"])
+        self.assertNotIn(b"muse", self.put_bytes()[0])
+        log = self.logged()
+        self.assertIn("meta-subscription: left out 3 models the gateway lists without describing (an id only)", log)
+        self.assertIn("meta-subscription: no model the gateway describes: not in the file", log)
+        self.assertNotIn("meta-subscription: 1 enabled login(s)", log)  # complete, just undescribed
+        # The login is remembered like any other, so its absence tomorrow still counts.
+        with open(os.path.join(self.home, D.STATE)) as f:
+            self.assertEqual(len(json.load(f)["logins"]["meta"]), 1)
+
+    def test_a_described_meta_model_appears_by_itself(self):
+        def meta_described(answer):
+            meta = next(r for r in answer["logins"] if r["provider"] == "meta")
+            meta["live_list"] = [{"id": "muse-spark-1.3", "display_name": "Muse Spark 1.3"}, {"id": "sam-3.1"}]
+            meta["live"].update(held=True, fetched_at="2026-11-24T18:22:00Z", listed_models=2, last_failure=None)
+        code, words = self.from_answer(changed(meta_described))
+        self.assertEqual(code, 0, words)
+        self.assertEqual(self.written()["providers"]["meta-subscription"]["models"],
+                         [{"id": "muse-spark-1.3", "name": "Muse Spark 1.3"}])
+
+    def test_a_codex_row_keeps_its_name_modalities_and_levels_and_loses_its_window(self):
+        code, words = self.from_answer(ANSWER)
+        self.assertEqual(code, 0, words)
+        sol = self.written()["providers"]["openai-codex"]["models"][0]
+        self.assertEqual(sol, {"id": "gpt-6.1-sol", "name": "GPT-6.1 Sol", "input_modalities": ["text", "image"],
+                               "reasoning": {"levels": ["low", "medium", "high", "xhigh"]}})
+        codex = self.written()["providers"]["openai-codex"]["models"]
+        self.assertFalse(any("context_window" in m for m in codex))
+        # Other logins' windows are carried as before.
+        self.assertTrue(all("context_window" in m for m in self.written()["providers"]["claude-subscription"]["models"]))
+
+    def test_described_is_anything_beside_the_id(self):
+        self.assertFalse(S.described({"id": "gpt-reserve"}))
+        self.assertTrue(S.described({"id": "m", "name": "M"}))
+        self.assertTrue(S.described({"id": "m", "reasoning": {"levels": ["high"]}}))
+        self.assertEqual(D.NO_WINDOW, {"codex"})
+
+    def test_the_rule_and_its_reasons_are_in_the_doc(self):
+        doc = read(os.path.join(ROOT, "docs", "discovery.md"))
+        for words in ("Only a described model", "No Codex window", "921,500", "meta-subscription` is not published"):
+            self.assertIn(words, doc)
+
+
 class Union(Base):
     def test_the_published_models_stay_and_today_s_are_added_with_today_s_values(self):
         published = load(YESTERDAY)

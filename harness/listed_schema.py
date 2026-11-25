@@ -16,6 +16,10 @@ and stricter where it costs nothing:
 - the fields providers.dev accepts and never reads (owner, released, aliases, variants, description, disable_with)
   are accepted only as short plain values. Discovery writes none of them.
 
+What discovery writes is narrower than what the schema accepts: only a described model (`described()`: one field or
+more beside its id), and no `context_window` under `openai-codex` (docs/discovery.md). The schema refuses neither,
+as providers.dev does not: a hand edit of the file may state them.
+
 CI runs it on the committed file; the pre-commit hook on the staged one; discover.py before it writes.
 """
 import json
@@ -59,6 +63,11 @@ REASONING_KEYS = {"supported", "levels", "budget_min", "budget_max", "can_disabl
 
 def is_count(value, minimum=1):
     return isinstance(value, int) and not isinstance(value, bool) and minimum <= value <= MAX_SAFE
+
+
+def described(model):
+    """True when a model carries something beside its id: discovery publishes only those (docs/discovery.md)."""
+    return isinstance(model, dict) and any(key != "id" for key in model)
 
 
 def size_problem(text):

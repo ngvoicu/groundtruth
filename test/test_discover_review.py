@@ -43,8 +43,8 @@ class Finding1Identity(Base):
         self.assertNotIn("Cedar", self.logged())
 
     def test_e_mails_file_names_and_auth_index_drop_their_models_without_case(self):
-        r = row("codex", [{"id": "gpt-ada-lovelace"}, {"id": "gpt-b", "display_name": "Codex-Team-Acme preview"},
-                          {"id": "gpt-c", "display_name": "x 7f21c0d9e8b4a356"}, {"id": "gpt-plain"}],
+        r = row("codex", [{"id": "gpt-ada-lovelace", "display_name": "GPT A"}, {"id": "gpt-b", "display_name": "Codex-Team-Acme preview"},
+                          {"id": "gpt-c", "display_name": "x 7f21c0d9e8b4a356"}, {"id": "gpt-plain", "display_name": "GPT Plain"}],
                 email="ada-lovelace" + "@" + "example.org", name="codex-team-acme.json")
         r["auth_index"] = "7F21C0D9E8B4A356"
         code, words = self.from_answer(answer_of(r))
@@ -58,7 +58,7 @@ class Finding1Identity(Base):
         self.assertEqual(ids(self.written(), "devin"), ["fixture-model"])
 
     def key_case(self, key, entry):
-        server = provimux(answer_of(row("codex", [entry, {"id": "gpt-plain"}])))
+        server = provimux(answer_of(row("codex", [entry, {"id": "gpt-plain", "display_name": "GPT Plain"}])))
         self.addCleanup(server.close)
         code, words = self.run_with(["--base-url", f"http://127.0.0.1:{server.port}", "--date", TODAY])
         self.assertEqual(code, 0, words)
@@ -81,8 +81,8 @@ class Finding1Identity(Base):
 
     def test_second_review_model_ada_from_a_three_letter_label_is_dropped(self):
         # The second review: the site accepted `model-ada` from a login labelled "Ada" (no length exemption now).
-        answer = answer_of(row("devin", [{"id": "model-ada"}, {"id": "model-one", "display_name": "Ada"},
-                                         {"id": "model-adams"}], label="Ada"))
+        answer = answer_of(row("devin", [{"id": "model-ada", "display_name": "Model A"}, {"id": "model-one", "display_name": "Ada"},
+                                         {"id": "model-adams", "display_name": "Model B"}], label="Ada"))
         code, words = self.from_answer(answer, "--publish")
         self.assertEqual(code, 0, words)
         self.assertEqual(ids(self.github_file(), "devin"), ["model-adams"])  # a whole token only: "adams" stays
@@ -103,8 +103,8 @@ class Finding1Identity(Base):
         # The second review: with --answer --publish an environment-only key reached the staged file.
         key = "envonly-mgmt-key-5521"
         os.environ["CPA_MGMT_KEY"] = key
-        answer = answer_of(row("codex", [{"id": "gpt-plain"}, {"id": "gpt-x", "display_name": f"x {key}"},
-                                         {"id": "gpt-" + key}]))
+        answer = answer_of(row("codex", [{"id": "gpt-plain", "display_name": "GPT Plain"}, {"id": "gpt-x", "display_name": f"x {key}"},
+                                         {"id": "gpt-" + key, "display_name": "GPT K"}]))
         code, words = self.from_answer(answer, "--publish")
         self.assertEqual(code, 0, words)
         self.assertEqual(ids(self.github_file(), "openai-codex"), ["gpt-plain"])
@@ -220,12 +220,13 @@ class Finding4Recovery(Base):
     def test_second_review_a_same_day_change_on_github_is_merged_never_overwritten(self):
         # The second review: a retry overwrote GitHub's three models with its own two. Now a 409 re-reads and rebuilds.
         self.github(answer_doc := {"schema": 1, "repository": S.REPOSITORY, "providers": {"devin": {
-            "date": TODAY, "client": "provimux", "models": [{"id": "one"}]}}})
+            "date": TODAY, "client": "provimux", "models": [{"id": "one", "name": "One"}]}}})
         meanwhile = json.loads(json.dumps(answer_doc))
-        meanwhile["providers"]["devin"]["models"] = [{"id": "one"}, {"id": "three"}, {"id": "two"}]
+        meanwhile["providers"]["devin"]["models"] = [{"id": "one", "name": "One"}, {"id": "three"},
+                                                {"id": "two", "name": "Two"}]
         with open(os.path.join(self.fake, "before-put"), "w") as f:
             f.write(D.text_of(meanwhile))
-        code, words = self.from_answer(answer_of(row("devin", [{"id": "one"}, {"id": "two"}])), "--publish")
+        code, words = self.from_answer(answer_of(row("devin", [{"id": "one", "display_name": "One"}, {"id": "two", "display_name": "Two"}])), "--publish")
         self.assertEqual(code, 0, words)
         self.assertIn("changed meanwhile (HTTP 409/422): reading it again and rebuilding once", self.logged())
         # Rebuilt from GitHub's three: the union is what GitHub has already, so nothing more is sent.
@@ -362,7 +363,7 @@ class Finding6PartialDay(Base):
 
 class Finding7SiteLimits(Base):
     def test_a_number_beyond_the_safe_integers_is_not_written(self):
-        code, words = self.from_answer(answer_of(row("devin", [{"id": "fixture-model", "context": 2 ** 53}])))
+        code, words = self.from_answer(answer_of(row("devin", [{"id": "fixture-model", "display_name": "Fixture", "context": 2 ** 53}])))
         self.assertEqual(code, 0, words)
         self.assertNotIn("context_window", self.written()["providers"]["devin"]["models"][0])
         doc = load(YESTERDAY)
@@ -393,7 +394,7 @@ class Finding7SiteLimits(Base):
         # refused 4 against its last good 10. Now the published file only grows: the site's last good is a subset.
         counts = []
         for day, n in (("2026-11-24", 10), ("2026-11-25", 6), ("2026-11-26", 4)):
-            r = row("devin", [{"id": f"model-{i}"} for i in range(n)])
+            r = row("devin", [{"id": f"model-{i}", "display_name": f"Model {i}"} for i in range(n)])
             r["live"]["fetched_at"] = f"{day}T12:00:00Z"
             code, words = self.from_answer(answer_of(r), "--publish", date=day)
             self.assertEqual(code, 0, words)
@@ -415,7 +416,7 @@ class Finding7SiteLimits(Base):
 class Finding8Provenance(Base):
     def test_copilot_s_and_antigravity_s_lists_are_not_written(self):
         answer = answer_of(row("copilot", [{"id": "gpt-4.1"}, {"id": "disabled-model"}]),
-                           row("antigravity", [{"id": "gemini-3.8-flash"}]), row("claude", [{"id": "claude-plain"}]))
+                           row("antigravity", [{"id": "gemini-3.8-flash"}]), row("claude", [{"id": "claude-plain", "display_name": "Plain"}]))
         code, words = self.from_answer(answer)
         self.assertEqual(code, 0, words)
         self.assertEqual(sorted(self.written()["providers"]), ["claude-subscription"])
