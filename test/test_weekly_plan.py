@@ -222,6 +222,97 @@ class Window(unittest.TestCase):
         self.assertEqual(item(build(s, observed(), seen, listed), "devin", "swe-9")["state"], P.TOO_OLD)
 
 
+def listing(provider, *rows):
+    """A provider's listing as providers.dev serves it (/data/listings/<provider>.json, /api/v1/listings/<provider>):
+    only the fields the plan reads, with others beside them."""
+    return {"meta": {"dataset_version": "fixture"}, "data": {"provider": provider, "basis": "listed", "models": [
+        {"id": i, "name": i, "owner": owner, "canonical": canonical, "released": released, "context_window": None,
+         "sources": {"released": "models.dev" if released else None}} for i, released, owner, canonical in rows]}}
+
+
+class ListingDates(unittest.TestCase):
+    """A login model's release date: the route's entry, else its row in the login's listing (`released`), else the
+    lab's own entry, else the lab's listing row (exactly one date known), else as before."""
+
+    def plan(self, s, listings, models, seen=None):
+        s = dict(s, listings={p: P.listing_rows(doc) for p, doc in listings.items()})
+        listed = {"providers": {"devin": {"date": DATE, "models": [{"id": m} for m in models]}}}
+        return build(s, observed(), {"first_seen": {"devin": seen or {m: None for m in models}}}, listed)
+
+    def test_the_order_entry_then_listing_row_then_lab_entry_then_lab_listing(self):
+        s = site(entry("devin", "with-entry", release="2026-11-01"),
+                 entry("google", "lab-entry", release="2026-11-03", canonical="google/lab-entry"))
+        listings = {
+            "devin": listing("devin", ("with-entry", "2026-01-01", None, None), ("row-only", "2026-11-02", None, None),
+                             ("lab-entry", None, "google", None), ("lab-row", None, None, None),
+                             ("nothing", None, None, None)),
+            "google": listing("google", ("lab-entry", "2026-01-03", "google", None),
+                              ("lab-row", "2026-11-04", "google", None))}
+        plan = self.plan(s, listings, ["with-entry", "row-only", "lab-entry", "lab-row", "nothing"])
+        got = {m: (item(plan, "devin", m)["release"], item(plan, "devin", m)["release_basis"])
+               for m in ("with-entry", "row-only", "lab-entry", "lab-row", "nothing")}
+        self.assertEqual(got, {"with-entry": ("2026-11-01", "release"), "row-only": ("2026-11-02", "listed release"),
+                               "lab-entry": ("2026-11-03", "lab release"), "lab-row": ("2026-11-04", "lab release"),
+                               "nothing": (None, P.BEFORE_DISCOVERY)})
+        self.assertEqual(item(plan, "devin", "row-only")["state"], P.NEW)
+        self.assertEqual(item(plan, "devin", "nothing")["state"], P.TOO_OLD)
+
+    def test_a_listing_date_moves_a_model_out_of_the_window_or_into_it(self):
+        listings = {"devin": listing("devin", ("old-one", "2026-06-01", None, None),
+                                     ("new-one", "2026-11-20", None, None))}
+        plan = self.plan(site(), listings, ["old-one", "new-one"], seen={"old-one": DATE, "new-one": None})
+        self.assertEqual(item(plan, "devin", "old-one")["state"], P.TOO_OLD)  # first seen today, released in June
+        self.assertEqual(item(plan, "devin", "new-one")["state"], P.NEW)  # listed before discovery, dated now
+
+    def test_a_lab_listing_with_two_dates_for_a_model_gives_none(self):
+        listings = {"devin": listing("devin", ("twice", None, None, None)),
+                    "google": listing("google", ("twice", "2026-11-01", None, None),
+                                      ("x", "2026-11-05", None, "google/twice"))}
+        plan = self.plan(site(), listings, ["twice"])
+        self.assertEqual(item(plan, "devin", "twice")["release_basis"], P.BEFORE_DISCOVERY)
+
+    def test_the_lab_s_own_entry_comes_before_its_listing_row(self):
+        s = site(entry("openai", "gpt-x", release="2026-11-06", canonical="openai/gpt-x"))
+        listings = {"openai": listing("openai", ("gpt-x", "2026-07-01", "openai", "openai/gpt-x"))}
+        plan = self.plan(s, listings, ["gpt-x"])
+        self.assertEqual(item(plan, "devin", "gpt-x")["release"], "2026-11-06")
+
+    def test_an_api_key_route_reads_no_listing(self):
+        s = site(entry("openrouter", "a/x", release=None))
+        s["listings"] = {"openrouter": P.listing_rows(listing("openrouter", ("a/x", "2026-11-20", None, None)))}
+        plan = build(s, observed(), {"first_seen": {"openrouter": {"a/x": None}}})
+        self.assertEqual(item(plan, "openrouter", "a/x")["state"], P.TOO_OLD)
+
+    def test_the_listing_s_shape(self):
+        rows = P.listing_rows(listing("devin", ("a", "2026-11-02", "openai", "openai/a"), ("b", "2026-11", None, None),
+                                      ("c", None, None, None)))
+        self.assertEqual(rows, [{"id": "a", "released": "2026-11-02", "canonical": "openai/a", "owner": "openai"},
+                                {"id": "b", "released": None, "canonical": None, "owner": None},
+                                {"id": "c", "released": None, "canonical": None, "owner": None}])
+        self.assertEqual(P.listing_rows({"data": {"provider": "x", "models": None}}), [])
+        self.assertEqual(P.listing_rows(None), [])
+
+    def test_a_copy_of_the_site_reads_the_listings_of_the_logins_and_the_labs(self):
+        with tempfile.TemporaryDirectory() as folder:
+            index = {"dataset_version": "fixture", "providers": [{"id": p} for p in ("devin", "openai", "mistral")],
+                     "entries": [{"provider": "openrouter", "model": "openai/gpt-x", "canonical_id": "openai/gpt-x",
+                                  "release_date": None, "type": "chat"}]}
+            os.makedirs(os.path.join(folder, "listings"))
+            with open(os.path.join(folder, "index.json"), "w") as f:
+                json.dump(index, f)
+            for p, rows in (("devin", [("swe-9", None, "openai", None)]), ("openai", [("swe-9", "2026-11-21", None,
+                                                                                    None)]),
+                            ("mistral", [("m", "2026-11-01", None, None)])):
+                with open(os.path.join(folder, "listings", f"{p}.json"), "w") as f:
+                    json.dump(listing(p, *rows), f)
+            s = P.load_site(folder)
+            self.assertEqual(sorted(s["listings"]), ["devin", "openai"])  # mistral is no entry's lab, no owner
+            listed = {"providers": {"devin": {"date": DATE, "models": [{"id": "swe-9"}]}}}
+            plan = build(s, observed(), {"first_seen": {"devin": {"swe-9": None}}}, listed)
+            self.assertEqual((item(plan, "devin", "swe-9")["release"], item(plan, "devin", "swe-9")["state"]),
+                             ("2026-11-21", P.NEW))
+
+
 class Order(unittest.TestCase):
     def test_the_order(self):
         s = site(

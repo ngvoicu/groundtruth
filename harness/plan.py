@@ -31,8 +31,9 @@ output limit (`output`). Every value offered on a route the night drives is in e
                   worst case falls under the caps the row no longer applies and the value is planned again
 
 The window: a model counts when its release date (providers.dev's entry on the route; else, for a login's own id,
-the release date of the lab's own model it names, when exactly one is known: the lab's own entry, else any entry
-naming that canonical model) or, when none is known, the date it was first listed or discovered, is no more than two
+the `released` of its row in the login's listing on providers.dev, else the release date of the lab's own model it
+names, when exactly one is known: the lab's own entry, else the lab's listing row, else any entry naming that
+canonical model) or, when none is known, the date it was first listed or discovered, is no more than two
 months before the night. listed.json states neither a release date nor a first-seen day: the day a model was first
 listed is plan/values.json's `first_seen`, else the night that first lists it (recorded at its publication). A model
 already listed when discovery began (its first file, 2026-11-25) has `first_seen` null: the day it was first listed
@@ -71,6 +72,7 @@ ROUTES = {
 }
 LOGIN_ROUTES = tuple(r for r, d in ROUTES.items() if d["kind"] == "login")
 KEY_ROUTES = tuple(r for r, d in ROUTES.items() if d["kind"] == "api_key")
+LOGIN_PROVIDERS = tuple(ROUTES[r]["provider"] for r in LOGIN_ROUTES)
 PROVIDER_ROUTE = {d["provider"]: r for r, d in ROUTES.items()}
 QUANTITIES = ("cache", "window", "output")
 # Where the harness has a method (design 9.2): cache lifetimes on every route the night drives; windows on API-key
@@ -160,11 +162,16 @@ def summarize_entry(row, full=None):
 
 
 def load_site(folder):
-    """providers.dev's dataset from a copy of its published `data` folder (index.json, entries/<provider>/<n>.json)."""
+    """providers.dev's dataset from a copy of its published `data` folder (index.json, entries/<provider>/<n>.json,
+    and listings/<provider>.json where there is one)."""
     with open(os.path.join(folder, "index.json")) as f:
         index = json.load(f)
+
+    def listing(provider):
+        path = os.path.join(folder, "listings", f"{provider}.json")
+        return _read_json(path) if os.path.isfile(path) else None
     return site_from(index, lambda provider, shard: _read_json(os.path.join(folder, "entries", provider,
-                                                                            f"{shard}.json")))
+                                                                            f"{shard}.json")), listing)
 
 
 def _read_json(path):
@@ -175,9 +182,37 @@ def _read_json(path):
         return {}
 
 
-def site_from(index, shard_reader):
+def listing_rows(doc):
+    """A provider's listing (`/data/listings/<provider>.json`, as `/api/v1/listings/<provider>`: {meta, data: {models:
+    [...]}}) as the plan needs it: each row's id, its `released` day (None when it states none or not a whole day),
+    its canonical id and owner."""
+    data = doc.get("data") if isinstance(doc, dict) and isinstance(doc.get("data"), dict) else doc
+    models = data.get("models") if isinstance(data, dict) else None
+    rows = []
+    for m in models if isinstance(models, list) else []:
+        if not isinstance(m, dict) or not isinstance(m.get("id"), str):
+            continue
+        day = parse_day(m.get("released"))
+        rows.append({"id": m["id"], "released": day.isoformat() if day else None,
+                     "canonical": m.get("canonical") if isinstance(m.get("canonical"), str) else None,
+                     "owner": m.get("owner") if isinstance(m.get("owner"), str) else None})
+    return rows
+
+
+def listing_providers(index, entries, login_rows=()):
+    """The listings the plan reads: the logins' own (openai-codex, devin), every lab that is a provider of
+    providers.dev and the lab of some entry's canonical id, and every owner a login's listing names."""
+    known = {p.get("id") if isinstance(p, dict) else p for p in index.get("providers") or []}
+    labs = {(e.get("canonical_id") or "").split("/", 1)[0] for e in entries.values() if "/" in (e.get("canonical_id")
+                                                                                               or "")}
+    owners = {r["owner"] for r in login_rows if r.get("owner")}
+    return sorted((labs | owners) & known - set(LOGIN_PROVIDERS))
+
+
+def site_from(index, shard_reader, listing_reader=None):
     """The plan's view of providers.dev: every entry's summary (by `provider/model`), with the full records of the
-    night's own providers read through `shard_reader(provider, shard)`."""
+    night's own providers read through `shard_reader(provider, shard)`; and, with `listing_reader(provider)` (a
+    listing's document, or None), the listings' rows of the logins and of the labs (listing_providers)."""
     shards = {}
     entries = {}
     for row in index.get("entries") or []:
@@ -188,15 +223,40 @@ def site_from(index, shard_reader):
                 shards[key] = shard_reader(*key) or {}
             full = shards[key].get(row["model"])
         entries[f"{row['provider']}/{row['model']}"] = summarize_entry(row, full)
-    return {"dataset": index.get("dataset_version"), "generated_at": index.get("generated_at"), "entries": entries}
+    listings = {}
+    if listing_reader:
+        for p in LOGIN_PROVIDERS:
+            rows = listing_rows(listing_reader(p))
+            if rows:
+                listings[p] = rows
+        for p in listing_providers(index, entries, [r for p in listings for r in listings[p]]):
+            rows = listing_rows(listing_reader(p))
+            if rows:
+                listings[p] = rows
+    return {"dataset": index.get("dataset_version"), "generated_at": index.get("generated_at"), "entries": entries,
+            "listings": listings}
+
+
+def listed_release(site, provider, model):
+    """The `released` day of a model's row in a provider's listing (its id exactly, else the one row whose normalized
+    id is the model's), or None."""
+    rows = (site.get("listings") or {}).get(provider) or []
+    for r in rows:
+        if r["id"] == model:
+            return r["released"]
+    days = {r["released"] for r in rows if norm(r["id"]) == norm(model)}
+    if len(days) == 1:
+        return next(iter(days))
+    return None
 
 
 def lab_dates(site):
-    """normalized model id -> the set of release dates of the lab's own model: how a login's own id without an entry
-    gets a release date. The lab's own entries (an entry whose provider is the lab of its canonical id) where there
-    are any; else the entries of other providers that name the same canonical model (providers.dev holds many labs'
-    models only through OpenRouter: `google/gemini-3.5-flash`), whose release date is the model's."""
-    own, named = {}, {}
+    """normalized model id -> the set of release dates of the lab's own model: how a login's own id without a date
+    of its own gets one. The lab's own entries (an entry whose provider is the lab of its canonical id) where there
+    are any; else the lab's own listing rows (`released`, providers.dev's listings of the labs); else the entries of
+    other providers that name the same canonical model (providers.dev holds many labs' models only through
+    OpenRouter: `google/gemini-3.5-flash`), whose release date is the model's."""
+    own, listed, named = {}, {}, {}
     for e in site["entries"].values():
         cid = e.get("canonical_id") or ""
         if "/" not in cid or not e.get("release_date"):
@@ -208,7 +268,18 @@ def lab_dates(site):
             own.setdefault(norm(e["model"]), set()).add(day)
         else:
             named.setdefault(norm(model), set()).add(day)
+    for lab, rows in (site.get("listings") or {}).items():
+        if lab in LOGIN_PROVIDERS:
+            continue
+        for r in rows:
+            if not r["released"]:
+                continue
+            listed.setdefault(norm(r["id"]), set()).add(r["released"])
+            cid = r.get("canonical") or ""
+            if cid.startswith(lab + "/"):
+                listed.setdefault(norm(cid.split("/", 1)[1]), set()).add(r["released"])
     out = dict(named)
+    out.update(listed)
     out.update(own)
     return out
 
@@ -417,14 +488,19 @@ BEFORE_DISCOVERY = "listed before discovery began"
 
 
 def release_of(route, row, site, labs, seen):
-    """(date, basis) of a model on a route: providers.dev's entry; else, for a login, the lab's own model it names
-    (exactly one date known); else the day it was first listed or discovered (plan/values.json's `first_seen`, else
-    the night itself: recorded at the publication). A `first_seen` of null is a model already listed when discovery
-    began (2026-11-25, recorded by --record-baseline): the day it was first listed is not known, so it has no date and
-    is never in the window."""
+    """(date, basis) of a model on a route: providers.dev's entry; else, for a login, the `released` of the model's
+    row in the login's listing on providers.dev ("listed release"); else the lab's own model it names (lab_dates: the
+    lab's own entry, else the lab's listing row, else an entry naming that model; exactly one date known); else the
+    day it was first listed or discovered (plan/values.json's `first_seen`, else the night itself: recorded at the
+    publication). A `first_seen` of null is a model already listed when discovery began (2026-11-25, recorded by
+    --record-baseline): the day it was first listed is not known, so it has no date and is never in the window."""
     e = site["entries"].get(f"{ROUTES[route]['provider']}/{row['model']}")
     if e and e.get("release_date"):
         return e["release_date"][:10], "release"
+    if ROUTES[route]["kind"] == "login":
+        day = listed_release(site, ROUTES[route]["provider"], row["model"])
+        if day:
+            return day, "listed release"
     dates = labs.get(norm(row["model"])) if ROUTES[route]["kind"] == "login" else None
     if dates and len(dates) == 1:
         return next(iter(dates)), "lab release"

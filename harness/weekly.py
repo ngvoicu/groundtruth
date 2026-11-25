@@ -11,8 +11,8 @@ with the owner's decisions of 2026-11-22 over it), and its Tuesday commands.
 
 `--date` defaults to the night now running (a Monday from noon, or the Tuesday before noon). Options of `night`:
 `--only codex|devin|keys` (repeatable), `--week-cap <dollars>` (default 10), `--run-cap <dollars>` (default 2),
-`--value <route>:<model>:<quantity>` (repeatable: only those values), `--site-data <folder>` (a copy of providers.dev's
-published data instead of the site).
+`--login-cap <n>` (default 6: cache runs per login), `--value <route>:<model>:<quantity>` (repeatable: only those
+values), `--site-data <folder>` (a copy of providers.dev's published data instead of the site).
 
 What a night does, in order (all of it under GROUNDTRUTH_CLIENT_HOME, `$G`, as the first night; nothing is sent
 without --go; --dry-run sends nothing to any vendor, login, key or proxy and writes nothing):
@@ -32,7 +32,8 @@ without --go; --dry-run sends nothing to any vendor, login, key or proxy and wri
 5. The checks before anything is spent: each login's own status command; each key by a request that costs nothing;
    one smoke run per client, judged by the automatic checks. A failure stops that part only, and asks.
 6. The runs. A login's part: at most 6 cache runs a night (`long` ones first), each the probe of the first night,
-   staggered, under the same lock, stop marks and isolation. The API keys: one pot of $10 a week, $2 a run at most,
+   started as the first night's launcher plans them (each run's start such that Devin's whole schedule keeps under 36
+   requests in any 60 s and 270 in any 15 minutes: night.plan), under the same lock, stop marks and isolation. The API keys: one pot of $10 a week, $2 a run at most,
    kept by the ledger (harness/ledger.py); window requests first (each should be refused, and costs nothing), then
    cache runs in the plan's order while the money lasts.
 7. The end (Tuesday 11:30 at the latest, a run still alive gets its stop mark): `untouched --report`, the mechanical
@@ -79,7 +80,6 @@ PARTS = ("codex", "devin", "keys")
 PART_ROUTES = {"codex": ("codex-subscription",), "devin": ("devin",), "keys": P.KEY_ROUTES}
 ROUTE_PART = {r: p for p, rs in PART_ROUTES.items() for r in rs}
 SMOKE_MODEL = {"codex": "gpt-6-luna", "devin": "claude-haiku-5-5-low"}
-SPACING = {"codex": 15, "devin": 20, "keys": 15}
 KEY_VARS = {"openrouter": "OPENROUTER_API_KEY", "openai-api": "OPENAI_API_KEY", "anthropic-api": "ANTHROPIC_API_KEY"}
 API = {"openrouter": {"base": "https://openrouter.ai/api/v1", "format": "responses", "short": "or"},
        "openai-api": {"base": "https://api.openai.com/v1", "format": "responses", "short": "oa"},
@@ -159,15 +159,16 @@ def devin_model(model, efforts=None):
 
 # --- the selection: the plan, cut by the caps ------------------------------------------------------------------------
 
-def login_runs(plan, part, late=False, values=None):
-    """A login's cache runs of the night: the plan's first LOGIN_CAP cache values of its route (a `long` one dropped
-    after 01:00: it stays first next Monday), the `long` ones started first. Returns (runs, left)."""
+def login_runs(plan, part, late=False, values=None, cap=LOGIN_CAP):
+    """A login's cache runs of the night: the plan's first `cap` (LOGIN_CAP, the owner's six) cache values of its
+    route (a `long` one dropped after 01:00: it stays first next Monday), the `long` ones started first. Returns
+    (runs, left)."""
     route = PART_ROUTES[part][0]
     items = [i for i in plan["planned"] if i["route"] == route and i["quantity"] == "cache"
              and (values is None or i["key"] in values)]
     if late:
         items = [i for i in items if i.get("schedule") != "long"]
-    chosen, left = items[:LOGIN_CAP], items[LOGIN_CAP:]
+    chosen, left = items[:cap], items[cap:]
     chosen = [i for i in chosen if i.get("schedule") == "long"] + [i for i in chosen if i.get("schedule") != "long"]
     prefix = {"codex": "cx", "devin": "dv"}[part]
     runs = []
@@ -177,6 +178,17 @@ def login_runs(plan, part, late=False, values=None):
                      "ask_model": model, "quantity": "cache", "schedule": i.get("schedule", "std"), "key": i["key"],
                      "state_before": i["state"]})
     return runs, left
+
+
+def login_schedule(part, runs):
+    """When each of a login's runs starts, as the first night's launcher plans it (night.plan, harness/night_plan.py):
+    in order, each at least the client's spacing after the one before and late enough that the client's whole
+    schedule keeps under its request limits (Devin: 36 in any 60 s, 270 in any 15 minutes; Codex: none, so its
+    plain spacing). {"starts": {label: seconds after the go}, "ends", "requests", "max", "limits"}; nothing sent."""
+    if not runs:
+        return {"starts": {}, "ends": {}, "requests": 0, "max": {}, "limits": {}}
+    steps = [N.probe(r["label"], part, r["ask_model"], schedule=r["schedule"]) for r in runs]
+    return N.plan({part: steps})[part]
 
 
 def key_items(plan, late=False, values=None, routes=None):
@@ -354,8 +366,9 @@ class Night:
     """One night. `w` is its contact with the world (World; a fake in the tests)."""
 
     def __init__(self, date, w, home, dry=False, only=None, week_cap=L.WEEK_CAP, run_cap=L.RUN_CAP, values=None,
-                 out=print, root=ROOT):
+                 out=print, root=ROOT, login_cap=LOGIN_CAP):
         self.date, self.w, self.home, self.dry, self.out, self.root = date, w, home, dry, out, root
+        self.login_cap = login_cap
         self.only = tuple(only) if only else PARTS
         self.values = set(values) if values else None
         self.private = os.path.join(home, f"night-{date}")
@@ -439,7 +452,7 @@ class Night:
         login = {}
         for part in ("codex", "devin"):
             if part in self.only:
-                runs, left = login_runs(plan, part, late, self.values)
+                runs, left = login_runs(plan, part, late, self.values, self.login_cap)
                 login[part], self.left[part] = runs, left
                 self.parts[part]["planned"] = len(runs)
         keyed = key_items(plan, late, self.values) if "keys" in self.only else []
@@ -765,9 +778,19 @@ class Night:
             if part not in login:
                 continue
             runs = login[part]
-            lines += [f"## {part}: {len(runs)} of at most {LOGIN_CAP} cache runs", ""]
-            lines += [f"{n}. `{r['ask_model']}` ({r['schedule']}, {r['state_before']}) as {r['label']}"
-                      for n, r in enumerate(runs, 1)] or ["nothing to measure"]
+            sched = login_schedule(part, runs)
+            lines += [f"## {part}: {len(runs)} of at most {self.login_cap} cache runs", ""]
+            lines += [f"{n}. `{r['ask_model']}` ({r['schedule']}, {r['state_before']}) as {r['label']}: starts "
+                      f"+{int(sched['starts'][r['label']]) // 60}:{int(sched['starts'][r['label']]) % 60:02d} after the go, "
+                      f"ends {N.hm(sched['ends'][r['label']])} after it" for n, r in enumerate(runs, 1)] or ["nothing to measure"]
+            if runs:
+                most = ", ".join(f"{sched['max'][w]} in any {N.hm(w)}" + (f" (limit {sched['limits'][w]})"
+                                                                          if w in sched["limits"] else "")
+                                 for w in sorted(sched["max"]))
+                lines += ["", f"{sched['requests']} requests to {part} with every first control cold (2 fewer a run "
+                          f"when it is warm), the smoke run apart; most: {most}; the last run ends "
+                          f"{N.hm(max(sched['ends'].values()))} after the go (the go: after the checks and the smoke "
+                          "run; later by any priming tried again)."]
             if self.left.get(part):
                 lines += ["", f"Left for later Mondays by the cap: " +
                           ", ".join(f"`{i['model']}`" for i in self.left[part])]
@@ -824,6 +847,7 @@ class Night:
             self.stop_part(part, "launched already for this night")
             return
         self.parts[part]["status"] = "running"
+        starts = login_schedule(part, runs)["starts"]  # under the client's request limits (Devin's), as planned
         for i, run in enumerate(runs):
             if i and self.w.login_status(part):  # between two starts
                 self.asks.open("login-expired", part, part=part, date=self.date, when="between two runs")
@@ -831,7 +855,7 @@ class Night:
                 break
             if self.parts[part]["status"].startswith("stopped"):
                 break
-            run["delay"], run["date"] = i * SPACING[part], self.date
+            run["delay"], run["date"] = int(starts[run["label"]]), self.date
             run["handle"] = self.w.start(run, self.date, launch_id, lock)
             run["file"] = f"{results_dir(self.date)}/{run['label']}.jsonl"
             self.parts[part]["started"] += 1
@@ -1129,8 +1153,13 @@ class World:
                 import gzip
                 data = gzip.decompress(data)
             return json.loads(data)
+        def listing(provider):  # a provider with no listing (404), or one not read: no row, no date from it
+            try:
+                return get(f"/data/listings/{provider}.json")
+            except (OSError, ValueError):
+                return None
         index = get("/data/index.json")
-        return P.site_from(index, lambda provider, shard: get(f"/data/entries/{provider}/{shard}.json"))
+        return P.site_from(index, lambda provider, shard: get(f"/data/entries/{provider}/{shard}.json"), listing)
 
     def discover(self):
         """harness/discover.py as installed in $G/bin (else this checkout's), without --publish; None, or why not."""
@@ -1614,6 +1643,8 @@ def main(argv=None):
     ap.add_argument("--only", action="append", choices=PARTS)
     ap.add_argument("--week-cap", type=float, default=L.WEEK_CAP)
     ap.add_argument("--run-cap", type=float, default=L.RUN_CAP)
+    ap.add_argument("--login-cap", type=int, default=LOGIN_CAP,
+                    help=f"cache runs per login at most (default {LOGIN_CAP}, the owner's cap; more only on his word)")
     ap.add_argument("--value", action="append", help="<route>:<model>:<quantity>, only these values")
     ap.add_argument("--site-data", help="a copy of providers.dev's published data folder")
     a = ap.parse_args(argv)
@@ -1641,7 +1672,7 @@ def main(argv=None):
                 model, _, q = rest.rpartition(":")
                 values.add(f"{route}|{model}|{q}")
         Night(date, World(home, ROOT, a.site_data), home, dry=a.dry_run, only=a.only, week_cap=a.week_cap,
-              run_cap=a.run_cap, values=values).run()
+              run_cap=a.run_cap, values=values, login_cap=a.login_cap).run()
         return
     if not home and head in ("status", "audit", "check"):
         raise SystemExit(f"{head}: GROUNDTRUTH_CLIENT_HOME is not set")

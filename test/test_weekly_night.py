@@ -191,6 +191,31 @@ class Caps(NightCase):
         self.assertEqual(fake.started("cx-")[0], "cx-gpt-c1")
         self.assertEqual(len(fake.started("cx-")), 6)
 
+    def test_a_login_cap_given_by_hand_starts_that_many_and_no_more(self):
+        fake = Fake(bucharest(0, 23), fixture_site(codex=0, devin=12, keys=()))
+        n = self.night(fake, only=["devin"], login_cap=10)
+        self.assertEqual(len(fake.started("dv-")), 10)
+        self.assertEqual(len(n.left["devin"]), 2)
+
+    def test_devin_s_runs_start_under_its_request_limits_as_the_first_night_s_launcher_plans_them(self):
+        import night_plan as NP
+        fake = Fake(bucharest(0, 23), fixture_site(codex=3, devin=10, keys=()))
+        n = self.night(fake, only=["devin", "codex"], login_cap=10)
+        runs = n.parts["devin"]["runs"]
+        self.assertEqual(len(runs), 10)
+        planned = W.login_schedule("devin", runs)
+        self.assertEqual([r["delay"] for r in runs], [int(planned["starts"][r["label"]]) for r in runs])
+        self.assertEqual(planned["limits"], NP.LIMITS["devin"])
+        for window, most in planned["max"].items():
+            self.assertLessEqual(most, NP.LIMITS["devin"][window])
+        # Twenty seconds apart, ten runs pass both limits (57 in a minute, over 500 in 15 minutes): later starts.
+        fixed = NP.report(W.N.sim_runs([W.N.probe(r["label"], "devin", r["ask_model"], schedule="std")
+                                        for r in runs]), {r["label"]: 20.0 * i for i, r in enumerate(runs)},
+                          NP.LIMITS["devin"], NP.TOOK["devin"])
+        self.assertGreater(fixed["max"][900], 270)
+        self.assertGreater(runs[-1]["delay"], 20 * 9)
+        self.assertEqual([r["delay"] for r in n.parts["codex"]["runs"]], [0, 15, 30])  # Codex: no limit, 15 s apart
+
     def test_the_api_key_part_never_starts_a_run_that_does_not_fit_the_money_left(self):
         keys = tuple(("openrouter", f"a/m{n}", 0.5) for n in range(8))  # worst case $0.37 each
         fake = Fake(bucharest(0, 23), fixture_site(0, 0, keys), outcomes={})
@@ -492,6 +517,9 @@ class Night(NightCase):
         self.assertIn("`a/cheap`", text)
         self.assertIn("a/dear` cache: worst case $2.35, above the run ceiling", text)
         self.assertIn("Nothing was sent", text)
+        self.assertIn("as dv-m-1-low: starts +0:00 after the go, ends 2 h 11 after it", text)
+        self.assertIn("requests to devin with every first control cold", text)
+        self.assertIn("(limit 36)", text)
 
     def test_a_second_start_of_the_same_night_is_refused(self):
         self.night(Fake(bucharest(0, 23), fixture_site(codex=1, devin=0)), only=["codex"])

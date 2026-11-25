@@ -19,11 +19,14 @@ request that should be refused); no window through the own clients yet and no ou
 method is named in the plan, never left out without a word.
 
 - **owner**: only models released in the **last two months** (calendar months before the night), newest first. A
-  login's own id with no release date takes the lab's own model's date where exactly one is known, else the day it
-  was first listed or discovered (`plan/values.json`'s `first_seen`; `listed.json` states no date of any kind). Never
+  login's own id with no release date on its entry takes, in order: the `released` of its row in the login's own
+  listing on providers.dev (`/data/listings/<provider>.json`, as `/api/v1/listings/<provider>`; "listed release");
+  the lab's own model's date where exactly one is known; else the day it was first listed or discovered (`plan/values.json`'s `first_seen`; `listed.json` states no date of any kind). Never
   a model released earlier, whatever its state: the design's 90-day re-check of values only we state is dropped.
-  - The lab's date: the lab's own entry on providers.dev, else any entry naming the same canonical model (many labs'
-    models are on providers.dev only through OpenRouter); used only when exactly one date is known.
+  - The lab's date: the lab's own entry on providers.dev, else the lab's own listing row (`released`; the listings
+    read are those of every lab that is some entry's canonical lab, and of every owner the logins' listings name),
+    else any entry naming the same canonical model (many labs' models are on providers.dev only through OpenRouter);
+    used only when exactly one date is known. An API key's model takes its entry's date only.
   - A model `listed.json` lists for the first time is first seen on that night (recorded at its publication). The
     models already listed when discovery began (its first file, 2026-11-25) with no date at all are recorded once
     with `first_seen: null` (`harness/plan.py --record-baseline`): the day they were first listed is unknown, so they
@@ -51,7 +54,8 @@ method is named in the plan, never left out without a word.
 
 ## The caps
 
-- **owner**: at most **6 cache runs per subscription per night**, plus the client's one smoke run. A model still warm
+- **owner**: at most **6 cache runs per subscription per night**, plus the client's one smoke run (`--login-cap <n>`
+  changes it for one start, on the owner's word only). A model still warm
   at 2 hours gets a `long` run (12 h 10 min); it is one of the six and starts first. After 01:00 no `long` run starts
   (it stays first next Monday).
 - **owner**: the API keys share one pot of **$10 a week** with a ceiling of **$2 a run**, kept by the ledger
@@ -150,7 +154,7 @@ missed while the Mac slept runs when it wakes; `--uninstall --owner-ok` removes 
 |---|---|
 | Mon 23:00 | the checkout's look (above; a fast-forward and a restart when behind); the lock (`$G/night-<date>/weekly.json`, exclusive: a second start of the night is refused); the everyday snapshot; the plan, `results/night-<date>/PLAN.md` |
 | | the checks before anything is spent: each login's status, each key's free request, one smoke run per client. A failure: that part does not start, and an ask |
-| Mon ~23:15 | the runs: each login's six, staggered; the money's pass; the window checks one by one; the key runs, twelve at a time |
+| Mon ~23:15 | the runs: each login's six, each started as the first night's launcher plans it (`night.plan`: Devin's whole schedule under 36 requests in any 60 s and 270 in any 15 minutes; the dry run shows each start and end); the money's pass; the window checks one by one; the key runs, twelve at a time |
 | Tue ~01:30 | the `std` runs have ended |
 | Tue 11:30 at the latest | a run still alive gets its stop mark; `untouched --report`; the audit draft; `REPORT.md`, `runs.json` (public); `state.json` (private); one notification |
 
@@ -161,6 +165,29 @@ ledger); that start closes the ask.
 
 `python3 harness/night.py --date <date> status` and `stop codex|devin|all` work on a weekly night's logins as on the
 first night.
+
+## One login by day
+
+The night's own command runs one login's part alone on any day, without waiting for Monday: `--only devin` (or
+`codex`), with `--date <today>`. It is a night like any other: the checkout's look, the lock
+(`$G/night-<today>/weekly.json`), discovery, the snapshot, the plan from today's date (its two months end today), the
+login's status and its smoke run, the runs, and `results/night-<today>/` with `PLAN.md`, `runs.json` and `REPORT.md`.
+So the audit, the manifest and the publication treat it as any night, and until it is published the next Monday's
+plan holds its values as "waiting for its audit" (never measured twice). With `--only devin` the night reads no key
+file and starts nothing on the Codex login (the snapshot lists the everyday folders' names and dates, as every
+night). `--value devin:<model>:cache` (repeatable) names the runs exactly; `--login-cap <n>` lets more than six start
+(the owner's word). It ends when its last run ends, not at a set hour; Tuesday's 03:00 and 11:30 limits count from
+`--date`, so a start by day is never late.
+
+```bash
+cd ~/Projects/ngvoicu/providers.dev/groundtruth
+export GROUNDTRUTH_CLIENT_HOME="$HOME/groundtruth-clients"
+python3 harness/weekly.py --date "$(date +%F)" --dry-run night --only devin       # what it would run: nothing sent
+nohup caffeinate -i python3 -B harness/weekly.py --date "$(date +%F)" --go night --only devin \
+  >> "$GROUNDTRUTH_CLIENT_HOME/day-$(date +%F).log" 2>&1 &                          # the run; the terminal may close
+python3 harness/night.py --date "$(date +%F)" status                               # its runs, alive or ended
+python3 harness/night.py --date "$(date +%F)" stop devin                           # stops it
+```
 
 ## When the night asks (harness/asks.py)
 
