@@ -5,7 +5,8 @@
   __PLACEHOLDERS__ in and installs it, with the owner's OK only. launchd reads StartCalendarInterval in the Mac's own
   time zone (Europe/Bucharest on the owner's Mac; the night checks its time in Europe/Bucharest itself). A job missed
   while the Mac slept runs when it wakes; the night itself refuses to start after 03:00 on the Tuesday, and asks.
-  The wake is the owner's: sudo pmset repeat wakeorpoweron M 22:55:00
+  The wake is the owner's, just after 23:00 so that the night starts at the wake itself (a job missed while the Mac
+  slept runs when it wakes): sudo pmset repeat wakeorpoweron M 23:01:00
 -->
 <plist version="1.0">
 <dict>
@@ -41,8 +42,10 @@
   </dict>
   <key>RunAtLoad</key>
   <false/>
+  <!-- Standard, not Background: a Background job's processes (every probe the night starts) run at background QoS,
+       whose timers macOS may coalesce, and a probe's checks are timed to the second (a late check is invalid). -->
   <key>ProcessType</key>
-  <string>Background</string>
+  <string>Standard</string>
   <key>StandardOutPath</key>
   <string>__CLIENT_HOME__/weekly-night.log</string>
   <key>StandardErrorPath</key>

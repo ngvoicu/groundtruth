@@ -13,7 +13,7 @@
 #   --target DIR       another folder than ~/Library/LaunchAgents, and no launchctl (the tests)
 #
 # The repository is the checkout this script lies in. The wake is the owner's own step:
-#   sudo pmset repeat wakeorpoweron M 22:55:00
+#   sudo pmset repeat wakeorpoweron M 23:01:00
 set -euo pipefail
 LABEL=dev.providers.groundtruth.weekly-night
 repo=$(cd "$(dirname "$0")/.." && pwd -P)
@@ -67,5 +67,5 @@ if [ $load -eq 1 ]; then
   launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
   launchctl bootstrap "gui/$(id -u)" "$dest"
   echo "loaded: launchctl print gui/$(id -u)/$LABEL shows it"
-  echo "the wake, the owner's own step: sudo pmset repeat wakeorpoweron M 22:55:00"
+  echo "the wake, the owner's own step: sudo pmset repeat wakeorpoweron M 23:01:00"
 fi

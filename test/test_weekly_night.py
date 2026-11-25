@@ -368,7 +368,7 @@ class TheAsks(NightCase):
         ask = self.asks("key-refused")[0]
         self.assertEqual(ask["subject"], "openai-api")
         self.assertIn("OPENAI_API_KEY", ask["happened"])
-        self.assertIn("weekly.py check keys", ask["command"])
+        self.assertIn("weekly.py --go check keys", ask["command"])
 
     def test_a_missing_key_is_an_ask_too(self):
         keys = (("anthropic-api", "claude-k", 0.1),)
@@ -436,8 +436,7 @@ class TheAsks(NightCase):
             state = json.load(f)
         self.assertEqual((state["started"], state["reason"]), (False, "too late"))
         ask = self.asks("night-not-started")[0]
-        self.assertEqual(ask["command"], f"python3 harness/weekly.py --date {DATE} --go night   # starts it by hand "
-                                         "(a second start of a night is refused)")
+        self.assertTrue(ask["command"].startswith("python3 harness/weekly.py --date <today> --go night   #"))
         self.assertIn("Tue", ask["happened"])
 
     def test_a_start_after_one_starts_no_long_run(self):

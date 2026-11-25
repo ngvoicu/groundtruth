@@ -42,7 +42,7 @@ def _key_refused(f):
     return (f"The {f['route']} key was refused ({f.get('status', 'no key')})",
             f"The free request that checks the {f['route']} key answered {f.get('status', 'nothing: no key in the file')}"
             f" ({f.get('when', 'before the runs')}). The key is `{f['variable']}` in `$G/keys.env` (mode 600).",
-            f"{NIGHT} check keys   # sends the free request again for every key",
+            f"{NIGHT} --go check keys   # sends the free request again for every key",
             f"No run on {f['route']} started after the refusal.")
 
 
@@ -111,7 +111,8 @@ def _not_started(f):
     return (f"The night of {f['date']} did not start: {f['reason']}",
             f"The night of {f['date']} did not start: {f['reason']}." + (f" The Mac woke at {f['woke']}."
                                                                           if f.get("woke") else ""),
-            f"{NIGHT} --date {f['date']} --go night   # starts it by hand (a second start of a night is refused)",
+            f"{NIGHT} --date <today> --go night   # the week's night, by hand, now (with the night's own date it "
+            "would be refused as too late after 03:00 on the Tuesday; a second start of one date is refused)",
             "Nothing of that night was measured.")
 
 

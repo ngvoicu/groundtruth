@@ -25,11 +25,15 @@ output limit (`output`). Every value offered on a route the night drives is in e
   -  waiting      a measurement of it is in a night still waiting for its audit or its publication
   -  no method    the harness has no method for it on this route (named, never left out without a word)
   -  too old      released more than two months before the night (or first seen then, where no release date is
-                  known): never measured (the owner, 2026-11-22)
+                  known; or listed before discovery began, with no date at all): never measured (the owner, 2026-11-22)
 
 The window: a model counts when its release date (providers.dev's entry on the route; else, for a login's own id,
-the release date of the lab's own model it names, when exactly one is known) or, when none is known, the date it was
-first listed or discovered, is no more than two months before the night.
+the release date of the lab's own model it names, when exactly one is known: the lab's own entry, else any entry
+naming that canonical model) or, when none is known, the date it was first listed or discovered, is no more than two
+months before the night. listed.json states neither a release date nor a first-seen day: the day a model was first
+listed is plan/values.json's `first_seen`, else the night that first lists it (recorded at its publication). A model
+already listed when discovery began (its first file, 2026-11-25) has `first_seen` null: the day it was first listed
+is unknown, so with no release date it is too old (`--record-baseline` records them, once).
 
 The order: state 1, then 2, then 3. Inside state 1, the models first seen since the last night come first. Inside
 each state: the newest release first; then logins in the vendor's own list order and API keys cheapest first; then
@@ -182,27 +186,43 @@ def site_from(index, shard_reader):
 
 
 def lab_dates(site):
-    """normalized model id -> the set of release dates of the labs' own entries (an entry whose provider is the lab of
-    its canonical id): how a login's own id without an entry gets a release date."""
-    out = {}
+    """normalized model id -> the set of release dates of the lab's own model: how a login's own id without an entry
+    gets a release date. The lab's own entries (an entry whose provider is the lab of its canonical id) where there
+    are any; else the entries of other providers that name the same canonical model (providers.dev holds many labs'
+    models only through OpenRouter: `google/gemini-3.5-flash`), whose release date is the model's."""
+    own, named = {}, {}
     for e in site["entries"].values():
         cid = e.get("canonical_id") or ""
         if "/" not in cid or not e.get("release_date"):
             continue
         lab, model = cid.split("/", 1)
-        if e["provider"] != lab:
-            continue
-        out.setdefault(norm(model), set()).add(e["release_date"][:10])
-        out.setdefault(norm(e["model"]), set()).add(e["release_date"][:10])
+        day = e["release_date"][:10]
+        if e["provider"] == lab:
+            own.setdefault(norm(model), set()).add(day)
+            own.setdefault(norm(e["model"]), set()).add(day)
+        else:
+            named.setdefault(norm(model), set()).add(day)
+    out = dict(named)
+    out.update(own)
     return out
 
 
 # --- what is offered ------------------------------------------------------------------------------------------------
 
+def listed_levels(m):
+    """A listed.json model's reasoning levels (`reasoning.levels`, docs/discovery.md), in the vendor's order; [] when
+    the list states no reasoning for it."""
+    levels = (m.get("reasoning") or {}).get("levels") if isinstance(m.get("reasoning"), dict) else None
+    return [x for x in levels if isinstance(x, str)] if isinstance(levels, list) else []
+
+
 def offered(site, listed=None):
-    """route -> the models offered there, in order, each {model, release_date, first_seen, efforts, from}.
+    """route -> the models offered there, in order, each {model, efforts, from}.
     Logins: listed.json (discovery, G1), in the vendor's own list order; without it, providers.dev's entries of the
-    login (said in the plan). API keys: providers.dev's chat entries of openrouter, openai and anthropic."""
+    login (said in the plan). API keys: providers.dev's chat entries of openrouter, openai and anthropic.
+    listed.json states no release date and no first-seen day (its schema allows neither, harness/listed_schema.py):
+    a model's date comes from providers.dev and plan/values.json (release_of). Its reasoning levels are
+    `reasoning.levels` (`efforts` here: [] when it states none, None when the list is not discovery's)."""
     out, notes = {}, []
     listed_providers = (listed or {}).get("providers") or {}
     for route, d in ROUTES.items():
@@ -211,8 +231,7 @@ def offered(site, listed=None):
         if d["kind"] == "login" and lp and lp.get("models"):
             for m in lp["models"]:
                 m = {"id": m} if isinstance(m, str) else m
-                rows.append({"model": m["id"], "release_date": m.get("release_date"), "first_seen": m.get("first_seen"),
-                             "efforts": m.get("efforts"), "from": "listed"})
+                rows.append({"model": m["id"], "efforts": listed_levels(m), "from": "listed"})
         else:
             if d["kind"] == "login":
                 notes.append(f"{route}: no list of {d['provider']} in listed.json (discovery, step G1, is not running "
@@ -221,8 +240,7 @@ def offered(site, listed=None):
                 e = site["entries"][ref]
                 if e["provider"] != d["provider"] or (d["kind"] == "api_key" and e.get("type") != "chat"):
                     continue
-                rows.append({"model": e["model"], "release_date": None, "first_seen": None, "efforts": None,
-                             "from": "providers.dev"})
+                rows.append({"model": e["model"], "efforts": None, "from": "providers.dev"})
         out[route] = rows
     return out, notes
 
@@ -389,18 +407,24 @@ def state_of(quantity, ms, pending, ver, record, now_stated):
 
 # --- the plan ---------------------------------------------------------------------------------------------------------
 
+BEFORE_DISCOVERY = "listed before discovery began"
+
+
 def release_of(route, row, site, labs, seen):
-    """(date, basis) of a model on a route: providers.dev's entry; else a listed release date; else, for a login,
-    the lab's own model it names (exactly one date known); else the day it was first listed or discovered."""
+    """(date, basis) of a model on a route: providers.dev's entry; else, for a login, the lab's own model it names
+    (exactly one date known); else the day it was first listed or discovered (plan/values.json's `first_seen`, else
+    the night itself: recorded at the publication). A `first_seen` of null is a model already listed when discovery
+    began (2026-11-25, recorded by --record-baseline): the day it was first listed is not known, so it has no date and
+    is never in the window."""
     e = site["entries"].get(f"{ROUTES[route]['provider']}/{row['model']}")
     if e and e.get("release_date"):
         return e["release_date"][:10], "release"
-    if row.get("release_date"):
-        return row["release_date"][:10], "release"
     dates = labs.get(norm(row["model"])) if ROUTES[route]["kind"] == "login" else None
     if dates and len(dates) == 1:
         return next(iter(dates)), "lab release"
-    return (seen[:10] if seen else None), "first seen"
+    if seen is None:
+        return None, BEFORE_DISCOVERY
+    return seen[:10], "first seen"
 
 
 REQUESTS = {"std": 3 + 2 * 3 * 14, "long": 3 + 2 * 3 * 17}
@@ -450,8 +474,10 @@ def build(date, observed, site, values=None, listed=None, root=ROOT, last_night=
         kind = ROUTES[route]["kind"]
         for pos, row in enumerate(rows):
             model = row["model"]
-            seen = row.get("first_seen") or (first_seen.get(route) or {}).get(model)
-            if not seen:
+            known = first_seen.get(route) or {}
+            if model in known:
+                seen = known[model]  # a day, or null: listed before discovery began (release_of)
+            else:
                 newly_seen.setdefault(route, {})[model] = date
                 seen = date
             released, basis = release_of(route, row, site, labs, seen)
@@ -461,7 +487,7 @@ def build(date, observed, site, values=None, listed=None, root=ROOT, last_night=
                 ms = ms_all.get((route, model, q), [])
                 item = {"key": key, "route": route, "model": model, "quantity": q, "position": pos,
                         "release": released, "release_basis": basis, "first_seen": seen,
-                        "fresh": seen > last_night, "count": len(ms),
+                        "fresh": bool(seen) and seen > last_night, "count": len(ms),
                         "last_measured": ms[-1]["date"] if ms else None,
                         "oldest_measured": ms[0]["date"] if ms else None,
                         "values": [m["value"] for m in ms], "verdict": verdict(e, q),
@@ -470,7 +496,9 @@ def build(date, observed, site, values=None, listed=None, root=ROOT, last_night=
                     item["state"], item["why"] = NO_METHOD_STATE, NO_METHOD[(q, kind)]
                 elif released is None or parse_day(released) is None or parse_day(released) < since:
                     item["state"] = TOO_OLD
-                    item["why"] = f"released {released} ({basis}), before {since.isoformat()}"
+                    item["why"] = (f"no release date known and {basis}: the day it was first listed is unknown"
+                                   if basis == BEFORE_DISCOVERY else
+                                   f"released {released} ({basis}), before {since.isoformat()}")
                 else:
                     item["state"] = state_of(q, ms, item["pending"], item["verdict"], records.get(key), stated(e, q))
                 if kind == "api_key" and e:
@@ -570,9 +598,27 @@ def values_file(observed, site, previous=None, today=None, first_seen=None, last
             seen.setdefault(r, {}).setdefault(m, d)
     return {"schema": 1, "about": "What the weekly night's plan knows of each measured value (harness/plan.py): how "
             "often it was measured, when, our last value, and what models.dev and pi.dev stated on the day we "
-            "measured it; and the day each offered model was first seen. Written at each publication.",
+            "measured it; and the day each offered model was first seen (null: listed before discovery began, "
+            "2026-11-25, the day unknown). Written at each publication.",
             "dataset": site.get("dataset"), "last_night": last_night or previous.get("last_night"),
             "values": out, "first_seen": {r: dict(sorted(m.items())) for r, m in sorted(seen.items())}}
+
+
+def record_baseline(values, plan):
+    """Records as `first_seen: null` every login model that this plan sees for the first time and has no release date
+    (neither providers.dev's nor its lab's): models already listed when discovery began, whose first-listed day is not
+    known. Run once, on the first listed.json (2026-11-25); without it they would count as first seen on the next
+    night and be planned as new. Returns how many."""
+    fs = values.setdefault("first_seen", {})
+    added = 0
+    for i in plan["items"]:
+        if i["quantity"] != "cache" or ROUTES[i["route"]]["kind"] != "login" or i["release_basis"] != "first seen":
+            continue
+        if i["model"] in (plan["newly_seen"].get(i["route"]) or {}):
+            fs.setdefault(i["route"], {})[i["model"]] = None
+            added += 1
+    values["first_seen"] = {r: dict(sorted(m.items())) for r, m in sorted(fs.items())}
+    return added
 
 
 def load(path, default=None):
@@ -593,11 +639,20 @@ def main(argv=None):
     ap.add_argument("--last-night", help="the date of the last night (default: plan/values.json's, else a week before)")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--write-values", action="store_true", help="write plan/values.json (at a publication)")
+    ap.add_argument("--record-baseline", action="store_true",
+                    help="record the login models listed before discovery began (no date known) in plan/values.json's "
+                         "first_seen as null; changes nothing else")
     a = ap.parse_args(argv)
     site = load_site(a.site_data)
     observed = load(a.observed, {})
     values = load(a.values, {})
     plan = build(a.date, observed, site, values, load(a.listed), last_night=a.last_night)
+    if a.record_baseline:
+        added = record_baseline(values, plan)
+        with open(a.values, "w") as f:
+            f.write(json.dumps(values, indent=1, sort_keys=True) + "\n")
+        print(f"wrote {os.path.relpath(a.values, ROOT)}: {added} models listed before discovery began")
+        return
     if a.write_values:
         data = values_file(observed, site, values, today=a.date, first_seen=plan["newly_seen"],
                            last_night=a.last_night)

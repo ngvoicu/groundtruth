@@ -20,8 +20,16 @@ method is named in the plan, never left out without a word.
 
 - **owner**: only models released in the **last two months** (calendar months before the night), newest first. A
   login's own id with no release date takes the lab's own model's date where exactly one is known, else the day it
-  was first listed or discovered (`plan/values.json`'s `first_seen`, or `listed.json`'s). Never a model released
-  earlier, whatever its state: the design's 90-day re-check of values only we state is dropped.
+  was first listed or discovered (`plan/values.json`'s `first_seen`; `listed.json` states no date of any kind). Never
+  a model released earlier, whatever its state: the design's 90-day re-check of values only we state is dropped.
+  - The lab's date: the lab's own entry on providers.dev, else any entry naming the same canonical model (many labs'
+    models are on providers.dev only through OpenRouter); used only when exactly one date is known.
+  - A model `listed.json` lists for the first time is first seen on that night (recorded at its publication). The
+    models already listed when discovery began (its first file, 2026-11-25) with no date at all are recorded once
+    with `first_seen: null` (`harness/plan.py --record-baseline`): the day they were first listed is unknown, so they
+    are too old. Without that, every one of them (Opus 4.6, GPT-5.4, SWE-1.6, ...) would be planned as new.
+  - A Devin run asks for the base id with the lowest level of `reasoning.levels` (`low`, else `none`, `minimal`,
+    `medium`, `high`); a model the list gives no levels is asked for by its base id.
 - Inside the window, the order is the design's: **1 new** (never measured; first the models first seen since the
   last night), **2 in doubt** (measured once and disagreeing with models.dev or pi.dev, or twice with two values that
   disagree with each other), **3 source moved** (a source states another value than on the day we measured). A value
@@ -68,13 +76,18 @@ method is named in the plan, never left out without a word.
 
 ```bash
 export GROUNDTRUTH_CLIENT_HOME="$HOME/groundtruth-clients"; G="$GROUNDTRUTH_CLIENT_HOME"
-sudo pmset repeat wakeorpoweron M 22:55:00            # the Mac wakes on Mondays at 22:55
+sudo pmset repeat wakeorpoweron M 23:01:00            # the Mac wakes on Mondays at 23:01 (below)
 # the logins stay in the night's own folder between weeks (the first night's, docs/own-clients-RUN.md, step 2)
 umask 077; printf 'OPENROUTER_API_KEY=%s\nOPENAI_API_KEY=%s\nANTHROPIC_API_KEY=%s\n' \
   "<a key made for the night, with its own limit>" "<…>" "<…>" > "$G/keys.env"; chmod 600 "$G/keys.env"
 ```
 
-The lid stays open and the Mac on power on Monday nights.
+The lid stays open and the Mac on power on Monday nights, the owner logged in (the screen may be locked): the agent
+lives in the owner's session, so a Mac that is shut down, or at the login window, runs no night. The wake is just
+after 23:00 on purpose: launchd starts a calendar job missed while the Mac slept as soon as it wakes, so the night
+starts at the wake itself, and its `caffeinate` holds the Mac awake from then on. A wake before 23:00 would need the
+Mac to stay awake, idle, until 23:00, which nothing holds. `pmset repeat` keeps one repeating wake: it replaces any
+other (`pmset -g sched` shows it); `sudo pmset repeat cancel` removes it.
 
 ## Staff, once, with the owner's OK
 
@@ -98,7 +111,10 @@ missed while the Mac slept runs when it wakes; `--uninstall --owner-ok` removes 
 | Tue ~01:30 | the `std` runs have ended |
 | Tue 11:30 at the latest | a run still alive gets its stop mark; `untouched --report`; the audit draft; `REPORT.md`, `runs.json` (public); `state.json` (private); one notification |
 
-A late start: after 01:00 no `long` run; after 03:00 the night does not start, writes its state and asks.
+A late start: after 01:00 no `long` run; after 03:00 the night does not start, writes its state and asks (also when
+the Mac slept through and launchd runs the missed job later in the week: it is last Monday's night). A night already
+started is never overwritten. The ask's command runs the week's night by hand under today's date (same week, same
+ledger); that start closes the ask.
 
 `python3 harness/night.py --date <date> status` and `stop codex|devin|all` work on a weekly night's logins as on the
 first night.
@@ -108,12 +124,12 @@ first night.
 Each case stops its own part only. The owner gets a macOS notification at once (one for a burst), the ask in full in
 `$G/asks/open/<id>.md` with the exact command, and every open ask at the top of every report until the check that
 failed passes again; nobody closes one by hand. `python3 harness/asks.py` lists them; `python3 harness/weekly.py
-check keys|logins` runs a check again.
+--go check keys|logins` runs a check again (it sends: without `--go` it only says what it would send).
 
 | Case | Stops | The command in the ask |
 |---|---|---|
 | a login expired (status before or between runs, or a run's login error) | that login's part | `python3 harness/night.py --date <date> login <client>` |
-| a key refused (401/403) or missing | that route | `python3 harness/weekly.py check keys` |
+| a key refused (401/403) or missing | that route | `python3 harness/weekly.py --go check keys` |
 | a plan's limit (quota) | that login's part | `python3 harness/weekly.py --date <today> --go night --only <client>` |
 | the week's money spent (or the provider's 402) | the API keys | the same with `--only keys --week-cap <dollars>` |
 | a cache run over $2 | that one | the same with `--value <route>:<model>:cache --run-cap <dollars>` |
@@ -121,7 +137,7 @@ check keys|logins` runs a check again.
 | a vendor refusing twice in a row | that route | the same with `--only <part>`, after a look at the account |
 | a window request answered | the window list | none: a look first; the next night's requests close it |
 | discovery stale (over 3 days) | nothing | Provimux's status page, then discovery |
-| the night did not start (after 03:00) | the night | `python3 harness/weekly.py --date <date> --go night` |
+| the night did not start (after 03:00) | the night | `python3 harness/weekly.py --date <today> --go night` |
 | an unsteady value | that value | none: a decision |
 | a smoke run failed, the night's folders refused | that client's part | the smoke results to the maintainer; `night.py untouched --save` |
 

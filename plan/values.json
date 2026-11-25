@@ -1,5 +1,5 @@
 {
- "about": "What the weekly night's plan knows of each measured value (harness/plan.py): how often it was measured, when, our last value, and what models.dev and pi.dev stated on the day we measured it; and the day each offered model was first seen. Written at each publication.",
+ "about": "What the weekly night's plan knows of each measured value (harness/plan.py): how often it was measured, when, our last value, and what models.dev and pi.dev stated on the day we measured it; and the day each offered model was first seen (null: listed before discovery began, 2026-11-25, the day unknown). Written at each publication.",
  "dataset": "0b47455c15b331fa",
  "first_seen": {
   "anthropic-api": {
@@ -9,6 +9,7 @@
    "claude-sonnet-5-5": "2026-11-22"
   },
   "codex-subscription": {
+   "gpt-5.6-terra": null,
    "gpt-6-astra": "2026-11-22",
    "gpt-6-luna": "2026-11-22",
    "gpt-6.1-sol": "2026-11-22",
@@ -17,23 +18,46 @@
    "gpt-6.2-sol": "2026-11-22"
   },
   "devin": {
+   "claude-5-fable": null,
+   "claude-fable-5-1": null,
    "claude-haiku-5-5": "2026-11-22",
+   "claude-opus-4-6": null,
+   "claude-opus-4-6-1m": null,
+   "claude-opus-4-7": null,
+   "claude-opus-4-8": null,
+   "claude-opus-5": null,
    "claude-opus-5-5": "2026-11-22",
+   "claude-sonnet-4-6": null,
+   "claude-sonnet-4-6-1m": null,
+   "claude-sonnet-5": null,
    "claude-sonnet-5-5": "2026-11-22",
    "deepseek-v4-1-flash-1017": "2026-11-22",
    "deepseek-v4-pro": "2026-11-22",
    "gemini-4-argon": "2026-11-22",
+   "glm-5-2-1m": null,
    "glm-5-3": "2026-11-22",
+   "glm-5-3-flash": null,
+   "gpt-5-4-mini": null,
+   "gpt-5-6-terra": null,
    "gpt-6-1-sol": "2026-11-22",
    "gpt-6-1-terra": "2026-11-22",
    "gpt-6-astra": "2026-11-22",
    "gpt-6-luna": "2026-11-22",
    "grok-4-7": "2026-11-22",
+   "kimi-k2-7": null,
    "kimi-k3": "2026-11-22",
    "kimi-k3-1-pro": "2026-11-22",
    "muse-wonder-1-0": "2026-11-22",
    "nemotron-3-5-super": "2026-11-22",
-   "swe-2": "2026-11-22"
+   "nemotron-3-ultra": null,
+   "swe-1-6": null,
+   "swe-1-7": null,
+   "swe-2": "2026-11-22",
+   "swe-2-1": null,
+   "swe-2-1-lightning": null,
+   "swe-2-flash": null,
+   "swe-2-flash-lightning": null,
+   "swe-2-lightning": null
   },
   "openai-api": {
    "chat-latest": "2026-11-22",

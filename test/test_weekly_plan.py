@@ -210,8 +210,8 @@ class Window(unittest.TestCase):
     def test_a_login_s_own_id_dates_from_the_lab_else_from_when_it_was_first_seen(self):
         s = site(entry("anthropic", "claude-old-4-6", release="2026-02-01", canonical="anthropic/claude-old-4-6"))
         listed = {"providers": {"devin": {"date": DATE, "models": [
-            {"id": "claude-old-4-6"}, {"id": "swe-9"}, {"id": "swe-8", "first_seen": "2026-08-01"}]}}}
-        plan = build(s, observed(), listed=listed)
+            {"id": "claude-old-4-6"}, {"id": "swe-9"}, {"id": "swe-8"}]}}}
+        plan = build(s, observed(), {"first_seen": {"devin": {"swe-8": "2026-08-01"}}}, listed=listed)
         old = item(plan, "devin", "claude-old-4-6")
         self.assertEqual((old["state"], old["release_basis"]), (P.TOO_OLD, "lab release"))
         new = item(plan, "devin", "swe-9")
@@ -243,8 +243,7 @@ class Order(unittest.TestCase):
                                   "a/moved"])
 
     def test_logins_keep_the_vendor_s_own_order_within_a_state(self):
-        listed = {"providers": {"devin": {"date": DATE, "models": [{"id": "z-1", "release_date": "2026-11-01"},
-                                                                    {"id": "a-1", "release_date": "2026-11-01"}]}}}
+        listed = {"providers": {"devin": {"date": DATE, "models": [{"id": "z-1"}, {"id": "a-1"}]}}}
         plan = build(site(), observed(), {"first_seen": {"devin": {"z-1": "2026-11-01", "a-1": "2026-11-01"}}},
                      listed)
         self.assertEqual([i["model"] for i in plan["planned"]], ["z-1", "a-1"])

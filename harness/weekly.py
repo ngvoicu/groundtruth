@@ -7,7 +7,7 @@ with the owner's decisions of 2026-11-22 over it), and its Tuesday commands.
     python3 harness/weekly.py --date 2026-11-30 status       # Tuesday's first question: did the night run?
     python3 harness/weekly.py --date 2026-11-30 audit        # the mechanical audit: $G/night-<date>/audit-draft.md
     python3 harness/weekly.py --date 2026-11-30 manifest     # after AUDIT.md: the manifest entries, generated
-    python3 harness/weekly.py check keys|logins|windows      # a check again (closes the asks it answers)
+    python3 harness/weekly.py --go check keys|logins|windows # a check again (closes the asks it answers)
 
 `--date` defaults to the night now running (a Monday from noon, or the Tuesday before noon). Options of `night`:
 `--only codex|devin|keys` (repeatable), `--week-cap <dollars>` (default 10), `--run-cap <dollars>` (default 2),
@@ -107,6 +107,14 @@ def night_date(now):
     return None
 
 
+def last_monday(now):
+    """The last Monday whose night has ended by `now` (Tuesday noon): a Monday morning gives the Monday before."""
+    day = now.date() - dt.timedelta(days=now.weekday())
+    if now.weekday() == 0 and now.time() < dt.time(12, 0):
+        day -= dt.timedelta(days=7)
+    return day.isoformat()
+
+
 def at(date, days, t):
     day = dt.date.fromisoformat(date) + dt.timedelta(days=days)
     naive = dt.datetime.combine(day, t)
@@ -127,8 +135,12 @@ def slug(s):
 
 
 def devin_model(model, efforts=None):
-    """The Devin id a run asks for: the model with its effort suffix (the lowest the list offers, else the first
-    night's, else `low`)."""
+    """The Devin id a run asks for: listed.json's base id with an effort suffix. `efforts` is the list's
+    `reasoning.levels` (plan.offered): the lowest it offers (`low`, else `none`, `minimal`, `medium`, `high`, else its
+    first: DeepSeek V4 Pro has only `high` and `max`); [] (the list states no reasoning for it): the base id as it is;
+    None (no listed.json: providers.dev's entries): the first night's suffix, else `low`."""
+    if efforts == []:
+        return model
     if efforts:
         for e in EFFORT_PREFERENCE:
             if e in efforts:
@@ -230,6 +242,9 @@ class Night:
         if when == "too late":
             self.say(f"the night of {self.date}: it is {now:%a %H:%M}: after 03:00 on the Tuesday the night does not "
                      "start")
+            if os.path.exists(os.path.join(self.private, "weekly.json")):  # it did start: its state stays as it is
+                self.say(f"the night of {self.date} started already (its lock): nothing written")
+                return self.state
             if not self.dry:
                 os.makedirs(self.private, mode=0o700, exist_ok=True)
                 self.asks.open("night-not-started", self.date, date=self.date,
@@ -240,7 +255,10 @@ class Night:
                 self.flush()
             return self.state
         self.take_lock(now)
-        self.asks.passed("night-not-started", self.date)
+        # A night of the same week started (by hand, with --date <today>): the week's night-not-started asks close.
+        for subject in self.asks.subjects("night-not-started"):
+            if P.parse_day(subject) and L.week_of(subject) == self.ledger.week:
+                self.asks.passed("night-not-started", subject)
         self.discover()
         self.snapshot()
         site = self.w.site()
@@ -1353,6 +1371,10 @@ def main(argv=None):
     head = a.what[0]
     home = os.environ.get("GROUNDTRUTH_CLIENT_HOME")
     if head == "night":
+        if not date and a.go and not a.date:
+            # launchd runs a job missed while the Mac slept when it wakes, which may be after Tuesday noon: that is
+            # last Monday's night, too late to start; it writes its state and asks (Night.run), never silently.
+            date = last_monday(now_local())
         if not date:
             raise SystemExit("night: it is not a Monday night (Monday from noon to Tuesday noon): give --date")
         if not (a.dry_run or a.go):
@@ -1383,7 +1405,15 @@ def main(argv=None):
     elif head == "manifest":
         manifest(date, dry=a.dry_run)
     elif head == "check":
-        check(a.what[1] if len(a.what) > 1 else "", home, World(home))
+        what = a.what[1] if len(a.what) > 1 else ""
+        if not a.go:  # a check sends a request (a key's free request, a client's own status command): only with --go
+            if what not in ("keys", "logins", "windows"):
+                raise SystemExit("check keys|logins|windows")
+            print(f"check {what}: would send " + {"keys": "each key's free request (OpenRouter, OpenAI, Anthropic)",
+                                                  "logins": "each login's own status command (Codex, Devin)",
+                                                  "windows": "nothing"}[what] + "; nothing sent without --go")
+            return
+        check(what, home, World(home))
     else:
         raise SystemExit("night | status | audit | manifest | check")
 
