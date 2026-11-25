@@ -272,11 +272,13 @@ def lab_dates(site):
         if lab in LOGIN_PROVIDERS:
             continue
         for r in rows:
-            if not r["released"]:
+            cid = r.get("canonical") or ""
+            # The lab's own model only: a row another owner's (a reseller listing a lab's model) or naming another
+            # lab's canonical model is not this lab's date.
+            if not r["released"] or (r.get("owner") or lab) != lab or ("/" in cid and not cid.startswith(lab + "/")):
                 continue
             listed.setdefault(norm(r["id"]), set()).add(r["released"])
-            cid = r.get("canonical") or ""
-            if cid.startswith(lab + "/"):
+            if cid:
                 listed.setdefault(norm(cid.split("/", 1)[1]), set()).add(r["released"])
     out = dict(named)
     out.update(listed)

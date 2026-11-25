@@ -271,6 +271,14 @@ class ListingDates(unittest.TestCase):
         plan = self.plan(site(), listings, ["twice"])
         self.assertEqual(item(plan, "devin", "twice")["release_basis"], P.BEFORE_DISCOVERY)
 
+    def test_a_reseller_s_row_of_a_lab_s_model_is_not_the_lab_s_date(self):
+        listings = {"devin": listing("devin", ("claude-x", None, None, None)),
+                    "anthropic": listing("anthropic", ("claude-x", "2026-11-01", None, None)),
+                    "vivgrid": listing("vivgrid", ("claude-x", "2026-11-02", "anthropic", None),
+                                       ("claude-x-2", "2026-11-03", None, "anthropic/claude-x"))}
+        plan = self.plan(site(), listings, ["claude-x"])
+        self.assertEqual(item(plan, "devin", "claude-x")["release"], "2026-11-01")
+
     def test_the_lab_s_own_entry_comes_before_its_listing_row(self):
         s = site(entry("openai", "gpt-x", release="2026-11-06", canonical="openai/gpt-x"))
         listings = {"openai": listing("openai", ("gpt-x", "2026-07-01", "openai", "openai/gpt-x"))}
