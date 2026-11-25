@@ -21,8 +21,9 @@ method is named in the plan, never left out without a word.
 - **owner**: only models released in the **last two months** (calendar months before the night), newest first. A
   login's own id with no release date on its entry takes, in order: the `released` of its row in the login's own
   listing on providers.dev (`/data/listings/<provider>.json`, as `/api/v1/listings/<provider>`; "listed release");
-  the lab's own model's date where exactly one is known; else the day it was first listed or discovered (`plan/values.json`'s `first_seen`; `listed.json` states no date of any kind). Never
-  a model released earlier, whatever its state: the design's 90-day re-check of values only we state is dropped.
+  the lab's own model's date where exactly one is known; else the day it was first listed or discovered
+  (`plan/values.json`'s `first_seen`; `listed.json` states no date of any kind). Never a model released earlier,
+  whatever its state: the design's 90-day re-check of values only we state is dropped.
   - The lab's date: the lab's own entry on providers.dev, else the lab's own listing row (`released`; the listings
     read are those of every lab that is some entry's canonical lab, and of every owner the logins' listings name),
     else any entry naming the same canonical model (many labs' models are on providers.dev only through OpenRouter);
@@ -177,11 +178,16 @@ plan holds its values as "waiting for its audit" (never measured twice). With `-
 file and starts nothing on the Codex login (the snapshot lists the everyday folders' names and dates, as every
 night). `--value devin:<model>:cache` (repeatable) names the runs exactly; `--login-cap <n>` lets more than six start
 (the owner's word). It ends when its last run ends, not at a set hour; Tuesday's 03:00 and 11:30 limits count from
-`--date`, so a start by day is never late.
+`--date`, so a start by day is never late. Its audit and publication are Tuesday's steps with `--date <that day>`;
+best before the next Monday night, whose audit draft would otherwise count the unpublished folder as a path outside
+its own night (item C). `stop` ends the night's own process too (the lock names it as the launcher): the runs stop,
+but `runs.json`, `REPORT.md` and the audit draft are not written; until they are, the next plan still holds the
+stopped runs' values as waiting (it reads the folder's `*.jsonl`).
 
 ```bash
 cd ~/Projects/ngvoicu/providers.dev/groundtruth
 export GROUNDTRUTH_CLIENT_HOME="$HOME/groundtruth-clients"
+python3 harness/weekly.py --go check logins --only devin                          # Devin's own status command only
 python3 harness/weekly.py --date "$(date +%F)" --dry-run night --only devin       # what it would run: nothing sent
 nohup caffeinate -i python3 -B harness/weekly.py --date "$(date +%F)" --go night --only devin \
   >> "$GROUNDTRUTH_CLIENT_HOME/day-$(date +%F).log" 2>&1 &                          # the run; the terminal may close
@@ -194,7 +200,8 @@ python3 harness/night.py --date "$(date +%F)" stop devin                        
 Each case stops its own part only. The owner gets a macOS notification at once (one for a burst), the ask in full in
 `$G/asks/open/<id>.md` with the exact command, and every open ask at the top of every report until the check that
 failed passes again; nobody closes one by hand. `python3 harness/asks.py` lists them; `python3 harness/weekly.py
---go check keys|logins` runs a check again (it sends: without `--go` it only says what it would send).
+--go check keys|logins` runs a check again (it sends: without `--go` it only says what it would send; `check logins
+--only devin` runs that login's alone).
 
 | Case | Stops | The command in the ask |
 |---|---|---|

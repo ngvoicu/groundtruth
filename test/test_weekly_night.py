@@ -619,6 +619,13 @@ class AsksOverNights(NightCase):
         self.assertEqual(closed, [f"login-expired--devin--{third_date}.json"])
         self.assertNotIn("Log in again", self.report(third_date).split("## Parts")[0])
 
+    def test_a_check_of_one_login_touches_no_other(self):
+        fake = Fake(bucharest(0, 23), fixture_site(codex=0, devin=0, keys=()))
+        lines = []
+        W.check("logins", self.home, fake, out=lines.append, only=["devin"])
+        self.assertEqual([c for c in fake.calls if c[0] == "login_status"], [("login_status", "devin")])
+        self.assertEqual(lines, ["devin: logged in"])
+
     def test_nobody_closes_an_ask_by_hand(self):
         self.assertFalse(hasattr(A.Asks, "close"))
         self.assertFalse(any(name in A.Asks.__dict__ for name in ("dismiss", "remove", "delete")))

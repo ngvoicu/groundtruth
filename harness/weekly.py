@@ -8,6 +8,7 @@ with the owner's decisions of 2026-11-22 over it), and its Tuesday commands.
     python3 harness/weekly.py --date 2026-11-30 audit        # the mechanical audit: $G/night-<date>/audit-draft.md
     python3 harness/weekly.py --date 2026-11-30 manifest     # after AUDIT.md: the manifest entries, generated
     python3 harness/weekly.py --go check keys|logins|windows # a check again (closes the asks it answers)
+    python3 harness/weekly.py --go check logins --only devin # one login's status only
 
 `--date` defaults to the night now running (a Monday from noon, or the Tuesday before noon). Options of `night`:
 `--only codex|devin|keys` (repeatable), `--week-cap <dollars>` (default 10), `--run-cap <dollars>` (default 2),
@@ -1608,8 +1609,9 @@ def status(date, home, out=print):
     return state
 
 
-def check(what, home, w, out=print):
-    """A check again, outside a night: it closes the asks it answers."""
+def check(what, home, w, out=print, only=None):
+    """A check again, outside a night: it closes the asks it answers. `only`: the logins checked (`--only devin`: the
+    Codex login is not touched)."""
     asks = A.Asks(os.path.join(home, "asks"), notify=w.notify, today=time.strftime("%Y-%m-%d"))
     if what == "keys":
         keys = w.read_keys()
@@ -1622,7 +1624,7 @@ def check(what, home, w, out=print):
             if code == 200:
                 asks.passed("key-refused", route)
     elif what == "logins":
-        for part in ("codex", "devin"):
+        for part in [p for p in ("codex", "devin") if not only or p in only]:
             why = w.login_status(part)
             out(f"{part}: {'logged in' if not why else 'refused'}")
             if not why:
@@ -1690,11 +1692,12 @@ def main(argv=None):
         if not a.go:  # a check sends a request (a key's free request, a client's own status command): only with --go
             if what not in ("keys", "logins", "windows"):
                 raise SystemExit("check keys|logins|windows")
+            logins = ", ".join(p.capitalize() for p in ("codex", "devin") if not a.only or p in a.only) or "none"
             print(f"check {what}: would send " + {"keys": "each key's free request (OpenRouter, OpenAI, Anthropic)",
-                                                  "logins": "each login's own status command (Codex, Devin)",
+                                                  "logins": f"each login's own status command ({logins})",
                                                   "windows": "nothing"}[what] + "; nothing sent without --go")
             return
-        check(what, home, World(home))
+        check(what, home, World(home), only=a.only)
     else:
         raise SystemExit("night | status | audit | manifest | check")
 
