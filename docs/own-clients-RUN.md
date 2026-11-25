@@ -3,7 +3,7 @@
 The first night of [`own-clients.md`](own-clients.md), section 4, cut down to **the cache runs of Codex CLI and Devin
 CLI only** (the owner's decision of 2026-11-22: the two logins where differences were seen), each through its own
 subscription login. Claude Code and Muse Code wait for a later night: no night command runs, logs in or reads a key
-for either. There is no pi run and no Provimux in it, no OpenRouter run and no window request, no input-limit walk and
+for either. There is no Pi run and no Provimux in it, no OpenRouter run and no window request, no input-limit walk and
 no Antigravity run. `harness/night.py` holds every command. Every command takes `--dry-run`, which says what it would
 do and does nothing else; nothing is sent without `--go`.
 
@@ -204,7 +204,7 @@ Then read, by hand. The results are in `results/own-clients-$N/smoke/`; each inv
 - [ ] `git status --short` lists nothing outside `results/own-clients-$N/`, and both scans end with `CLEAN`:
       `python3 harness/scan_secrets.py --own-clients --git .` and
       `python3 harness/scan_secrets.py --own-clients results/own-clients-$N`. With `--own-clients` the scan opens no
-      proxy or pi file (the night uses neither). It reads the files a commit could take (the first) and the night's
+      proxy or Pi file (the night uses neither). It reads the files a commit could take (the first) and the night's
       results with every console log under `logs/` (the second), and looks in them for the key variables of the shell,
       for any value whose fingerprint `~/.groundtruth/fingerprints.json` holds (a hash, a length and the first six
       characters, never the value; the first night records none of its own), and for token shapes, e-mail addresses,

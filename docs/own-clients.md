@@ -45,14 +45,14 @@ the version diagnostic and a timeout included, reach them and the public JSONL r
 an absent one unknown; the builder refuses a check that is not one explicit call, and a check answered by another
 model than the manifest's (Codex's model evidence is bound to the measured turn). The launcher records each worker's
 pid as it starts, and `status`/`stop` also find a worker by its launch id. `scan_secrets.py --own-clients` reads no
-proxy or pi file. The morning report says when the Keychain could not be listed. Claude runs stop at a first 5-minute
+proxy or Pi file. The morning report says when the Keychain could not be listed. Claude runs stop at a first 5-minute
 cache write (paid overage) unless `--allow-overage`; CC5 – CC8 do not start after such a stop.
 
 **Since the second review (2026-11-22): the first night is the own clients' cache runs only** (the chief's decision).
-It supersedes what the list below says of pi, Provimux, OpenRouter and the supervisor:
+It supersedes what the list below says of Pi, Provimux, OpenRouter and the supervisor:
 
-- **Out of the first night**: every pi run, `pi-setup` and the reading of Provimux's configuration (the parity pairs
-  of section 7 come in a later night; `harness/clients.py` has no pi client any more); every OpenRouter run and window
+- **Out of the first night**: every Pi run, `pi-setup` and the reading of Provimux's configuration (the parity pairs
+  of section 7 come in a later night; `harness/clients.py` has no Pi client any more); every OpenRouter run and window
   request of 4.1, with the money stop and its reservations; the supervisor. What stays is S1 – S4 and S3b, CC1 – CC8,
   CX1 – CX6, DV1 – DV18 with DV9d (pair DV-5 compares two Devin runs) and MC1 – MC3. The TypeScript probe (`src/`)
   stays as it is, shared and reached by no night command.
@@ -96,13 +96,13 @@ It supersedes what the list below says of pi, Provimux, OpenRouter and the super
 - **The parity design's measuring rules** (Provimux, `.github/provimux/design/client-parity.md`, section 4.5): M-1, the
   same model variant on both sides of a pair, a Devin id with its effort suffix given to Provimux as it is; M-2, the
   Devin CLI with `--process-model in-process` and `DEVIN_CACHE_KEEPALIVE_MAX_PINGS=0`, both recorded; M-3, an age's
-  samples primed in three waves at least five minutes apart; M-4, a pi run records the Provimux build, pi's version,
+  samples primed in three waves at least five minutes apart; M-4, a Pi run records the Provimux build, Pi's version,
   pi-provimux's commit, the transport and the payload rules: the `payload` section of Provimux's configuration,
   read by the run itself, nothing else of that file. The pairs of its section 7 are in the plan (without CX-3's
-  second run, without CX-S (b), and without Antigravity), each pi run started beside its own-client run, pi from a
-  state folder of its own that `night.py pi-setup` makes with pi's own `pi install`.
-- **No Meta rule switch**: MC-1's pi run goes through Provimux's payload rules as configured (Muse Code caches no
-  conversation, so the pair's question is answered); there is no second MC-1 pi run.
+  second run, without CX-S (b), and without Antigravity), each Pi run started beside its own-client run, Pi from a
+  state folder of its own that `night.py pi-setup` makes with Pi's own `pi install`.
+- **No Meta rule switch**: MC-1's Pi run goes through Provimux's payload rules as configured (Muse Code caches no
+  conversation, so the pair's question is answered); there is no second MC-1 Pi run.
 - **One go for the night**: after the smoke review, `night.py --go night` starts a detached supervisor that launches
   every part, starts the 5-minute Claude runs when CC1 – CC4 have ended, and writes the morning report of the
   everyday state at the end; `status` and `stop all` watch and stop it. The owner's part is the one-time setup (the
@@ -450,7 +450,7 @@ checkout of this repository can hold either.
 **A throwaway home folder.** Every process of a client (each run, the login checks, the owner's login, `pi install`)
 gets `HOME=<client-home>/home/<client>`, made and checked like the state folder (under `<client-home>`, no link out,
 no checkout, no everyday folder). What each client finds through `HOME` (2.1.330, 0.171.0, 3000.14.30821, 1.4.25,
-pi 1.6.0; binary strings and `--version`/`--help` under a throwaway home with writes to the real one denied):
+Pi 1.6.0; binary strings and `--version`/`--help` under a throwaway home with writes to the real one denied):
 
 | Client | Through `HOME` | Needs the real `HOME` |
 |---|---|---|
@@ -458,7 +458,7 @@ pi 1.6.0; binary strings and `--version`/`--help` under a throwaway home with wr
 | Codex CLI (Rust) | `~/.codex` when `CODEX_HOME` is unset (shown: `codex --help` without it writes `~/.codex/tmp/` under the throwaway home); the keyring only with another credential store than `file` | No |
 | Devin CLI (Rust) | `~/.devin` (plans, hooks, worker cache, cloud setup: named so in its strings) whatever the XDG variables say; the other agents' folders (`.claude`, `.codex`, `.agents`) it reads rules and skills from | No |
 | Muse Code (launcher + binary) | `~/.config/muse/auth.json` only without `XDG_CONFIG_HOME` (launcher); `.muse` folders (strings, not traced to `HOME`); the other agents' personal rules and skills; the Keychain for a stored login (the run's key comes in `META_API_KEY`, the lane that wins) | No |
-| pi (Node) | `~/.pi/agent` when `PI_CODING_AGENT_DIR` is unset (shown: `pi --help` without it writes `~/.pi/agent/auth.json` under the throwaway home); `~/.agents` skills. pi-provimux finds pi's modules from `process.argv[1]` first, `HOME` only as a fallback | No |
+| Pi (Node) | `~/.pi/agent` when `PI_CODING_AGENT_DIR` is unset (shown: `pi --help` without it writes `~/.pi/agent/auth.json` under the throwaway home); `~/.agents` skills. pi-provimux finds Pi's modules from `process.argv[1]` first, `HOME` only as a fallback | No |
 
 So no client keeps the real `HOME`. A side effect: Devin and Muse no longer read the owner's personal rules and skills
 from his home folder into a run's prompt.
@@ -469,7 +469,7 @@ cache switch of the owner's shell reaches it. Updates are held for the run (`DIS
 Code, `MUSE_NO_AUTO_UPDATE=1`), so a run has one client version; nothing else is switched off, because a client
 with its feature flags off may no longer ask for what it asks a user for.
 
-**A report, not a stop.** The owner uses his computer and his tools during the night (pi's sessions append
+**A report, not a stop.** The owner uses his computer and his tools during the night (Pi's sessions append
 `cache_warm` lines under `~/.pi`, Codex refreshes `~/.codex/auth.json`, his agents run Claude Code and Codex), so
 his everyday folders change whatever the night does. `night.py untouched --save` records them before the logins
 (path, size and modification time to their depth, `stat` only; the Keychain's item names, never a secret), and
@@ -770,7 +770,7 @@ Steps 1 to 5 send nothing and are tested without a network. Step 6 is the first 
    own-client limits row with `input_accepted` alone is refused. Rebuilding `observed.json` at this step adds the
    two maps, the two client names and the two `known` rows; no run and no limits row changes.
 5. **The scan and the texts.** `harness/scan_secrets.py`: a client's state folder and its session files are never
-   committed (as pi's are not), and `META_API_KEY` and `CLAUDE_CODE_OAUTH_TOKEN` join the variables whose value is
+   committed (as Pi's are not), and `META_API_KEY` and `CLAUDE_CODE_OAUTH_TOKEN` join the variables whose value is
    searched for. *Test:* a tree holding a session file of each client is refused. `README.md` ("Method",
    "observed.json", "Pitfalls") and `CONTRIBUTING.md` say what this document says, shorter.
 6. **The smoke runs** (4.2), after the owner has logged the clients in. They answer every *(open)*; this document
