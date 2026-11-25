@@ -18,6 +18,11 @@ What a night does, in order (all of it under GROUNDTRUTH_CLIENT_HOME, `$G`, as t
 without --go; --dry-run sends nothing to any vendor, login, key or proxy and writes nothing):
 1. Its time: after 03:00 on the Tuesday it does not start (its state is written and the owner asked); after 01:00 no
    `long` run starts.
+1b. Its checkout (check_checkout): on the branch `main`, no change to a tracked file, its `main` on GitHub's `main`
+   history (behind is fine, a commit GitHub lacks is not), plan/not-measured.md readable. Any of these wrong: the
+   night does not start (its state, an ask with the commands that fix it, the notification); nothing is sent to any
+   provider. All right and behind: it fetches GitHub's `main`, fast-forwards to it, checks the result and starts
+   again on the new code (once). --dry-run reports the check (GitHub read with ls-remote) and goes on.
 2. One lock per night (`$G/night-<date>/weekly.json`, created exclusively): a second start of the night is refused.
 3. Discovery (harness/discover.py, docs/discovery.md; the copy in $G/bin when installed): it refreshes
    $G/listed.json from the owner's Provimux and publishes nothing. Then the everyday state's snapshot
@@ -87,6 +92,9 @@ KEY_CHECK = {"openrouter": "https://openrouter.ai/api/v1/key", "openai-api": "ht
 # The first night's effort suffixes of the Devin ids (harness/night.py's DEVIN), where listed.json gives none.
 DEVIN_EFFORT = {P.base_id(m): m[len(P.base_id(m)) + 1:] for _, m, _ in N.DEVIN}
 EFFORT_PREFERENCE = ("low", "none", "minimal", "medium", "high")
+GITHUB_URL = A.GITHUB_URL
+GITHUB_REF = "refs/night/github-main"   # GitHub's `main` as the night last fetched it
+UPDATED_ENV = "GROUNDTRUTH_NIGHT_UPDATED"  # set when the night restarts itself after a fast-forward: no second one
 
 
 def results_dir(date):
@@ -190,6 +198,156 @@ def key_items(plan, late=False, values=None, routes=None):
     return out
 
 
+# --- the checkout: the night runs from it, so it looks at it first ----------------------------------------------------
+
+def _git(root, *args):
+    env = dict(os.environ, GIT_OPTIONAL_LOCKS="0", GIT_TERMINAL_PROMPT="0", LC_ALL="C")
+    try:
+        r = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, env=env, timeout=300,
+                           stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return 1, "", type(e).__name__
+    return r.returncode, r.stdout.rstrip(), r.stderr.strip()  # a status line may begin with a space
+
+
+def _first(text):
+    return (text.strip().splitlines() or ["no message"])[0][:160]
+
+
+def check_checkout(root, update=False, dry=False, url=GITHUB_URL):
+    """The night's look at the checkout it runs from, before anything else (docs/weekly-night.md, "The checkout").
+
+    Conditions: HEAD on the branch `main`; no change to a tracked file (staged or not; untracked and ignored files never
+    count); `main` on GitHub's `main` history (behind is fine; a commit GitHub lacks is not). GitHub's `main` is
+    fetched (`--go`: into GITHUB_REF) or read with ls-remote (`dry`: nothing written); when GitHub cannot be reached,
+    the GitHub `main` fetched last stands in, said so. With `update`, all conditions met and the checkout behind, it
+    fast-forwards (`git merge --ff-only`, which checks the whole update before it writes a file) and then checks the
+    result: HEAD at GitHub's commit and no tracked change. A refused update that left the checkout as it was is a
+    note (`not_updated`): the night runs on the old commit. One that left anything else is a problem.
+
+    Returns {branch, head, main, github, github_from, behind, changed, problems, fixes, updated, not_updated, note}."""
+    def git(*a):
+        return _git(root, *a)
+
+    def sha(ref):
+        rc, out, _ = git("rev-parse", "--verify", "-q", ref + "^{commit}")
+        return out if rc == 0 and out else None
+    c = {"branch": None, "head": sha("HEAD"), "main": sha("refs/heads/main"), "github": None, "github_from": None,
+         "behind": None, "changed": [], "problems": [], "fixes": [], "updated": None, "not_updated": None,
+         "note": None}
+    rc, branch, _ = git("symbolic-ref", "-q", "--short", "HEAD")
+    c["branch"] = branch if rc == 0 and branch else None
+    rc, st, err = git("status", "--porcelain=v1", "--untracked-files=no", "--ignored=no")
+    if rc != 0:
+        c["problems"].append(f"`git status` failed ({_first(err)})")
+        c["fixes"].append("git status")
+        return c
+    c["changed"] = [line[3:] for line in st.splitlines() if line.strip()]
+    # GitHub's main: read now, else the one fetched last.
+    live = None
+    if dry:
+        rc, out, _ = git("ls-remote", url, "refs/heads/main")
+        live = out.split()[0] if rc == 0 and out else None
+        c["github_from"] = "read from GitHub now" if live else None
+    else:
+        rc, _, err = git("fetch", "--quiet", "--no-tags", url, f"+refs/heads/main:{GITHUB_REF}")
+        live = sha(GITHUB_REF) if rc == 0 else None
+        c["github_from"] = "fetched from GitHub now" if live else None
+        if not live:
+            c["note"] = f"GitHub not reached ({_first(err)})"
+    base = live if live and sha(live) else None
+    if base is None:
+        last = sha(GITHUB_REF)
+        if last is None:  # a remote with GitHub's URL, as last fetched
+            rc, out, _ = git("config", "--get-regexp", r"^remote\..*\.url$")
+            for line in out.splitlines() if rc == 0 else []:
+                name, _, u = line.partition(" ")
+                if u.rstrip("/").removesuffix(".git") == url.removesuffix(".git"):
+                    last = sha(f"refs/remotes/{name.split('.', 1)[1].rsplit('.', 1)[0]}/main")
+                    if last:
+                        break
+        if live and not last:
+            c["note"] = f"GitHub's main is at {live[:7]}, never fetched here: the night fetches it"
+        elif live:
+            c["note"] = (f"GitHub's main is at {live[:7]}, not fetched here yet: checked against the one fetched last "
+                         f"({last[:7]}); the night fetches it and fast-forwards")
+        elif last:
+            c["note"] = (c["note"] or "GitHub not read") + f": checked against GitHub's main as fetched last " \
+                f"({last[:7]})"
+        base, c["github_from"] = last, ("fetched last" if last else None)
+    c["github"] = live or base
+    if c["changed"]:
+        shown = ", ".join(c["changed"][:5]) + (f" and {len(c['changed']) - 5} more" if len(c["changed"]) > 5 else "")
+        c["problems"].append(f"{len(c['changed'])} tracked files changed ({shown})")
+        c["fixes"].append('git stash push -m "kept before the weekly night"')
+    if c["branch"] != "main":
+        where = f"on the branch {c['branch']}" if c["branch"] else \
+            f"on no branch (HEAD detached at {(c['head'] or '?')[:7]})"
+        c["problems"].append(f"{where}, not main")
+        c["fixes"].append("git switch main")
+    if base is None:
+        c["problems"].append("GitHub's main could not be read, and was never fetched here: whether `main` holds "
+                             "commits GitHub lacks is unknown")
+        c["fixes"].append(f"git fetch {url} main")
+    elif c["main"] is None:
+        c["problems"].append("no branch main here")
+        c["fixes"].append(f"git switch -c main {base[:12]}")
+    else:
+        rc, ahead, _ = git("rev-list", "--count", f"{base}..{c['main']}")
+        ahead = int(ahead) if rc == 0 and ahead.isdigit() else None
+        if ahead:
+            c["problems"].append(f"`main` holds {ahead} commits GitHub's main lacks (main at {c['main'][:7]}, "
+                                 f"GitHub at {base[:7]})")
+            c["fixes"] += [] if c["branch"] == "main" or "git switch main" in c["fixes"] else ["git switch main"]
+            c["fixes"].append(f"git branch kept-{c['main'][:7]} main && git reset --keep {base[:12]}")
+        elif ahead is None:
+            c["problems"].append("`git rev-list` could not compare `main` with GitHub's main")
+            c["fixes"].append("git status")
+        rc, behind, _ = git("rev-list", "--count", f"{c['main']}..{base}")
+        c["behind"] = int(behind) if rc == 0 and behind.isdigit() else None
+    if c["problems"] or not update or not c["behind"] or base != live:
+        return c
+    old = c["head"]
+    rc, _, err = git("merge", "--ff-only", "--quiet", base)
+    head = sha("HEAD")
+    rc2, st2, _ = git("status", "--porcelain=v1", "--untracked-files=no", "--ignored=no")
+    clean = rc2 == 0 and not st2.strip()
+    if rc == 0 and head == base and clean:
+        c.update(updated=[old, base], head=base, main=base, behind=0)
+    elif head == old and clean:  # refused before it wrote anything (a file in the way): the old commit stands
+        c["not_updated"] = _first(err)
+    else:
+        c["problems"].append(f"the fast-forward to GitHub's {base[:7]} stopped half-way ({_first(err)})")
+        c["fixes"].append(f"git reset --hard {base[:12]}   # the checkout was clean before: this completes the update")
+    return c
+
+
+def checkout_lines(c):
+    """The check, in a few lines (the dry run, the report): public, commits and file names of the repository only."""
+    if c is None:
+        return []
+    lines = [f"- branch: {c['branch'] or 'none (detached)'}; HEAD {(c['head'] or '?')[:7]}; tracked files changed: "
+             f"{len(c['changed'])}",
+             f"- GitHub's main: {(c['github'] or '?')[:7]} ({c['github_from'] or 'not read'})" +
+             (f"; `main` is {c['behind']} commits behind it" if c.get("behind") else
+              "; `main` is at it" if c.get("behind") == 0 else "")]
+    if c.get("updated"):
+        lines.append(f"- updated itself: {c['updated'][0][:7]} -> {c['updated'][1][:7]} (fast-forward), then started "
+                     "again on the new code")
+    if c.get("restarted_after"):
+        a = c["restarted_after"]
+        lines.append(f"- updated itself before the start: {a[0][:7]} -> {a[1][:7]} (fast-forward); this run is on the "
+                     "new code")
+    if c.get("not_updated"):
+        lines.append(f"- not updated ({c['not_updated']}): the checkout was left as it was")
+    if c.get("note"):
+        lines.append(f"- {c['note']}")
+    lines += [f"- NOT READY: {p}" for p in c["problems"]]
+    if c["problems"]:
+        lines.append("- fixed by: `" + " && ".join(c["fixes"]) + "`")
+    return lines
+
+
 # --- the night ---------------------------------------------------------------------------------------------------------
 
 class Night:
@@ -213,6 +371,7 @@ class Night:
         self.windows = []
         self.not_sent = []
         self.state = {"date": date, "dry_run": dry, "parts": self.parts}
+        self.checkout, self.decisions = None, {}
 
     # -- bookkeeping
     def say(self, text):
@@ -254,6 +413,8 @@ class Night:
                 self.write_state()
                 self.flush()
             return self.state
+        if not self.look_at_checkout():
+            return self.state
         self.take_lock(now)
         # A night of the same week started (by hand, with --date <today>): the week's night-not-started asks close.
         for subject in self.asks.subjects("night-not-started"):
@@ -267,7 +428,8 @@ class Night:
         # Discovery's last version ($G/listed.json, docs/discovery.md) when there is one, else the checkout's file.
         own = os.path.join(self.home, "listed.json")
         listed = _load(own if os.path.isfile(own) else os.path.join(self.root, "listed.json"))
-        plan = P.build(self.date, observed, site, values, listed, root=self.root)
+        plan = P.build(self.date, observed, site, values, listed, root=self.root, decisions=self.decisions,
+                       caps=(self.ledger.week_cap, self.ledger.run_cap))
         self.plan = plan
         self.plan_asks(plan, listed)
         self.write_public("PLAN.md", P.render(plan))
@@ -289,6 +451,52 @@ class Night:
             return self.dry_report(login, keyed)
         self.go(login, keyed)
         return self.finish()
+
+    def look_at_checkout(self):
+        """Before the lock: the checkout the night runs from (check_checkout), and plan/not-measured.md. True: the night
+        goes on. A condition not met: the night does not start (its state, an ask, the notification; nothing sent);
+        a dry run says so and goes on. Updated by a fast-forward: the world starts the night again on the new code."""
+        look = getattr(self.w, "checkout", None)
+        c = look(update=not self.dry) if look else None
+        try:
+            self.decisions = P.load_decisions(os.path.join(self.root, P.DECISIONS))
+        except ValueError as e:
+            self.decisions = {}
+            c = c or {"branch": None, "head": None, "github": None, "github_from": None, "behind": None,
+                      "changed": [], "problems": [], "fixes": []}
+            c["problems"].append(str(e))
+            c["fixes"].append(f"git log -p -1 -- {P.DECISIONS}   # then mend the row")
+        self.checkout = c
+        if c is None:
+            return True
+        self.state["checkout"] = {k: v for k, v in c.items() if k != "fixes"}
+        for line in checkout_lines(c):
+            self.say("checkout " + line[2:])
+        if c["problems"]:
+            if os.path.exists(os.path.join(self.private, "weekly.json")):  # it did start: its state stays as it is
+                self.say(f"the night of {self.date} started already (its lock): nothing written")
+                return False
+            self.asks.open("checkout-not-ready", "checkout", date=self.date, problems=c["problems"], fixes=c["fixes"])
+            if self.dry:
+                self.say("the night would not start: the checkout is not ready (the dry run goes on)")
+                return True
+            os.makedirs(self.private, mode=0o700, exist_ok=True)
+            self.state.update(started=False, reason="checkout not ready", at=self.w.now().isoformat())
+            self.write_state()
+            self.flush()
+            return False
+        self.asks.passed("checkout-not-ready", "checkout")
+        if c.get("updated") and not self.dry:
+            self.say(f"updated the checkout {c['updated'][0][:7]} -> {c['updated'][1][:7]}: starting again on it")
+            self.state["restarted"] = True
+            self.w.restart(c)  # the real world never returns: the same command again, on the new code
+            return False
+        if c.get("not_updated"):
+            self.asks.open("checkout-not-updated", "checkout", why=c["not_updated"], behind=c["behind"],
+                           head=(c["head"] or "?")[:7], github=(c["github"] or "?")[:7])
+        elif c.get("behind") == 0:
+            self.asks.passed("checkout-not-updated", "checkout")
+        return True
 
     def take_lock(self, now):
         if self.dry:
@@ -338,6 +546,10 @@ class Night:
             self.asks.open("unsteady-value", subject, **{k: v for k, v in a.items() if k != "kind"})
         for subject in self.asks.subjects("unsteady-value") - unsteady:
             self.asks.passed("unsteady-value", subject)
+        # A value decided in plan/not-measured.md and still above the caps: its over-cap ask (if any) is answered.
+        for i in plan["items"]:
+            if i["state"] == P.ABOVE_CAPS:
+                self.asks.passed("window-over-week" if i["quantity"] == "window" else "run-over-cap", i["key"])
         day = dt.date.fromisoformat(self.date)
         for provider, lp in ((listed or {}).get("providers") or {}).items():
             got = P.parse_day(lp.get("date"))
@@ -436,8 +648,11 @@ class Night:
                 self.not_sent.append((v, "no price on providers.dev: no worst case"))
                 continue
             if verdict != "ok":
+                caps = (self.ledger.week_cap, self.ledger.run_cap)
+                above = est > self.ledger.week_cap  # above the caps (not only above what is left this week)
                 self.asks.open("window-over-week", v["key"], route=v["route"], model=v["model"], estimate=est,
-                               left=max(left, 0.0), cap=self.ledger.week_cap)
+                               left=max(left, 0.0), cap=self.ledger.week_cap,
+                               record=P.decision_line(v["key"], self.date, est, caps) if above else None)
                 v["outcome"] = "not sent: its worst case does not fit the week"
                 self.not_sent.append((v, f"worst case ${est:.2f} does not fit the ${max(left, 0.0):.2f} left"))
                 continue
@@ -477,7 +692,9 @@ class Night:
         verdict = self.ledger.admit(v["label"], v["route"], v["model"], est)
         if verdict == "over-run-cap":
             self.asks.open("run-over-cap", v["key"], route=v["route"], model=v["model"], quantity="cache",
-                           estimate=est, cap=self.ledger.run_cap)
+                           estimate=est, cap=self.ledger.run_cap,
+                           record=P.decision_line(v["key"], self.date, est,
+                                                  (self.ledger.week_cap, self.ledger.run_cap)))
             v["outcome"] = "not started: over the run ceiling"
             self.not_sent.append((v, f"worst case ${est:.2f}, above the run ceiling"))
             return "skip"
@@ -540,6 +757,10 @@ class Night:
                  f"providers.dev dataset `{self.plan['dataset']}`. Nothing was sent to any vendor, login, key or proxy;"
                  " nothing was written.", ""]
         lines += A.render_top(self.asks.open_of())
+        if self.checkout is not None:
+            lines += ["## The checkout", ""] + checkout_lines(self.checkout) + [""]
+            if self.checkout["problems"]:
+                lines += ["**On the night it would not start** (an ask, above); the dry run went on.", ""]
         for part in ("codex", "devin"):
             if part not in login:
                 continue
@@ -566,6 +787,7 @@ class Night:
             if self.not_sent:
                 lines += ["", "Not sent or not started, each an ask:"]
                 lines += [f"- {v['route']} `{v['model']}` {v['quantity']}: {why}" for v, why in self.not_sent]
+            lines += self.above_caps_lines()
             if stopped:
                 rest = [v for v in keyed if v["quantity"] == "cache"]
                 lines += ["", f"The week's money ends at {stopped['route']} `{stopped['model']}` (worst case "
@@ -765,6 +987,14 @@ class Night:
                       + f"; {len(self.asks.open_of())} asks open ({opened} new)")
         return self.state
 
+    def above_caps_lines(self):
+        rows = [i for i in self.plan["items"] if i["state"] == P.ABOVE_CAPS and
+                i["route"] in [r for p in self.only for r in PART_ROUTES[p]]]
+        if not rows:
+            return []
+        return ["", f"Not measured, decided in plan/not-measured.md (no ask): {len(rows)} values:"] + \
+            [f"- {i['route']} `{i['model']}` {i['quantity']}: {i['why']}" for i in rows]
+
     def write_public(self, name, text):
         if self.dry:
             return
@@ -820,8 +1050,11 @@ class Night:
         since = self.plan["window_since"]
         nm = [i for i in self.plan["items"] if i["state"] == P.NO_METHOD_STATE and (i["release"] or "") >= since]
         lines += ["", f"No method yet (inside the window): {len(nm)} values: " +
-                  (", ".join(f"{i['route']} `{i['model']}` {i['quantity']}" for i in nm) or "none"), "",
-                  "## Spent", ""]
+                  (", ".join(f"{i['route']} `{i['model']}` {i['quantity']}" for i in nm) or "none")]
+        lines += self.above_caps_lines()
+        if self.checkout is not None:
+            lines += ["", "## The checkout", ""] + checkout_lines(self.checkout)
+        lines += ["", "## Spent", ""]
         for part in ("codex", "devin"):
             if part in self.parts:
                 lines.append(f"- {part}: {sum(self.w.requests(r) for r in self.started_runs if r['part'] == part)} "
@@ -865,6 +1098,23 @@ class World:
         if sys.platform == "darwin":
             subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())], stdin=subprocess.DEVNULL,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+
+    def checkout(self, update):
+        """check_checkout on this checkout; a night started again after its fast-forward updates no more."""
+        again = os.environ.get(UPDATED_ENV)
+        c = check_checkout(self.root, update=update and not again, dry=not update)
+        if again:
+            old, _, new = again.partition("..")
+            c["restarted_after"] = [old, new]
+        return c
+
+    def restart(self, c):
+        """The same night again, on the code the fast-forward brought (this process holds the old one)."""
+        sys.stdout.flush()
+        sys.stderr.flush()
+        env = dict(os.environ, **{UPDATED_ENV: f"{c['updated'][0]}..{c['updated'][1]}"})
+        os.execve(sys.executable, [sys.executable, "-B", os.path.join(self.root, "harness", "weekly.py"),
+                                   *sys.argv[1:]], env)
 
     def site(self):
         if self.site_data:

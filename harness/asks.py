@@ -23,6 +23,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 NIGHT = "python3 harness/weekly.py"
+GITHUB_URL = "https://github.com/ngvoicu/groundtruth.git"
 G_NOTE = "From the repository's root, with `export GROUNDTRUTH_CLIENT_HOME=$G` set as for the night."
 
 
@@ -62,11 +63,19 @@ def _money_spent(f):
             f"{f['left_unmeasured']} planned API-key values were not measured; they are first next Monday.")
 
 
+def _record(f):
+    """How to leave a value above the caps unmeasured for good: the row for plan/not-measured.md."""
+    if not f.get("record"):
+        return ""
+    return (" To leave it unmeasured instead (the owner's caps), add this row to plan/not-measured.md and commit it: "
+            f"`{f['record']}`; from then on the plan names it \"not measured: above the caps\" and this ask closes.")
+
+
 def _run_over_cap(f):
     return (f"{f['route']} {f['model']} (cache): worst case {_money(f['estimate'])}, above the "
             f"{_money(f['cap'])} per run",
             f"The worst case of this cache run is {_money(f['estimate'])}, above the ceiling of {_money(f['cap'])} a "
-            "run: it was not started.",
+            "run: it was not started." + _record(f),
             f"{NIGHT} --date <today> --go night --only keys --value {f['route']}:{f['model']}:cache "
             f"--run-cap {f['estimate'] + 0.01:.2f}   # runs it with your go",
             "This one value was not measured; the rest of the API-key part went on.")
@@ -77,7 +86,7 @@ def _window_over_week(f):
             f"{_money(f['left'])} left this week",
             f"A window check is expected to be refused (and costs nothing then), but if the vendor answered it would "
             f"cost up to {_money(f['estimate'])}. That worst case counts toward the week's {_money(f['cap'])}, and "
-            f"only {_money(f['left'])} was left when its turn came: it was not sent.",
+            f"only {_money(f['left'])} was left when its turn came: it was not sent." + _record(f),
             f"{NIGHT} --date <today> --go night --only keys --value {f['route']}:{f['model']}:window "
             f"--week-cap <dollars>   # sends it with your go, with room for its worst case",
             "This one window check was not sent; the rest of the API-key part went on.")
@@ -114,6 +123,26 @@ def _not_started(f):
             f"{NIGHT} --date <today> --go night   # the week's night, by hand, now (with the night's own date it "
             "would be refused as too late after 03:00 on the Tuesday; a second start of one date is refused)",
             "Nothing of that night was measured.")
+
+
+def _checkout_not_ready(f):
+    problems = f["problems"]
+    return (f"The night of {f['date']} did not start: the checkout is not ready ({problems[0]})",
+            "The night runs from the groundtruth checkout, on `main`, with no change to a tracked file, and holding no "
+            f"commit GitHub's `main` lacks (it may be behind: it then updates itself). Found: {'; '.join(problems)}. "
+            "Untracked and ignored files never count.",
+            " && ".join(list(f["fixes"]) + [f"{NIGHT} --date <today> --go night"]) + "   # then the week's night, "
+            "by hand, now",
+            "Nothing of that night was measured; nothing was sent to any provider.")
+
+
+def _checkout_not_updated(f):
+    return (f"The checkout could not update itself to GitHub's main ({f['behind']} commits behind)",
+            f"The night fast-forwards the checkout to GitHub's `main` before it starts; that was refused ({f['why']}), "
+            f"and the checkout was left as it was. The night ran from {f['head']}, {f['behind']} commits behind "
+            f"GitHub's {f['github']}.",
+            f"git pull --ff-only {GITHUB_URL} main   # says what is in the way",
+            "The night ran without GitHub's newest commits.")
 
 
 def _unsteady(f):
@@ -155,10 +184,14 @@ KINDS = {
     "unsteady-value": ("that value", _unsteady),
     "smoke-failed": ("that client's part", _smoke_failed),
     "folders-refused": ("that login's part", _folders_refused),
+    "checkout-not-ready": ("the night", _checkout_not_ready),
+    "checkout-not-updated": ("nothing", _checkout_not_updated),
 }
 # The rows of the design's table 9.5 (smoke-failed and folders-refused come from 9.4: the checks before spending).
 # window-over-week is the week's money row for one window check (the owner's decision of 2026-11-22, "A").
-TABLE_ROWS = tuple(k for k in KINDS if k not in ("smoke-failed", "folders-refused", "window-over-week"))
+# checkout-not-ready and checkout-not-updated: the night's look at its own checkout before it starts (2026-11-25).
+TABLE_ROWS = tuple(k for k in KINDS if k not in ("smoke-failed", "folders-refused", "window-over-week",
+                                                 "checkout-not-ready", "checkout-not-updated"))
 
 
 def ask_id(kind, subject):

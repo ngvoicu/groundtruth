@@ -71,6 +71,49 @@ method is named in the plan, never left out without a word.
   from what is left.
 - Reaching a cap stops that part and asks. A night that runs out of candidates ends early; it never fills a cap with
   repeats.
+- **owner** (2026-11-25): a value too dear for the caps is **decided once**, not asked every week:
+  [`plan/not-measured.md`](../plan/not-measured.md) holds one row per such value (the value as `--value` takes it,
+  the day, who decided, why). The plan names a recorded value whose worst case is still above the caps (a cache run
+  above $2 a run, a window check above the week's $10) as "not measured: above the caps (decided <date>)": it is
+  not sent and raises no ask, and an ask still open for it closes. When its worst case falls under the caps (a price
+  drops; or caps given by hand, `--run-cap`, `--week-cap`), the row no longer applies: the value is planned again
+  and `PLAN.md` lists the row as one that can go. A new value above the caps raises its ask once, which gives the
+  row to add. A row that does not parse stops the night before it starts (the checkout's ask, below). The four of
+  2026-11-25: OpenAI `gpt-6-cyber`'s window check ($23.12) and cache run ($5.50), OpenRouter
+  `openai/gpt-6.2-astra` and `openai/gpt-6.2-astra-pro`'s cache runs ($2.72 each).
+
+## The checkout
+
+The night runs from the workspace's groundtruth checkout (the launchd agent's working folder): its results land
+there and Tuesday's audit reads them there. Other people work in this workspace, so before anything else (after the
+03:00 check, before the lock) the night looks at it (`check_checkout` in `harness/weekly.py`):
+
+- HEAD on the branch **`main`**;
+- **no change to a tracked file**, staged or not (untracked and ignored files, the private `results/…/logs/`
+  among them, never count);
+- **`main` on GitHub's `main` history**: it may be behind; it must not hold a commit GitHub lacks. GitHub's `main`
+  is fetched from `https://github.com/ngvoicu/groundtruth.git` into `refs/night/github-main` (never the NAS); when
+  GitHub cannot be reached, the one fetched last stands in, and the report says so;
+- `plan/not-measured.md` readable.
+
+A condition not met: the night does **not start**. It writes its state (`started: false`, `reason: checkout not
+ready`), raises the ask `checkout-not-ready`, which says exactly what is wrong and gives the commands that fix it
+followed by the night by hand (`git stash push -m "kept before the weekly night"`, `git switch main`, `git branch
+kept-<sha> main && git reset --keep <github sha>`; nothing is thrown away), and notifies. Nothing is sent to any
+provider. A night already started (its lock) is never overwritten.
+
+All met and behind: the night **updates itself**. It fast-forwards `main` to the GitHub commit it fetched (`git
+merge --ff-only`: git checks the whole update before it writes a file, and refuses, writing nothing, when an
+untracked file is in the way), checks the result (HEAD at that commit, no tracked change), then starts itself again
+(`execve`, the same command) so the night runs the new code, not the code it was started with; it updates once. A
+fix pushed to GitHub on Monday afternoon therefore counts. An update refused with the checkout left as it was: the
+night runs on the old commit (it is on GitHub's history) and asks (`checkout-not-updated`, stops nothing). An
+update that left anything else (it cannot in practice: a crash or a full disk mid-write) is a condition not met:
+the night does not start, and the ask's command completes the update (`git reset --hard <sha>`: the checkout was
+clean before it).
+
+`--dry-run` reads GitHub's `main` with `git ls-remote` (it fetches nothing and moves nothing), reports the same check
+under "The checkout", shows the ask a failure would raise, and goes on.
 
 ## The owner, once
 
@@ -105,7 +148,7 @@ missed while the Mac slept runs when it wakes; `--uninstall --owner-ok` removes 
 
 | When (Bucharest) | What |
 |---|---|
-| Mon 23:00 | the lock (`$G/night-<date>/weekly.json`, exclusive: a second start of the night is refused); the everyday snapshot; the plan, `results/night-<date>/PLAN.md` |
+| Mon 23:00 | the checkout's look (above; a fast-forward and a restart when behind); the lock (`$G/night-<date>/weekly.json`, exclusive: a second start of the night is refused); the everyday snapshot; the plan, `results/night-<date>/PLAN.md` |
 | | the checks before anything is spent: each login's status, each key's free request, one smoke run per client. A failure: that part does not start, and an ask |
 | Mon ~23:15 | the runs: each login's six, staggered; the money's pass; the window checks one by one; the key runs, twelve at a time |
 | Tue ~01:30 | the `std` runs have ended |
@@ -132,12 +175,14 @@ failed passes again; nobody closes one by hand. `python3 harness/asks.py` lists 
 | a key refused (401/403) or missing | that route | `python3 harness/weekly.py --go check keys` |
 | a plan's limit (quota) | that login's part | `python3 harness/weekly.py --date <today> --go night --only <client>` |
 | the week's money spent (or the provider's 402) | the API keys | the same with `--only keys --week-cap <dollars>` |
-| a cache run over $2 | that one | the same with `--value <route>:<model>:cache --run-cap <dollars>` |
-| a window check whose worst case does not fit the week | that one | the same with `--value <route>:<model>:window --week-cap <dollars>` |
+| a cache run over $2 | that one | the same with `--value <route>:<model>:cache --run-cap <dollars>`; or the row it gives, added to `plan/not-measured.md` |
+| a window check whose worst case does not fit the week | that one | the same with `--value <route>:<model>:window --week-cap <dollars>`; above $10, or the row it gives |
 | a vendor refusing twice in a row | that route | the same with `--only <part>`, after a look at the account |
 | a window request answered | the window list | none: a look first; the next night's requests close it |
 | discovery stale (over 3 days) | nothing | Provimux's status page, then discovery |
 | the night did not start (after 03:00) | the night | `python3 harness/weekly.py --date <today> --go night` |
+| the checkout not ready (not `main`, a tracked change, a commit GitHub lacks) | the night | the fixing commands, then the same |
+| the checkout could not update itself | nothing | `git pull --ff-only https://github.com/ngvoicu/groundtruth.git main` (says what is in the way) |
 | an unsteady value | that value | none: a decision |
 | a smoke run failed, the night's folders refused | that client's part | the smoke results to the maintainer; `night.py untouched --save` |
 

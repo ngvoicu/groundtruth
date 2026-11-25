@@ -26,6 +26,9 @@ output limit (`output`). Every value offered on a route the night drives is in e
   -  no method    the harness has no method for it on this route (named, never left out without a word)
   -  too old      released more than two months before the night (or first seen then, where no release date is
                   known; or listed before discovery began, with no date at all): never measured (the owner, 2026-11-22)
+  -  above the caps  an API-key value whose worst case is above the owner's caps, decided once in
+                  plan/not-measured.md: named as "not measured: above the caps (decided <date>)", no ask; when its
+                  worst case falls under the caps the row no longer applies and the value is planned again
 
 The window: a model counts when its release date (providers.dev's entry on the route; else, for a login's own id,
 the release date of the lab's own model it names, when exactly one is known: the lab's own entry, else any entry
@@ -50,6 +53,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+sys.path.insert(0, HERE)
+import ledger as L  # noqa: E402  (the caps' defaults: $10 a week, $2 a run)
 
 # The routes a weekly night drives: two logins through their vendors' own clients, three API keys straight.
 ROUTES = {
@@ -83,8 +88,9 @@ EFFORT_SUFFIX = re.compile(r"-(?:none|minimal|low|medium|high|xhigh|max)$")
 NEW, DOUBT, MOVED = "new", "in doubt", "source moved"
 AGREEING, SETTLED, OURS, UNSTEADY = "agreeing", "settled", "ours alone", "unsteady"
 WAITING, NO_METHOD_STATE, TOO_OLD = "waiting for its audit", "no method yet", "too old"
+ABOVE_CAPS = "above the caps"
 PLANNED = (NEW, DOUBT, MOVED)
-STATES = PLANNED + (AGREEING, SETTLED, OURS, UNSTEADY, WAITING, NO_METHOD_STATE, TOO_OLD)
+STATES = PLANNED + (AGREEING, SETTLED, OURS, UNSTEADY, WAITING, NO_METHOD_STATE, TOO_OLD, ABOVE_CAPS)
 WINDOW_MONTHS = 2
 # Two window measurements agree within this share (a bracket's two ends, a count's rounding).
 WINDOW_TOLERANCE = 0.01
@@ -455,9 +461,72 @@ def window_usd(e, words):
     return round(words * e["price_in"] / 1e6, 4)
 
 
-def build(date, observed, site, values=None, listed=None, root=ROOT, last_night=None):
+# --- plan/not-measured.md: values too dear for the caps, decided once -------------------------------------------------
+
+DECISIONS = os.path.join("plan", "not-measured.md")
+DECIDED_BY = "the owner's caps"
+DECISION_ROW = re.compile(r"^\|\s*`([^`|]+)`\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*([^|]*?)\s*\|\s*([^|]*?)\s*\|\s*$")
+
+
+def value_key(text):
+    """`<route>:<model>:<quantity>` (as --value takes it) -> `route|model|quantity`; None when it is not one."""
+    route, _, rest = text.partition(":")
+    model, _, q = rest.rpartition(":")
+    if route not in ROUTES or not model or q not in QUANTITIES:
+        return None
+    return f"{route}|{model}|{q}"
+
+
+def load_decisions(path):
+    """plan/not-measured.md's table: value key -> {date, by, reason}. Every table row after the header must be one
+    decision (`| `<route>:<model>:<quantity>` | YYYY-MM-DD | <who> | <reason> |`): a row that is not is an error, never
+    skipped in silence. No file: no decision."""
+    try:
+        with open(path) as f:
+            lines = f.read().splitlines()
+    except FileNotFoundError:
+        return {}
+    out = {}
+    for n, line in enumerate(lines, 1):
+        s = line.strip()
+        if not s.startswith("|") or s.startswith("| Value ") or re.fullmatch(r"\|[-|: ]+\|", s):
+            continue
+        m = DECISION_ROW.match(s)
+        key = value_key(m.group(1)) if m else None
+        if not m or not key or parse_day(m.group(2)) is None or not m.group(3):
+            raise ValueError(f"{os.path.basename(path)}, line {n}: not a decision row "
+                             "(| `<route>:<model>:<quantity>` | YYYY-MM-DD | who | reason |)")
+        if key in out:
+            raise ValueError(f"{os.path.basename(path)}, line {n}: {m.group(1)} is decided twice")
+        out[key] = {"date": m.group(2), "by": m.group(3), "reason": m.group(4)}
+    return out
+
+
+def cap_of(quantity, caps):
+    """The cap a value's worst case is held to: a cache run the run ceiling, a window check the week (it may pass the
+    run ceiling but must fit the week: the owner, 2026-11-22, "A")."""
+    week_cap, run_cap = caps
+    return week_cap if quantity == "window" else run_cap
+
+
+def cap_words(quantity, caps):
+    return f"the week's ${caps[0]:.2f}" if quantity == "window" else f"the ${caps[1]:.2f} a run"
+
+
+def decision_line(key, date, estimate, caps):
+    """The row to add to plan/not-measured.md for a value above the caps (an ask gives it)."""
+    route, model, q = key.split("|")
+    return (f"| `{route}:{model}:{q}` | {date} | {DECIDED_BY} | worst case ${estimate:.2f}, above "
+            f"{cap_words(q, caps)} |")
+
+
+def build(date, observed, site, values=None, listed=None, root=ROOT, last_night=None, decisions=None, caps=None):
     """The plan of the night of `date` (YYYY-MM-DD, a Monday): every value offered on the night's routes with its
-    state, the planned ones in order, and the asks the plan raises (unsteady values)."""
+    state, the planned ones in order, and the asks the plan raises (unsteady values). `decisions`: plan/not-measured.md
+    (read from `root` when not given); `caps`: (week, run) in dollars, the ledger's by default."""
+    if decisions is None:
+        decisions = load_decisions(os.path.join(root, DECISIONS))
+    caps = caps or (L.WEEK_CAP, L.RUN_CAP)
     day = dt.date.fromisoformat(date)
     since = months_before(day, WINDOW_MONTHS)
     values = values or {}
@@ -510,6 +579,15 @@ def build(date, observed, site, values=None, listed=None, root=ROOT, last_night=
                 elif q == "window" and kind == "api_key":
                     item["words"] = window_words(e)
                     item["estimate_usd"] = window_usd(e, item["words"])
+                d = decisions.get(key)
+                if d and item["state"] in PLANNED:
+                    est = item.get("estimate_usd")
+                    if est is not None and est > cap_of(q, caps):
+                        item["state"], item["decision"] = ABOVE_CAPS, d
+                        item["why"] = (f"not measured: above the caps (decided {d['date']}): worst case ${est:.2f}, "
+                                       f"above {cap_words(q, caps)}")
+                    else:  # a price dropped (or none is known): the row no longer applies, the value is planned
+                        item["decision_lapsed"] = d
                 items.append(item)
     order = {s: i for i, s in enumerate(PLANNED)}
 
@@ -524,7 +602,7 @@ def build(date, observed, site, values=None, listed=None, root=ROOT, last_night=
              "values": i["values"]} for i in items if i["state"] == UNSTEADY]
     return {"date": date, "window_since": since.isoformat(), "last_night": last_night,
             "dataset": site.get("dataset"), "notes": notes, "items": items, "planned": planned, "asks": asks,
-            "newly_seen": newly_seen}
+            "newly_seen": newly_seen, "caps": list(caps), "decisions": len(decisions)}
 
 
 def counts(plan):
@@ -563,6 +641,15 @@ def render(plan, limit=None):
     since = plan["window_since"]
     named = [i for i in plan["items"] if i["state"] == NO_METHOD_STATE and (i["release"] or "") >= since]
     lines += [f"- {i['route']} `{i['model']}` {i['quantity']}: {i['why']}" for i in named] or ["- none"]
+    lines += ["", "## Not measured: above the caps (plan/not-measured.md)", ""]
+    lines += [f"- {i['route']} `{i['model']}` {i['quantity']}: {i['why']}" for i in plan["items"]
+              if i["state"] == ABOVE_CAPS] or ["- none"]
+    lapsed = [i for i in plan["items"] if i.get("decision_lapsed")]
+    if lapsed:
+        lines += ["", "Rows of plan/not-measured.md that no longer apply (the worst case is under the caps now, or not "
+                  "known): planned again; the row can go.", ""]
+        lines += [f"- {i['route']} `{i['model']}` {i['quantity']} (decided {i['decision_lapsed']['date']})"
+                  for i in lapsed]
     for title, state in (("Unsteady (an ask each)", UNSTEADY), ("Waiting for an audit or a publication", WAITING)):
         rows = [i for i in plan["items"] if i["state"] == state]
         lines += ["", f"## {title}", ""]

@@ -554,7 +554,8 @@ class AsksOverNights(NightCase):
                  "status": "HTTP 401", "ran": 2, "planned": 6, "spent": 10.0, "cap": 10.0, "left_unmeasured": 3,
                  "model": "a/x", "quantity": "cache", "estimate": 2.5, "refusal": "HTTP 400", "usd": 3.0,
                  "words": 1200000, "provider": "devin", "days": 4, "reason": "late", "values": [1, 2, 3],
-                 "problems": ["x"], "left": 4.0}
+                 "problems": ["x"], "left": 4.0, "fixes": ["git switch main"], "behind": 2, "why": "in the way",
+                 "head": "abc1234", "github": "def5678"}
         asks = A.Asks(os.path.join(self.home, "asks"), today=DATE)
         self.assertEqual(len(A.TABLE_ROWS), 10)
         for kind in A.KINDS:
