@@ -109,13 +109,15 @@ class Dates(unittest.TestCase):
         self.assertEqual((g["release"], g["state"]), ("2026-05-19", P.TOO_OLD))
         self.assertEqual(item(plan, "devin", "deepseek-v4-pro")["release"], "2026-10-30")
 
-    def test_without_any_date_a_model_counts_as_first_seen_on_the_night(self):
+    def test_without_any_date_a_model_is_not_measured_and_is_named(self):
         plan = build({})
         swe = item(plan, "devin", "swe-1-6")
-        self.assertEqual((swe["release_basis"], swe["release"], swe["state"]), ("first seen", DATE, P.NEW))
+        self.assertEqual((swe["release_basis"], swe["release"], swe["state"]), (P.NO_DATE, None, P.UNDATED))
         self.assertIn("swe-1-6", plan["newly_seen"]["devin"])
+        self.assertIn(("devin", "swe-1-6"), plan["undated"])
+        self.assertNotIn("devin|swe-1-6|cache", [i["key"] for i in plan["planned"]])
 
-    def test_the_baseline_keeps_models_listed_before_discovery_out_of_the_window(self):
+    def test_the_baseline_records_the_models_listed_before_discovery(self):
         values = {"first_seen": {"devin": {"swe-2": "2026-11-22"}}}
         added = P.record_baseline(values, build(values))
         self.assertGreater(added, 0)
@@ -126,14 +128,13 @@ class Dates(unittest.TestCase):
         plan = build(values)
         swe = item(plan, "devin", "swe-1-6")
         self.assertEqual((swe["state"], swe["release"], swe["release_basis"], swe["fresh"]),
-                         (P.TOO_OLD, None, P.BEFORE_DISCOVERY, False))
+                         (P.UNDATED, None, P.NO_DATE, False))
         self.assertNotIn("swe-1-6", plan["newly_seen"].get("devin", {}))
-        self.assertIn("first listed is unknown", swe["why"])
-        # A model discovery lists for the first time later is first seen on its night, and new.
+        # A model discovery lists for the first time later, with no date anywhere: not measured either.
         later = json.loads(json.dumps(LISTED))
         later["providers"]["devin"]["models"].append({"id": "swe-3", "name": "SWE-3"})
         fresh = item(build(values, later), "devin", "swe-3")
-        self.assertEqual((fresh["state"], fresh["release_basis"], fresh["fresh"]), (P.NEW, "first seen", True))
+        self.assertEqual((fresh["state"], fresh["release_basis"], fresh["fresh"]), (P.UNDATED, P.NO_DATE, True))
         # The publication keeps the nulls.
         kept = P.values_file({"client_kinds": {}, "cache": []}, SITE, values, today=DATE,
                              first_seen={"devin": {"swe-1-6": DATE, "swe-3": DATE}})
@@ -148,7 +149,7 @@ class Dates(unittest.TestCase):
             self.assertIn(model, values["first_seen"][route])
             self.assertIsNone(values["first_seen"][route][model])
         plan = build(values)
-        self.assertEqual(item(plan, "devin", "swe-1-6")["state"], P.TOO_OLD)
+        self.assertEqual(item(plan, "devin", "swe-1-6")["state"], P.UNDATED)
         self.assertEqual(item(plan, "devin", "swe-2")["first_seen"], "2026-11-22")
 
 

@@ -1,30 +1,25 @@
 #!/usr/bin/env python3
-"""The weekly night's money ledger for the API-key routes (the owner's caps of 2026-11-22: a safety ceiling of $10 a
-week for all API-key routes together and $2 a run; docs/weekly-night.md).
+"""The weekly night's money ledger for the API-key routes: a **record**, never a limit (the owner, 2026-11-26: "I can
+pay money just to have things done"; the caps of $10 a week and $2 a run of 2026-11-22 are retired). Nothing is
+skipped, shortened or refused for what it costs; the ledger says what each run cost, per night and per week, and what
+the night expected before it started (docs/weekly-night.md).
 
-One file per week, `$G/ledger/<monday>.jsonl` (mode 600), one line per event:
-- `reserve`: before a run or a window request starts, its worst case, read from the prices of just before;
-- `spent`: when it ends, what the replies' usage cost at those prices (the reservation is then released);
-- `reported`: the provider's own figure for it, where the provider gives one (OpenRouter's `usage.cost`).
+One file per week, `$G/ledger/<monday>.jsonl` (mode 600), one line per event, each with its night's date (`night`):
+- `estimate`: before a night starts, what its API-key runs may cost at most (the cache runs' worst case; the window
+  checks', which cost nothing when refused as expected, apart);
+- `start`: when a run or a window request starts, its worst case from the prices of just before (null: no price
+  known; it runs all the same);
+- `spent`: when it ends, what the replies' usage cost at those prices;
+- `reported`: the provider's own figure for it, where the provider gives one (OpenRouter's `usage.cost`);
+- `release`: a start that ended with nothing to record.
 
-A cache run starts only when its worst case is at most the run ceiling and fits what is left of the week:
-    left = week cap - max(spent, reported) - reserved (of the runs and window checks of the night).
-A window check (the owner's decision of 2026-11-22, "A") is not held to the run ceiling: it is sent only when its
-worst case (the cost if the vendor answers instead of refusing) fits what is left. A refused check is charged $0 and
-its reservation released before the next is considered; an answered one is charged what it cost (its worst case
-when the answer gives none). Window checks go first, one at a time; the cache runs reserve from what is left.
-The API-key part stops when the spent or the reported figure reaches the week's cap.
-
-    python3 harness/ledger.py [--week <monday>]       # the week's sums
+    python3 harness/ledger.py [--week <monday>]       # the week's sums, per night and per route
 """
 import datetime as dt
 import json
 import os
 import sys
 import time
-
-WEEK_CAP = 10.0
-RUN_CAP = 2.0
 
 
 def week_of(date):
@@ -84,9 +79,8 @@ def usage_cost(path, prices):
 
 
 class Ledger:
-    def __init__(self, folder, date, week_cap=WEEK_CAP, run_cap=RUN_CAP, dry=False, clock=None):
-        self.folder, self.week = folder, week_of(date)
-        self.week_cap, self.run_cap, self.dry = float(week_cap), float(run_cap), dry
+    def __init__(self, folder, date, dry=False, clock=None):
+        self.folder, self.week, self.dry = folder, week_of(date), dry
         self.clock = clock or (lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
         self.path = os.path.join(folder, f"{self.week}.jsonl")
         self.rows = self._read()
@@ -108,82 +102,87 @@ class Ledger:
         with os.fdopen(fd, "a") as f:
             f.write(json.dumps(row) + "\n")
 
-    def spent(self):
-        return sum(n(r.get("usd")) for r in self.rows if r["kind"] == "spent")
+    def _sum(self, kind, night=None):
+        return sum(n(r.get("usd")) for r in self.rows
+                   if r["kind"] == kind and (night is None or r.get("night") == night))
 
-    def reported(self):
-        return sum(n(r.get("usd")) for r in self.rows if r["kind"] == "reported")
+    def spent(self, night=None):
+        return self._sum("spent", night)
 
-    def reserved(self):
-        open_ = {}
-        for r in self.rows:
-            if r["kind"] == "reserve":
-                open_[r["label"]] = n(r.get("usd"))
-            elif r["kind"] in ("spent", "release"):
-                open_.pop(r["label"], None)
-        return sum(open_.values())
+    def reported(self, night=None):
+        return self._sum("reported", night)
 
-    def used(self):
-        return max(self.spent(), self.reported())
+    def used(self, night=None):
+        """What the week (or one night) cost: the higher of our figure and the provider's."""
+        return max(self.spent(night), self.reported(night))
 
-    def left(self):
-        return round(self.week_cap - self.used() - self.reserved(), 6)
+    def night_spent(self, night):
+        return self.used(night)
 
-    def exhausted(self):
-        """The week's cap is reached by the ledger's own figure or by the provider's."""
-        return self.used() >= self.week_cap
+    def estimate(self, night, cache, windows, values):
+        """Before a night starts: what its API-key runs may cost at most (for the record)."""
+        self._add({"kind": "estimate", "night": night, "usd": round(cache, 6), "windows_usd": round(windows, 6),
+                   "values": values})
 
-    def admit(self, label, route, model, estimate, window=False):
-        """'ok' (and the worst case reserved), 'no-price' (no worst case can be worked out: not started),
-        'over-run-cap' (a cache run above the run ceiling: not started) or 'over-week' (does not fit what is left).
-        A window check (`window`) is held to the week only, never to the run ceiling."""
-        if estimate is None:
-            return "no-price"
-        if not window and estimate > self.run_cap:
-            return "over-run-cap"
-        if estimate > self.left():
-            return "over-week"
-        self._add({"kind": "reserve", "label": label, "route": route, "model": model, "usd": round(estimate, 6)})
-        return "ok"
+    def estimates(self):
+        """night -> its estimate row (the last one written)."""
+        return {r.get("night"): r for r in self.rows if r["kind"] == "estimate"}
 
-    def settle(self, label, route, model, usd, reported=None):
+    def start(self, label, route, model, estimate, night=None):
+        """A run or a window request starting, with its worst case (None: no price known). Never a refusal."""
+        self._add({"kind": "start", "night": night, "label": label, "route": route, "model": model,
+                   "usd": round(estimate, 6) if estimate is not None else None})
+
+    def settle(self, label, route, model, usd, reported=None, night=None):
         """What a run cost by the ledger's prices, and the provider's own figure where it gives one."""
-        self._add({"kind": "spent", "label": label, "route": route, "model": model, "usd": round(usd, 6)})
+        self._add({"kind": "spent", "night": night, "label": label, "route": route, "model": model,
+                   "usd": round(usd, 6)})
         if reported:
-            self._add({"kind": "reported", "label": label, "route": route, "model": model, "usd": round(reported, 6)})
+            self._add({"kind": "reported", "night": night, "label": label, "route": route, "model": model,
+                       "usd": round(reported, 6)})
 
-    def open_reservations(self):
-        """The labels reserved and neither settled nor released."""
+    def open_starts(self):
+        """The labels started and neither settled nor released."""
         out = {}
         for r in self.rows:
-            if r["kind"] == "reserve":
+            if r["kind"] == "start":
                 out[r["label"]] = r
             elif r["kind"] in ("spent", "release"):
                 out.pop(r["label"], None)
         return list(out)
 
     def release(self, label):
-        """A reservation given back with nothing spent (a window request refused: refusals are not billed)."""
+        """A start given back with nothing to record."""
         self._add({"kind": "release", "label": label})
 
-    def by_route(self):
+    def by_route(self, night=None):
         out = {}
         for r in self.rows:
-            if r["kind"] == "spent":
+            if r["kind"] == "spent" and (night is None or r.get("night") == night):
                 out[r["route"]] = out.get(r["route"], 0.0) + n(r.get("usd"))
         return out
+
+    def nights(self):
+        """The nights the week's file names, in order."""
+        return sorted({r["night"] for r in self.rows if r.get("night")})
 
 
 def main():
     home = os.environ.get("GROUNDTRUTH_CLIENT_HOME")
     if not home:
         raise SystemExit("ledger: GROUNDTRUTH_CLIENT_HOME is not set")
-    week = sys.argv[sys.argv.index("--week") + 1] if "--week" in sys.argv else time.strftime("%Y-%m-%d")
-    led = Ledger(os.path.join(home, "ledger"), week, dry=True)
-    print(f"week of {led.week}: spent ${led.spent():.4f}, reported ${led.reported():.4f}, reserved "
-          f"${led.reserved():.4f}, left ${led.left():.4f} of ${led.week_cap:.2f}")
-    for route, usd in sorted(led.by_route().items()):
-        print(f"  {route}: ${usd:.4f}")
+    if "--week" not in sys.argv:
+        raise SystemExit("ledger: --week <a day of the week> (YYYY-MM-DD)")
+    led = Ledger(os.path.join(home, "ledger"), sys.argv[sys.argv.index("--week") + 1], dry=True)
+    est = led.estimates()
+    print(f"week of {led.week}: spent ${led.used():.4f} (ours ${led.spent():.4f}, "
+          f"the providers' ${led.reported():.4f})")
+    for night in led.nights():
+        e = est.get(night)
+        print(f"  night {night}: spent ${led.used(night):.4f}" +
+              (f", estimated at most ${n(e.get('usd')):.4f} before it started" if e else ""))
+        for route, usd in sorted(led.by_route(night).items()):
+            print(f"    {route}: ${usd:.4f}")
 
 
 if __name__ == "__main__":

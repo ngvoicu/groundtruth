@@ -1,5 +1,6 @@
-"""harness/plan.py (step G2): every value in exactly one state, the order, the window of two months, plan/values.json.
-Nothing is sent: fixtures only.
+"""harness/plan.py (step G2): every value in exactly one state, the order, the window of 31 days, only the values no
+source gives, plan/values.json. Nothing is sent: fixtures only. The plan's only clock is the night's date given to it
+(DATE here, and others below): no test reads today's date.
 
     python3 -m unittest discover -s test -p "test_*.py"
 """
@@ -53,35 +54,31 @@ class States(unittest.TestCase):
     def test_one_fixture_per_state(self):
         s = site(
             entry("openrouter", "a/new"),
-            entry("openrouter", "a/doubt", cache_doc=300, cache_status="contradicted"),
-            entry("openrouter", "a/moved", cache_doc=600, cache_status="not_contradicted"),
-            entry("openrouter", "a/agree", cache_doc=300, cache_status="not_contradicted"),
-            entry("openrouter", "a/settled", cache_doc=300, cache_status="contradicted"),
-            entry("openrouter", "a/ours"),
+            entry("openrouter", "a/documented", cache_doc=300, cache_status="not_contradicted"),
+            entry("openrouter", "a/doc-zero", cache_doc=0),
+            entry("openrouter", "a/pi", cache_pi=300, pi_standing="only"),
+            entry("openrouter", "a/measured"),
             entry("openrouter", "a/unsteady"),
-            entry("openrouter", "a/old", release="2026-09-29"),
+            entry("openrouter", "a/old", release="2026-10-29"),
+            entry("openrouter", "a/undated", release=None),
         )
         o = observed([
-            cache_row("openrouter", "a/doubt", "direct", 150),
-            cache_row("openrouter", "a/moved", "direct", 600),
-            cache_row("openrouter", "a/agree", "direct", 300),
-            cache_row("openrouter", "a/settled", "direct", 150, "2026-11-01"),
-            cache_row("openrouter", "a/settled", "direct", 150, "2026-11-08"),
-            cache_row("openrouter", "a/ours", "direct", 900),
+            cache_row("openrouter", "a/measured", "direct", 900),
             cache_row("openrouter", "a/unsteady", "direct", 150, "2026-11-01"),
             cache_row("openrouter", "a/unsteady", "direct", 300, "2026-11-02"),
             cache_row("openrouter", "a/unsteady", "direct", 600, "2026-11-03"),
         ])
-        values = {"values": {"openrouter|a/moved|cache": {"stated": {"models_dev": 300, "pi": None}}}}
-        plan = build(s, o, values)
-        want = {"a/new": P.NEW, "a/doubt": P.DOUBT, "a/moved": P.MOVED, "a/agree": P.AGREEING,
-                "a/settled": P.SETTLED, "a/ours": P.OURS, "a/unsteady": P.UNSTEADY, "a/old": P.TOO_OLD}
+        plan = build(s, o)
+        want = {"a/new": P.NEW, "a/documented": P.GIVEN, "a/doc-zero": P.GIVEN, "a/pi": P.GIVEN,
+                "a/measured": P.MEASURED, "a/unsteady": P.UNSTEADY, "a/old": P.TOO_OLD, "a/undated": P.UNDATED}
         for model, state in want.items():
             self.assertEqual(item(plan, "openrouter", model)["state"], state, model)
         self.assertEqual(item(plan, "openrouter", "a/new", "output")["state"], P.NO_METHOD_STATE)
         self.assertEqual(item(plan, "openrouter", "a/new", "window")["state"], P.NEW)
+        self.assertEqual(item(plan, "openrouter", "a/pi")["why"], "Pi's catalog: 300")
+        self.assertEqual([i["model"] for i in plan["planned"] if i["quantity"] == "cache"], ["a/new"])
 
-    def test_every_value_is_in_exactly_one_state_and_only_states_1_to_3_are_planned(self):
+    def test_every_value_is_in_exactly_one_state_and_only_new_ones_are_planned(self):
         s = site(entry("openrouter", "a/x"), entry("devin", "m-1"), entry("openai-codex", "gpt-x"),
                  entry("openrouter", "a/agree", cache_doc=300, cache_status="not_contradicted"))
         o = observed([cache_row("openrouter", "a/agree", "direct", 300)])
@@ -91,16 +88,30 @@ class States(unittest.TestCase):
         self.assertEqual(len(keys), 4 * 3)
         for i in plan["items"]:
             self.assertIn(i["state"], P.STATES)
-        self.assertTrue(all(i["state"] in P.PLANNED for i in plan["planned"]))
+        self.assertEqual(P.PLANNED, (P.NEW,))
+        self.assertTrue(all(i["state"] == P.NEW for i in plan["planned"]))
         self.assertNotIn("openrouter|a/agree|cache", [i["key"] for i in plan["planned"]])
 
-    def test_two_measurements_that_disagree_are_in_doubt_and_a_third_decides(self):
-        s = site(entry("openrouter", "a/x", cache_doc=300, cache_status="contradicted"))
-        two = observed([cache_row("openrouter", "a/x", "direct", 150, "2026-11-01"),
-                        cache_row("openrouter", "a/x", "direct", 600, "2026-11-02")])
-        self.assertEqual(item(build(s, two), "openrouter", "a/x")["state"], P.DOUBT)
-        three = observed(two["cache"] + [cache_row("openrouter", "a/x", "direct", 600, "2026-11-03")])
-        self.assertEqual(item(build(s, three), "openrouter", "a/x")["state"], P.SETTLED)
+    def test_a_value_a_source_gives_is_never_measured_even_when_we_disagree_with_it(self):
+        # The owner, 2026-11-26: only values nobody else gives. The old "in doubt" and "source moved" are gone.
+        s = site(entry("openrouter", "a/x", cache_doc=300, cache_status="contradicted"),
+                 entry("openrouter", "a/y", cache_pi=300, pi_standing="differs"))
+        o = observed([cache_row("openrouter", "a/x", "direct", 150, "2026-11-01"),
+                      cache_row("openrouter", "a/x", "direct", 600, "2026-11-02"),
+                      cache_row("openrouter", "a/y", "direct", 600)])
+        moved = {"values": {"openrouter|a/x|cache": {"stated": {"models_dev": 600, "pi": None}}}}
+        plan = build(s, o, moved)
+        self.assertEqual(item(plan, "openrouter", "a/x")["state"], P.MEASURED)
+        self.assertEqual(item(plan, "openrouter", "a/y")["state"], P.MEASURED)
+        self.assertEqual(build(site(entry("openrouter", "a/x", cache_doc=300)), observed())["planned"][0]["key"],
+                         "openrouter|a/x|window")  # its cache lifetime is documented: only the window is new
+
+    def test_a_window_models_dev_states_is_given(self):
+        s = site(entry("openrouter", "a/x", win_doc=200000), entry("openrouter", "a/y"))
+        plan = build(s, observed())
+        self.assertEqual(item(plan, "openrouter", "a/x", "window")["state"], P.GIVEN)
+        self.assertEqual(item(plan, "openrouter", "a/x", "window")["why"], "documented: 200000")
+        self.assertEqual(item(plan, "openrouter", "a/y", "window")["state"], P.NEW)
 
     def test_three_of_which_no_two_agree_are_unsteady_and_an_ask(self):
         s = site(entry("devin", "m-1"))
@@ -137,32 +148,21 @@ class States(unittest.TestCase):
             self.assertEqual(item(plan, "devin", "m-1")["state"], P.WAITING)
             self.assertEqual(item(plan, "devin", "m-1")["pending"], ["own-clients-2026-11-23"])
 
-    def test_a_source_that_moved_brings_back_an_agreeing_or_settled_value(self):
-        s = site(entry("openrouter", "a/x", cache_doc=600, cache_status="not_contradicted"))
-        o = observed([cache_row("openrouter", "a/x", "direct", 600)])
-        same = {"values": {"openrouter|a/x|cache": {"stated": {"models_dev": 600, "pi": None}}}}
-        moved = {"values": {"openrouter|a/x|cache": {"stated": {"models_dev": 300, "pi": None}}}}
-        self.assertEqual(item(build(s, o, same), "openrouter", "a/x")["state"], P.AGREEING)
-        self.assertEqual(item(build(s, o, moved), "openrouter", "a/x")["state"], P.MOVED)
-        self.assertEqual(item(build(s, o), "openrouter", "a/x")["state"], P.AGREEING)  # no record: not moved
-
-    def test_agreement_not_available(self):
-        e = entry("openrouter", "a/x")
+    def test_the_sources_read(self):
+        e = entry("openrouter", "a/x", cache_doc=0, cache_pi=300, win_doc=1000)
+        self.assertEqual(P.given_by(e, "cache"), ["documented: 0", "Pi's catalog: 300"])
+        self.assertEqual(P.given_by(e, "window"), ["documented: 1000"])
+        self.assertEqual(P.given_by(None, "cache"), [])
         self.assertEqual(P.verdict(e, "output"), "unavailable")
-        self.assertEqual(P.state_of("output", [], [], "unavailable", None, {}), P.NEW)
-        self.assertEqual(P.state_of("output", [{"value": 1}], [], "unavailable", None, {}), P.OURS)
-
-    def test_pi_disagreeing_is_a_disagreement(self):
-        s = site(entry("openrouter", "a/x", cache_pi=300, pi_standing="differs"))
-        o = observed([cache_row("openrouter", "a/x", "direct", 600)])
-        self.assertEqual(item(build(s, o), "openrouter", "a/x")["state"], P.DOUBT)
+        self.assertEqual(P.state_of("output", [], [], []), P.NEW)
+        self.assertEqual(P.state_of("output", [{"value": 1}], [], []), P.MEASURED)
 
     def test_a_proxy_s_runs_do_not_make_a_login_value_measured(self):
         s = site(entry("devin", "m-1"))
         o = observed([cache_row("devin", "m-1", "cliproxyapi", 300), cache_row("devin", "m-1", "pi+cliproxyapi", 300)])
         self.assertEqual(item(build(s, o), "devin", "m-1")["state"], P.NEW)
         o2 = observed([cache_row("devin", "m-1", "devin-cli", 300)])
-        self.assertEqual(item(build(s, o2), "devin", "m-1")["state"], P.OURS)
+        self.assertEqual(item(build(s, o2), "devin", "m-1")["state"], P.MEASURED)
 
     def test_a_run_that_asked_for_a_long_lifetime_is_another_value(self):
         s = site(entry("anthropic", "c-1"))
@@ -188,38 +188,63 @@ class States(unittest.TestCase):
         self.assertIn("devin `m-1` window: no method yet", text)
         self.assertIn("devin `m-1` output: no method yet", text)
 
+    def test_cost_never_keeps_a_value_out(self):
+        s = site(entry("openai", "dear", price_in=500.0, price_out=2000.0))
+        plan = build(s, observed())
+        self.assertEqual(item(plan, "openai-api", "dear")["state"], P.NEW)
+        self.assertGreater(item(plan, "openai-api", "dear")["estimate_usd"], 100)
+        self.assertEqual([i["quantity"] for i in plan["planned"]], ["cache", "window"])
+        self.assertIn("Estimate: API keys $", P.render(plan))
+
 
 class Window(unittest.TestCase):
-    def test_two_calendar_months(self):
-        self.assertEqual(P.months_before(P.parse_day("2026-11-30"), 2).isoformat(), "2026-09-30")
-        self.assertEqual(P.months_before(P.parse_day("2026-12-31"), 2).isoformat(), "2026-10-31")
-        self.assertEqual(P.months_before(P.parse_day("2026-04-30"), 2).isoformat(), "2026-02-28")
-        s = site(entry("openrouter", "a/in", release="2026-09-30"), entry("openrouter", "a/out", release="2026-09-29"))
+    """The window is the 31 days before the night's own date: the plan's clock is the date it is given."""
+
+    def test_thirty_one_days(self):
+        self.assertEqual(P.window_start(P.parse_day("2026-11-30")).isoformat(), "2026-10-30")
+        self.assertEqual(P.window_start(P.parse_day("2027-03-01")).isoformat(), "2027-01-29")
+        s = site(entry("openrouter", "a/in", release="2026-10-30"), entry("openrouter", "a/out", release="2026-10-29"))
         plan = build(s, observed())
+        self.assertEqual(plan["window_since"], "2026-10-30")
         self.assertEqual(item(plan, "openrouter", "a/in")["state"], P.NEW)
         self.assertEqual(item(plan, "openrouter", "a/out")["state"], P.TOO_OLD)
 
-    def test_never_a_model_released_more_than_two_months_ago_whatever_its_state(self):
+    def test_the_night_s_date_is_the_only_clock(self):
+        # The same files planned for nights years apart: only the date given moves the window, never today's.
+        s = site(entry("openrouter", "a/x", release="2031-05-20"), entry("openrouter", "a/y", release="2026-11-20"))
+        with tempfile.TemporaryDirectory() as t:
+            later = P.build("2031-06-02", observed(), s, root=t)
+            now = P.build(DATE, observed(), s, root=t)
+            early = P.build("2020-01-06", observed(), s, root=t)
+        self.assertEqual((item(later, "openrouter", "a/x")["state"], item(later, "openrouter", "a/y")["state"]),
+                         (P.NEW, P.TOO_OLD))
+        self.assertEqual((item(now, "openrouter", "a/x")["state"], item(now, "openrouter", "a/y")["state"]),
+                         (P.NEW, P.NEW))  # a release after the night counts as inside
+        self.assertEqual(early["window_since"], "2019-12-06")
+
+    def test_never_a_model_released_before_the_window_whatever_its_state(self):
         s = site(entry("openrouter", "a/old", release="2026-06-01", cache_doc=300, cache_status="contradicted"))
         o = observed([cache_row("openrouter", "a/old", "direct", 150)])
-        moved = {"values": {"openrouter|a/old|cache": {"stated": {"models_dev": 600, "pi": None}}}}
-        plan = build(s, o, moved)
+        plan = build(s, o)
         self.assertEqual(item(plan, "openrouter", "a/old")["state"], P.TOO_OLD)
         self.assertEqual(plan["planned"], [])
 
-    def test_a_login_s_own_id_dates_from_the_lab_else_from_when_it_was_first_seen(self):
+    def test_a_login_s_own_id_dates_from_the_lab_and_never_from_when_it_was_first_seen(self):
         s = site(entry("anthropic", "claude-old-4-6", release="2026-02-01", canonical="anthropic/claude-old-4-6"))
         listed = {"providers": {"devin": {"date": DATE, "models": [
             {"id": "claude-old-4-6"}, {"id": "swe-9"}, {"id": "swe-8"}]}}}
-        plan = build(s, observed(), {"first_seen": {"devin": {"swe-8": "2026-08-01"}}}, listed=listed)
+        plan = build(s, observed(), {"first_seen": {"devin": {"swe-8": "2026-11-20"}}}, listed=listed)
         old = item(plan, "devin", "claude-old-4-6")
         self.assertEqual((old["state"], old["release_basis"]), (P.TOO_OLD, "lab release"))
-        new = item(plan, "devin", "swe-9")
-        self.assertEqual((new["state"], new["release_basis"], new["release"]), (P.NEW, "first seen", DATE))
+        new = item(plan, "devin", "swe-9")  # first seen tonight, no release date: not measured, named
+        self.assertEqual((new["state"], new["release_basis"], new["release"]), (P.UNDATED, P.NO_DATE, None))
         self.assertEqual(plan["newly_seen"]["devin"], {"claude-old-4-6": DATE, "swe-9": DATE})
-        self.assertEqual(item(plan, "devin", "swe-8")["state"], P.TOO_OLD)
-        seen = {"first_seen": {"devin": {"swe-9": "2026-09-01"}}}
-        self.assertEqual(item(build(s, observed(), seen, listed), "devin", "swe-9")["state"], P.TOO_OLD)
+        self.assertEqual(item(plan, "devin", "swe-8")["state"], P.UNDATED)
+        self.assertEqual(plan["undated"], [("devin", "swe-9"), ("devin", "swe-8")])
+        self.assertEqual(plan["planned"], [])
+        text = P.render(plan)
+        self.assertIn("## No release date known: not measured", text)
+        self.assertIn("- devin (2): `swe-9`, `swe-8`", text)
 
 
 def listing(provider, *rows):
@@ -232,7 +257,7 @@ def listing(provider, *rows):
 
 class ListingDates(unittest.TestCase):
     """A login model's release date: the route's entry, else its row in the login's listing (`released`), else the
-    lab's own entry, else the lab's listing row (exactly one date known), else as before."""
+    lab's own entry, else the lab's listing row (exactly one date known), else none: not measured."""
 
     def plan(self, s, listings, models, seen=None):
         s = dict(s, listings={p: P.listing_rows(doc) for p, doc in listings.items()})
@@ -253,9 +278,9 @@ class ListingDates(unittest.TestCase):
                for m in ("with-entry", "row-only", "lab-entry", "lab-row", "nothing")}
         self.assertEqual(got, {"with-entry": ("2026-11-01", "release"), "row-only": ("2026-11-02", "listed release"),
                                "lab-entry": ("2026-11-03", "lab release"), "lab-row": ("2026-11-04", "lab release"),
-                               "nothing": (None, P.BEFORE_DISCOVERY)})
+                               "nothing": (None, P.NO_DATE)})
         self.assertEqual(item(plan, "devin", "row-only")["state"], P.NEW)
-        self.assertEqual(item(plan, "devin", "nothing")["state"], P.TOO_OLD)
+        self.assertEqual(item(plan, "devin", "nothing")["state"], P.UNDATED)
 
     def test_a_listing_date_moves_a_model_out_of_the_window_or_into_it(self):
         listings = {"devin": listing("devin", ("old-one", "2026-06-01", None, None),
@@ -269,7 +294,7 @@ class ListingDates(unittest.TestCase):
                     "google": listing("google", ("twice", "2026-11-01", None, None),
                                       ("x", "2026-11-05", None, "google/twice"))}
         plan = self.plan(site(), listings, ["twice"])
-        self.assertEqual(item(plan, "devin", "twice")["release_basis"], P.BEFORE_DISCOVERY)
+        self.assertEqual(item(plan, "devin", "twice")["release_basis"], P.NO_DATE)
 
     def test_a_reseller_s_row_of_a_lab_s_model_is_not_the_lab_s_date(self):
         listings = {"devin": listing("devin", ("claude-x", None, None, None)),
@@ -289,7 +314,7 @@ class ListingDates(unittest.TestCase):
         s = site(entry("openrouter", "a/x", release=None))
         s["listings"] = {"openrouter": P.listing_rows(listing("openrouter", ("a/x", "2026-11-20", None, None)))}
         plan = build(s, observed(), {"first_seen": {"openrouter": {"a/x": None}}})
-        self.assertEqual(item(plan, "openrouter", "a/x")["state"], P.TOO_OLD)
+        self.assertEqual(item(plan, "openrouter", "a/x")["state"], P.UNDATED)
 
     def test_the_listing_s_shape(self):
         rows = P.listing_rows(listing("devin", ("a", "2026-11-02", "openai", "openai/a"), ("b", "2026-11", None, None),
@@ -324,36 +349,24 @@ class ListingDates(unittest.TestCase):
 class Order(unittest.TestCase):
     def test_the_order(self):
         s = site(
-            entry("openrouter", "a/doubt", release="2026-11-20", cache_doc=300, cache_status="contradicted"),
-            entry("openrouter", "a/moved", release="2026-11-21", cache_doc=600, cache_status="not_contradicted"),
-            entry("openrouter", "a/new-old", release="2026-10-01", price_in=0.1),
+            entry("openrouter", "a/new-old", release="2026-11-01", price_in=0.1),
             entry("openrouter", "a/new-recent", release="2026-11-20", price_in=5.0),
             entry("openrouter", "a/new-recent-cheap", release="2026-11-20", price_in=0.2),
-            entry("openrouter", "a/new-fresh", release="2026-10-02", price_in=0.3),
+            entry("openrouter", "a/new-fresh", release="2026-11-02", price_in=0.3),
         )
-        o = observed([cache_row("openrouter", "a/doubt", "direct", 150),
-                      cache_row("openrouter", "a/moved", "direct", 600)])
-        values = {"values": {"openrouter|a/moved|cache": {"stated": {"models_dev": 300, "pi": None}}},
-                  "first_seen": {"openrouter": {m: "2026-11-01" for m in ("a/doubt", "a/moved", "a/new-old",
-                                                                          "a/new-recent", "a/new-recent-cheap")}}}
-        plan = build(s, o, values, last_night="2026-11-23")
+        values = {"first_seen": {"openrouter": {m: "2026-11-01" for m in ("a/new-old", "a/new-recent",
+                                                                          "a/new-recent-cheap")}}}
+        plan = build(s, observed(), values, last_night="2026-11-23")
         caches = [i["model"] for i in plan["planned"] if i["quantity"] == "cache"]
-        self.assertEqual(caches, ["a/new-fresh", "a/new-recent-cheap", "a/new-recent", "a/new-old", "a/doubt",
-                                  "a/moved"])
+        self.assertEqual(caches, ["a/new-fresh", "a/new-recent-cheap", "a/new-recent", "a/new-old"])
 
     def test_logins_keep_the_vendor_s_own_order_within_a_state(self):
         listed = {"providers": {"devin": {"date": DATE, "models": [{"id": "z-1"}, {"id": "a-1"}]}}}
-        plan = build(site(), observed(), {"first_seen": {"devin": {"z-1": "2026-11-01", "a-1": "2026-11-01"}}},
+        s = dict(site(), listings={"devin": P.listing_rows(listing("devin", ("z-1", "2026-11-10", None, None),
+                                                                   ("a-1", "2026-11-10", None, None)))})
+        plan = build(s, observed(), {"first_seen": {"devin": {"z-1": "2026-11-01", "a-1": "2026-11-01"}}},
                      listed)
         self.assertEqual([i["model"] for i in plan["planned"]], ["z-1", "a-1"])
-
-    def test_ties_the_oldest_measurement_first(self):
-        s = site(*(entry("openrouter", m, release="2026-11-01", cache_doc=300, cache_status="contradicted")
-                   for m in ("a/b", "a/z")))
-        o = observed([cache_row("openrouter", "a/b", "direct", 150, "2026-11-10"),
-                      cache_row("openrouter", "a/z", "direct", 150, "2026-11-02")])
-        plan = build(s, o)
-        self.assertEqual([i["model"] for i in plan["planned"] if i["quantity"] == "cache"], ["a/z", "a/b"])
 
     def test_the_same_inputs_give_the_same_plan(self):
         s = site(*(entry("openrouter", f"a/{n}", release=f"2026-11-{10 + n % 5}", price_in=n % 3) for n in range(20)))
@@ -378,7 +391,6 @@ class Values(unittest.TestCase):
         s2 = site(entry("openrouter", "a/x", cache_doc=600, cache_status="not_contradicted"))
         kept = P.values_file(o, s2, first, today="2026-12-01")
         self.assertEqual(kept["values"]["openrouter|a/x|cache"]["stated"], {"models_dev": 300, "pi": None})
-        self.assertEqual(item(build(s2, o, kept), "openrouter", "a/x")["state"], P.MOVED)
         o2 = observed(o["cache"] + [cache_row("openrouter", "a/x", "direct", 600, "2026-11-30")])
         renewed = P.values_file(o2, s2, kept, today="2026-12-01")
         self.assertEqual(renewed["values"]["openrouter|a/x|cache"]["stated"], {"models_dev": 600, "pi": None})

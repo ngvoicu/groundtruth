@@ -10,41 +10,35 @@ Nothing is sent: the plan reads files (observed.json, plan/values.json, listed.j
 a copy of providers.dev's public dataset). harness/weekly.py reads providers.dev's dataset itself, from the site.
 
 A **value** is one quantity of one model on one route: its cache lifetime (`cache`), its input window (`window`), its
-output limit (`output`). Every value offered on a route the night drives is in exactly one state:
+output limit (`output`). The owner's rules of 2026-11-26: only models released in the **31 days before the night**,
+and of those only the values **no source gives yet**. Every value offered on a route the night drives is in exactly
+one state:
 
-  1 new           offered, inside the window, never measured by a client that counts for the route
-  2 in doubt      inside the window, measured once and disagreeing with models.dev or pi.dev; or measured twice
-                  with two values that disagree with each other (a third decides)
-  3 source moved  inside the window, models.dev or pi.dev states another value than on the day we measured
-  -  agreeing     our value agrees with the sources: never measured again (it comes back only through 3)
-  -  settled      measured at least twice, our values agree with each other and disagree with a source: never again
-                  (it comes back only through 3)
-  -  ours alone   measured, and no source states the value (or no verdict is published for it): never measured
-                  again (the owner dropped the design's 90-day re-check, 2026-11-22)
-  -  unsteady     three measurements or more, no two agree: no further run, and an ask
+  new             planned: inside the window, a method for it, and no source gives it (providers.dev states no
+                  documented value for it, from models.dev or the provider's own documentation; Pi's catalog states
+                  none; we have not measured it)
+  -  given        a source gives it: providers.dev's documented value (models.dev, or the provider's documentation as
+                  providers.dev records it) or Pi's catalog (as providers.dev publishes it): never measured
+  -  measured     we measured it already (our own source): never measured again
+  -  unsteady     three measurements or more, no two agree: never measured again, and an ask (a decision)
   -  waiting      a measurement of it is in a night still waiting for its audit or its publication
   -  no method    the harness has no method for it on this route (named, never left out without a word)
-  -  too old      released more than two months before the night (or first seen then, where no release date is
-                  known; or listed before discovery began, with no date at all): never measured (the owner, 2026-11-22)
-  -  above the caps  an API-key value whose worst case is above the owner's caps, decided once in
-                  plan/not-measured.md: named as "not measured: above the caps (decided <date>)", no ask; when its
-                  worst case falls under the caps the row no longer applies and the value is planned again
+  -  too old      released more than 31 days before the night: never measured
+  -  no release date  no release date is known for the model: never measured, and PLAN.md and the morning report
+                  name the model, so that nobody takes it for measured
 
-The window: a model counts when its release date (providers.dev's entry on the route; else, for a login's own id,
-the `released` of its row in the login's listing on providers.dev, else the release date of the lab's own model it
-names, when exactly one is known: the lab's own entry, else the lab's listing row, else any entry naming that
-canonical model) or, when none is known, the date it was first listed or discovered, is no more than two
-months before the night. listed.json states neither a release date nor a first-seen day: the day a model was first
-listed is plan/values.json's `first_seen`, else the night that first lists it (recorded at its publication). A model
-already listed when discovery began (its first file, 2026-11-25) has `first_seen` null: the day it was first listed
-is unknown, so with no release date it is too old (`--record-baseline` records them, once).
+The release date: providers.dev's entry on the route (`release_date`); else, for a login's own id, the `released` of
+its row in the login's listing on providers.dev; else the release date of the lab's own model it names, when exactly
+one is known (the lab's own entry, else the lab's listing row, else any entry naming that canonical model). The day
+a model was first listed or discovered is not a release date: it orders the new ones (first seen since the last
+night first), it never puts a model in the window. Cost is never a reason to leave a value out (the owner,
+2026-11-26): an API-key value's worst case is worked out for the record (the night's estimate), never compared with
+any cap.
 
-The order: state 1, then 2, then 3. Inside state 1, the models first seen since the last night come first. Inside
-each state: the newest release first; then logins in the vendor's own list order and API keys cheapest first; then
-the oldest measurement first; then the id. The same inputs give the same plan.
+The order of the new values: the models first seen since the last night first; then the newest release first; then
+logins in the vendor's own list order and API keys cheapest first; then the id. The same inputs give the same plan.
 """
 import argparse
-import calendar
 import datetime as dt
 import glob
 import json
@@ -55,7 +49,6 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-import ledger as L  # noqa: E402  (the caps' defaults: $10 a week, $2 a run)
 
 # The routes a weekly night drives: two logins through their vendors' own clients, three API keys straight.
 ROUTES = {
@@ -87,22 +80,19 @@ COUNTING = {"api_key": ("direct",), "login": ("direct", "own_client")}
 HARNESS_ROUTE = {"codex": "codex-subscription", "devin": "devin"}
 EFFORT_SUFFIX = re.compile(r"-(?:none|minimal|low|medium|high|xhigh|max)$")
 
-NEW, DOUBT, MOVED = "new", "in doubt", "source moved"
-AGREEING, SETTLED, OURS, UNSTEADY = "agreeing", "settled", "ours alone", "unsteady"
-WAITING, NO_METHOD_STATE, TOO_OLD = "waiting for its audit", "no method yet", "too old"
-ABOVE_CAPS = "above the caps"
-PLANNED = (NEW, DOUBT, MOVED)
-STATES = PLANNED + (AGREEING, SETTLED, OURS, UNSTEADY, WAITING, NO_METHOD_STATE, TOO_OLD, ABOVE_CAPS)
-WINDOW_MONTHS = 2
+NEW, GIVEN, MEASURED, UNSTEADY = "new", "given by a source", "measured already", "unsteady"
+WAITING, NO_METHOD_STATE, TOO_OLD, UNDATED = "waiting for its audit", "no method yet", "too old", "no release date"
+PLANNED = (NEW,)
+STATES = PLANNED + (GIVEN, MEASURED, UNSTEADY, WAITING, NO_METHOD_STATE, TOO_OLD, UNDATED)
+WINDOW_DAYS = 31  # the owner, 2026-11-26: models released in the 31 days before the night
 # Two window measurements agree within this share (a bracket's two ends, a count's rounding).
 WINDOW_TOLERANCE = 0.01
 
 
-def months_before(day, months):
-    """The same day `months` calendar months earlier (the month's last day where it has no such day)."""
-    y, m = divmod(day.year * 12 + day.month - 1 - months, 12)
-    m += 1
-    return dt.date(y, m, min(day.day, calendar.monthrange(y, m)[1]))
+def window_start(day):
+    """The first day of the window of the night of `day` (a date): WINDOW_DAYS before it. A model released on that
+    day or later is inside; the night's own date is the only clock (never today's)."""
+    return day - dt.timedelta(days=WINDOW_DAYS)
 
 
 def parse_day(s):
@@ -420,12 +410,13 @@ def pending_runs(root, observed):
     return out
 
 
-# --- the verdicts -----------------------------------------------------------------------------------------------------
+# --- the sources -----------------------------------------------------------------------------------------------------
 
 def verdict(e, quantity):
     """providers.dev's verdict on our value, worked out there and never again here: `disagree` (models.dev
     contradicted, or pi.dev differs), `agree` (a source states it and none disagrees), `none` (no source states it),
-    or `unavailable` (no verdict published for this quantity yet)."""
+    or `unavailable` (no verdict published for this quantity yet). Kept in the plan for the record only: since
+    2026-11-26 a measured value is never measured again, whatever the verdict."""
     if e is None:
         return "none"
     q = e[quantity]
@@ -445,6 +436,23 @@ def stated(e, quantity):
     return {"models_dev": e[quantity].get("documented"), "pi": e[quantity].get("pi")}
 
 
+def given_by(e, quantity):
+    """The sources that already give a value, read from providers.dev's entry on the route (`e`): its documented value
+    (`documented`: models.dev's, or the provider's own documentation as providers.dev records it: for a cache lifetime
+    `cache_lifetime.short.documented_s`, for a window `input_window.documented_tokens`, for an output limit
+    `max_output`) and Pi's catalog (`pi`: the value providers.dev publishes from Pi, `prompt_cache.short` or
+    `context_window`). A value of 0 is a value (a provider that documents no caching). [] when none gives it."""
+    if e is None:
+        return []
+    q = e[quantity]
+    out = []
+    if q.get("documented") is not None:
+        out.append(f"documented: {q['documented']}")
+    if q.get("pi") is not None:
+        out.append(f"Pi's catalog: {q['pi']}")
+    return out
+
+
 def same(quantity, a, b):
     if quantity == "window":
         return abs(a - b) <= WINDOW_TOLERANCE * max(a, b)
@@ -460,42 +468,31 @@ def agreeing_pair(quantity, values):
     return None
 
 
-def state_of(quantity, ms, pending, ver, record, now_stated):
-    """One value's state from its counting measurements (oldest first), the nights that hold it waiting,
-    providers.dev's verdict, its record in plan/values.json and what the sources state now. The window and the
-    method are applied before (build)."""
+def state_of(quantity, ms, pending, given):
+    """One value's state, inside the window and with a method (build decides those first): from its counting
+    measurements (oldest first), the nights that hold it waiting, and the sources that give it (given_by)."""
     if pending:
         return WAITING
-    n = len(ms)
-    if n == 0:
-        return NEW
-    if record and record.get("stated") is not None and record["stated"] != now_stated:
-        return MOVED
-    values = [m["value"] for m in ms]
-    if n >= 2 and not all(same(quantity, values[-1], v) for v in values[:-1]):
-        if n == 2:
-            return DOUBT  # two that disagree: a third decides
-        if agreeing_pair(quantity, values) is None:
+    if ms:
+        values = [m["value"] for m in ms]
+        if len(ms) >= 3 and agreeing_pair(quantity, values) is None:
             return UNSTEADY
-    if ver == "disagree":
-        return DOUBT if n == 1 else SETTLED
-    if ver == "agree":
-        return AGREEING
-    return OURS  # no source states it (or no verdict published): measured, never re-measured
+        return MEASURED
+    if given:
+        return GIVEN
+    return NEW
 
 
 # --- the plan ---------------------------------------------------------------------------------------------------------
 
-BEFORE_DISCOVERY = "listed before discovery began"
+NO_DATE = "no release date known"
 
 
-def release_of(route, row, site, labs, seen):
+def release_of(route, row, site, labs):
     """(date, basis) of a model on a route: providers.dev's entry; else, for a login, the `released` of the model's
     row in the login's listing on providers.dev ("listed release"); else the lab's own model it names (lab_dates: the
-    lab's own entry, else the lab's listing row, else an entry naming that model; exactly one date known); else the
-    day it was first listed or discovered (plan/values.json's `first_seen`, else the night itself: recorded at the
-    publication). A `first_seen` of null is a model already listed when discovery began (2026-11-25, recorded by
-    --record-baseline): the day it was first listed is not known, so it has no date and is never in the window."""
+    lab's own entry, else the lab's listing row, else an entry naming that model; exactly one date known); else
+    (None, NO_DATE). The day a model was first listed is not its release date (the owner, 2026-11-26)."""
     e = site["entries"].get(f"{ROUTES[route]['provider']}/{row['model']}")
     if e and e.get("release_date"):
         return e["release_date"][:10], "release"
@@ -506,9 +503,7 @@ def release_of(route, row, site, labs, seen):
     dates = labs.get(norm(row["model"])) if ROUTES[route]["kind"] == "login" else None
     if dates and len(dates) == 1:
         return next(iter(dates)), "lab release"
-    if seen is None:
-        return None, BEFORE_DISCOVERY
-    return seen[:10], "first seen"
+    return None, NO_DATE
 
 
 REQUESTS = {"std": 3 + 2 * 3 * 14, "long": 3 + 2 * 3 * 17}
@@ -517,7 +512,7 @@ REQUESTS = {"std": 3 + 2 * 3 * 14, "long": 3 + 2 * 3 * 17}
 def estimate_usd(e, schedule="std"):
     """The worst case of one API-key cache run, as on 18 November: every request (control 3, then priming and check
     3 per age) of 3,000 prompt tokens billed at the higher of the input and the cache-write price, plus 32 output
-    tokens. None when providers.dev states no input price."""
+    tokens. None when providers.dev states no input price. For the record (the night's estimate), never a limit."""
     if not e or e.get("price_in") is None:
         return None
     requests = REQUESTS[schedule]
@@ -539,13 +534,6 @@ def window_usd(e, words):
     return round(words * e["price_in"] / 1e6, 4)
 
 
-# --- plan/not-measured.md: values too dear for the caps, decided once -------------------------------------------------
-
-DECISIONS = os.path.join("plan", "not-measured.md")
-DECIDED_BY = "the owner's caps"
-DECISION_ROW = re.compile(r"^\|\s*`([^`|]+)`\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*([^|]*?)\s*\|\s*([^|]*?)\s*\|\s*$")
-
-
 def value_key(text):
     """`<route>:<model>:<quantity>` (as --value takes it) -> `route|model|quantity`; None when it is not one."""
     route, _, rest = text.partition(":")
@@ -555,60 +543,13 @@ def value_key(text):
     return f"{route}|{model}|{q}"
 
 
-def load_decisions(path):
-    """plan/not-measured.md's table: value key -> {date, by, reason}. Every table row after the header must be one
-    decision (`| `<route>:<model>:<quantity>` | YYYY-MM-DD | <who> | <reason> |`): a row that is not is an error, never
-    skipped in silence. No file: no decision."""
-    try:
-        with open(path) as f:
-            lines = f.read().splitlines()
-    except FileNotFoundError:
-        return {}
-    out = {}
-    for n, line in enumerate(lines, 1):
-        s = line.strip()
-        if not s.startswith("|") or s.startswith("| Value ") or re.fullmatch(r"\|[-|: ]+\|", s):
-            continue
-        m = DECISION_ROW.match(s)
-        key = value_key(m.group(1)) if m else None
-        if not m or not key or parse_day(m.group(2)) is None or not m.group(3):
-            raise ValueError(f"{os.path.basename(path)}, line {n}: not a decision row "
-                             "(| `<route>:<model>:<quantity>` | YYYY-MM-DD | who | reason |)")
-        if key in out:
-            raise ValueError(f"{os.path.basename(path)}, line {n}: {m.group(1)} is decided twice")
-        out[key] = {"date": m.group(2), "by": m.group(3), "reason": m.group(4)}
-    return out
-
-
-def cap_of(quantity, caps):
-    """The cap a value's worst case is held to: a cache run the run ceiling, a window check the week (it may pass the
-    run ceiling but must fit the week: the owner, 2026-11-22, "A")."""
-    week_cap, run_cap = caps
-    return week_cap if quantity == "window" else run_cap
-
-
-def cap_words(quantity, caps):
-    return f"the week's ${caps[0]:.2f}" if quantity == "window" else f"the ${caps[1]:.2f} a run"
-
-
-def decision_line(key, date, estimate, caps):
-    """The row to add to plan/not-measured.md for a value above the caps (an ask gives it)."""
-    route, model, q = key.split("|")
-    return (f"| `{route}:{model}:{q}` | {date} | {DECIDED_BY} | worst case ${estimate:.2f}, above "
-            f"{cap_words(q, caps)} |")
-
-
-def build(date, observed, site, values=None, listed=None, root=ROOT, last_night=None, decisions=None, caps=None):
-    """The plan of the night of `date` (YYYY-MM-DD, a Monday): every value offered on the night's routes with its
-    state, the planned ones in order, and the asks the plan raises (unsteady values). `decisions`: plan/not-measured.md
-    (read from `root` when not given); `caps`: (week, run) in dollars, the ledger's by default."""
-    if decisions is None:
-        decisions = load_decisions(os.path.join(root, DECISIONS))
-    caps = caps or (L.WEEK_CAP, L.RUN_CAP)
+def build(date, observed, site, values=None, listed=None, root=ROOT, last_night=None):
+    """The plan of the night of `date` (YYYY-MM-DD, a Monday; the plan's only clock): every value offered on the
+    night's routes with its state, the planned ones in order, the models with no release date (named, never
+    measured), and the asks the plan raises (unsteady values)."""
     day = dt.date.fromisoformat(date)
-    since = months_before(day, WINDOW_MONTHS)
+    since = window_start(day)
     values = values or {}
-    records = values.get("values") or {}
     first_seen = values.get("first_seen") or {}
     last_night = last_night or values.get("last_night") or (day - dt.timedelta(days=7)).isoformat()
     offers, notes = offered(site, listed)
@@ -623,31 +564,34 @@ def build(date, observed, site, values=None, listed=None, root=ROOT, last_night=
             model = row["model"]
             known = first_seen.get(route) or {}
             if model in known:
-                seen = known[model]  # a day, or null: listed before discovery began (release_of)
+                seen = known[model]  # a day, or null: listed before discovery began
             else:
                 newly_seen.setdefault(route, {})[model] = date
                 seen = date
-            released, basis = release_of(route, row, site, labs, seen)
+            released, basis = release_of(route, row, site, labs)
             e = site["entries"].get(f"{ROUTES[route]['provider']}/{model}")
             for q in QUANTITIES:
                 key = f"{route}|{model}|{q}"
                 ms = ms_all.get((route, model, q), [])
+                given = given_by(e, q)
                 item = {"key": key, "route": route, "model": model, "quantity": q, "position": pos,
                         "release": released, "release_basis": basis, "first_seen": seen,
                         "fresh": bool(seen) and seen > last_night, "count": len(ms),
                         "last_measured": ms[-1]["date"] if ms else None,
                         "oldest_measured": ms[0]["date"] if ms else None,
-                        "values": [m["value"] for m in ms], "verdict": verdict(e, q),
+                        "values": [m["value"] for m in ms], "verdict": verdict(e, q), "given": given,
                         "pending": pend.get((route, model, q), []), "efforts": row.get("efforts")}
+                rel = parse_day(released)
                 if (q, kind) in NO_METHOD:
                     item["state"], item["why"] = NO_METHOD_STATE, NO_METHOD[(q, kind)]
-                elif released is None or parse_day(released) is None or parse_day(released) < since:
-                    item["state"] = TOO_OLD
-                    item["why"] = (f"no release date known and {basis}: the day it was first listed is unknown"
-                                   if basis == BEFORE_DISCOVERY else
-                                   f"released {released} ({basis}), before {since.isoformat()}")
+                elif rel is None:
+                    item["state"], item["why"] = UNDATED, "no release date known: not measured"
+                elif rel < since:
+                    item["state"], item["why"] = TOO_OLD, f"released {released} ({basis}), before {since.isoformat()}"
                 else:
-                    item["state"] = state_of(q, ms, item["pending"], item["verdict"], records.get(key), stated(e, q))
+                    item["state"] = state_of(q, ms, item["pending"], given)
+                    if item["state"] == GIVEN:
+                        item["why"] = "; ".join(given)
                 if kind == "api_key" and e:
                     item["prices"] = {"in": e.get("price_in"), "out": e.get("price_out"), "write": e.get("price_write")}
                 if q == "cache":
@@ -657,30 +601,54 @@ def build(date, observed, site, values=None, listed=None, root=ROOT, last_night=
                 elif q == "window" and kind == "api_key":
                     item["words"] = window_words(e)
                     item["estimate_usd"] = window_usd(e, item["words"])
-                d = decisions.get(key)
-                if d and item["state"] in PLANNED:
-                    est = item.get("estimate_usd")
-                    if est is not None and est > cap_of(q, caps):
-                        item["state"], item["decision"] = ABOVE_CAPS, d
-                        item["why"] = (f"not measured: above the caps (decided {d['date']}): worst case ${est:.2f}, "
-                                       f"above {cap_words(q, caps)}")
-                    else:  # a price dropped (or none is known): the row no longer applies, the value is planned
-                        item["decision_lapsed"] = d
                 items.append(item)
-    order = {s: i for i, s in enumerate(PLANNED)}
 
     def sort_key(i):
         rel = parse_day(i["release"]) or dt.date.min
         cost = i.get("estimate_usd")
-        return (order[i["state"]], 0 if (i["state"] == NEW and i["fresh"]) else 1, -rel.toordinal(),
+        return (0 if i["fresh"] else 1, -rel.toordinal(),
                 i["position"] if ROUTES[i["route"]]["kind"] == "login" else (cost if cost is not None else 1e9),
-                i["oldest_measured"] or "", i["route"], i["model"], i["quantity"])
+                i["route"], i["model"], i["quantity"])
     planned = sorted((i for i in items if i["state"] in PLANNED), key=sort_key)
     asks = [{"kind": "unsteady-value", "route": i["route"], "model": i["model"], "quantity": i["quantity"],
              "values": i["values"]} for i in items if i["state"] == UNSTEADY]
-    return {"date": date, "window_since": since.isoformat(), "last_night": last_night,
+    return {"date": date, "window_since": since.isoformat(), "window_days": WINDOW_DAYS, "last_night": last_night,
             "dataset": site.get("dataset"), "notes": notes, "items": items, "planned": planned, "asks": asks,
-            "newly_seen": newly_seen, "caps": list(caps), "decisions": len(decisions)}
+            "newly_seen": newly_seen, "undated": undated(items)}
+
+
+def undated(items, routes=None):
+    """The models offered with no release date known, once each: [(route, model)], in the plan's order of routes and
+    the vendor's order. Never measured; named so that nobody takes them for measured."""
+    out = []
+    for i in items:
+        if i["release"] is None and i["quantity"] == "cache" and (routes is None or i["route"] in routes):
+            out.append((i["route"], i["model"]))
+    return out
+
+
+def estimate(planned):
+    """The night's cost estimate from its planned API-key values (for the record: the log, PLAN.md and the morning
+    report; never a limit): {cache: worst case of the cache runs, windows: the window checks' worst case if every one
+    were answered (refused, as expected, they cost nothing), unpriced: values with no price known, runs: how many}."""
+    cache = sum(i.get("estimate_usd") or 0.0 for i in planned
+                if ROUTES[i["route"]]["kind"] == "api_key" and i["quantity"] == "cache")
+    windows = sum(i.get("estimate_usd") or 0.0 for i in planned
+                  if ROUTES[i["route"]]["kind"] == "api_key" and i["quantity"] == "window")
+    unpriced = [i["key"] for i in planned if ROUTES[i["route"]]["kind"] == "api_key" and i.get("estimate_usd") is None]
+    return {"cache": round(cache, 4), "windows": round(windows, 4), "unpriced": unpriced,
+            "key_values": sum(1 for i in planned if ROUTES[i["route"]]["kind"] == "api_key"),
+            "login_values": sum(1 for i in planned if ROUTES[i["route"]]["kind"] == "login")}
+
+
+def estimate_line(est):
+    """The estimate in words (the night's log, PLAN.md, the morning report)."""
+    line = (f"Estimate: API keys ${est['cache']:.2f} at most for {est['key_values']} values (the cache runs' worst "
+            f"case; the window checks are expected to be refused and cost nothing, ${est['windows']:.2f} if every one "
+            f"were answered); logins: {est['login_values']} values on the subscriptions, no dollars.")
+    if est["unpriced"]:
+        line += f" No price known for {len(est['unpriced'])} of them: measured all the same, cost unknown."
+    return line
 
 
 def counts(plan):
@@ -691,43 +659,52 @@ def counts(plan):
     return out
 
 
+def undated_lines(pairs):
+    """The models with no release date known, by route, each by name."""
+    by = {}
+    for route, model in pairs:
+        by.setdefault(route, []).append(f"`{model}`")
+    return [f"- {route} ({len(ms)}): {', '.join(ms)}" for route, ms in by.items()] or ["- none"]
+
+
 def render(plan, limit=None):
     """The plan as Markdown (results/night-<date>/PLAN.md): public, model ids and states only."""
     lines = [f"# Plan of the night of {plan['date']}", "",
-             f"providers.dev dataset `{plan['dataset']}`. Window: models released (or, with no release date, first "
-             f"seen) on or after {plan['window_since']}. Last night: {plan['last_night']}.", ""]
+             f"providers.dev dataset `{plan['dataset']}`. Window: models released on or after {plan['window_since']} "
+             f"(the {plan['window_days']} days before the night), and of those only the values no source gives. "
+             f"Last night: {plan['last_night']}.", "", estimate_line(estimate(plan["planned"])), ""]
     for n in plan["notes"]:
         lines.append(f"- {n}")
     if plan["notes"]:
         lines.append("")
-    lines += ["## Planned, in order", "", "| # | Route | Model | Value | State | Released | Measured | Run |",
-              "|---|---|---|---|---|---|---|---|"]
+    lines += ["## Planned, in order", "", "| # | Route | Model | Value | State | Released | Run |",
+              "|---|---|---|---|---|---|---|"]
     for n, i in enumerate(plan["planned"][:limit] if limit else plan["planned"], 1):
         run = i.get("schedule", "window request" if i["quantity"] == "window" else "")
         if i.get("estimate_usd") is not None:
             run += f", worst case ${i['estimate_usd']:.2f}"
+        elif ROUTES[i["route"]]["kind"] == "api_key":
+            run += ", no price known"
         lines.append(f"| {n} | {i['route']} | `{i['model']}` | {i['quantity']} | {i['state']}"
-                     f"{' (first seen since the last night)' if i['state'] == NEW and i['fresh'] else ''} | "
-                     f"{i['release'] or '?'} ({i['release_basis']}) | {i['count']}× | {run} |")
+                     f"{' (first seen since the last night)' if i['fresh'] else ''} | "
+                     f"{i['release']} ({i['release_basis']}) | {run} |")
     if not plan["planned"]:
-        lines.append("| | | nothing to measure | | | | | |")
+        lines.append("| | | nothing to measure | | | | |")
+    lines += ["", "## No release date known: not measured", "",
+              "These models are offered, but no release date is known for them (providers.dev's entry, the login's "
+              "listing, the lab's own model): the night does not measure them.", ""]
+    lines += undated_lines(plan["undated"])
     lines += ["", "## Every value, by state", "", "| Route | " + " | ".join(STATES) + " |",
               "|---|" + "---|" * len(STATES)]
     for route, c in counts(plan).items():
         lines.append(f"| {route} | " + " | ".join(str(c.get(s, 0)) for s in STATES) + " |")
-    lines += ["", "## No method yet, inside the window", ""]
     since = plan["window_since"]
+    lines += ["", "## Inside the window, given by a source", ""]
+    lines += [f"- {i['route']} `{i['model']}` {i['quantity']}: {i['why']}" for i in plan["items"]
+              if i["state"] == GIVEN] or ["- none"]
+    lines += ["", "## No method yet, inside the window", ""]
     named = [i for i in plan["items"] if i["state"] == NO_METHOD_STATE and (i["release"] or "") >= since]
     lines += [f"- {i['route']} `{i['model']}` {i['quantity']}: {i['why']}" for i in named] or ["- none"]
-    lines += ["", "## Not measured: above the caps (plan/not-measured.md)", ""]
-    lines += [f"- {i['route']} `{i['model']}` {i['quantity']}: {i['why']}" for i in plan["items"]
-              if i["state"] == ABOVE_CAPS] or ["- none"]
-    lapsed = [i for i in plan["items"] if i.get("decision_lapsed")]
-    if lapsed:
-        lines += ["", "Rows of plan/not-measured.md that no longer apply (the worst case is under the caps now, or not "
-                  "known): planned again; the row can go.", ""]
-        lines += [f"- {i['route']} `{i['model']}` {i['quantity']} (decided {i['decision_lapsed']['date']})"
-                  for i in lapsed]
     for title, state in (("Unsteady (an ask each)", UNSTEADY), ("Waiting for an audit or a publication", WAITING)):
         rows = [i for i in plan["items"] if i["state"] == state]
         lines += ["", f"## {title}", ""]
@@ -772,12 +749,13 @@ def values_file(observed, site, previous=None, today=None, first_seen=None, last
 def record_baseline(values, plan):
     """Records as `first_seen: null` every login model that this plan sees for the first time and has no release date
     (neither providers.dev's nor its lab's): models already listed when discovery began, whose first-listed day is not
-    known. Run once, on the first listed.json (2026-11-25); without it they would count as first seen on the next
-    night and be planned as new. Returns how many."""
+    known. Run once, on the first listed.json (2026-11-25). Since 2026-11-26 a model with no release date is never
+    measured whatever its first-seen day; the record keeps the order of the new ones (first seen since the last
+    night) honest. Returns how many."""
     fs = values.setdefault("first_seen", {})
     added = 0
     for i in plan["items"]:
-        if i["quantity"] != "cache" or ROUTES[i["route"]]["kind"] != "login" or i["release_basis"] != "first seen":
+        if i["quantity"] != "cache" or ROUTES[i["route"]]["kind"] != "login" or i["release_basis"] != NO_DATE:
             continue
         if i["model"] in (plan["newly_seen"].get(i["route"]) or {}):
             fs.setdefault(i["route"], {})[i["model"]] = None

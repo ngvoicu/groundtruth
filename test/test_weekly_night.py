@@ -216,51 +216,64 @@ class Caps(NightCase):
         self.assertGreater(runs[-1]["delay"], 20 * 9)
         self.assertEqual([r["delay"] for r in n.parts["codex"]["runs"]], [0, 15, 30])  # Codex: no limit, 15 s apart
 
-    def test_the_api_key_part_never_starts_a_run_that_does_not_fit_the_money_left(self):
-        keys = tuple(("openrouter", f"a/m{n}", 0.5) for n in range(8))  # worst case $0.37 each
-        fake = Fake(bucharest(0, 23), fixture_site(0, 0, keys), outcomes={})
-        n = self.night(fake, only=["keys"], week_cap=1.0)
-        est = P.estimate_usd(entry("openrouter", "x", price_in=0.5, price_out=0.4))
-        started = fake.started("or-a-m")
-        caches = [s for s in started]
-        self.assertTrue(caches)
-        self.assertLessEqual(len(caches) * est, 1.0 + 1e-9)
-        self.assertEqual(len(self.asks("money-spent")), 1)
-        self.assertTrue(n.parts["keys"]["status"].startswith("stopped"))
-        led = L.Ledger(os.path.join(self.home, "ledger"), DATE, 1.0)
-        self.assertLessEqual(led.used(), 1.0)
-
-    def test_a_run_over_two_dollars_is_not_started_and_asks_the_rest_goes_on(self):
-        keys = (("openrouter", "a/dear", 10.0), ("openrouter", "a/cheap", 0.1))
-        fake = Fake(bucharest(0, 23), fixture_site(0, 0, keys))
-        self.night(fake, only=["keys"])
-        self.assertNotIn("or-a-dear", fake.started())
-        self.assertIn("or-a-cheap", fake.started())
-        subjects = {a["subject"] for a in self.asks("run-over-cap")}
-        self.assertEqual(subjects, {"openrouter|a/dear|cache"})  # a window check is never held to the run ceiling
-        self.assertEqual([a["subject"] for a in self.asks("window-over-week")], ["openrouter|a/dear|window"])
-        ask = next(a for a in self.asks("run-over-cap") if a["subject"] == "openrouter|a/dear|cache")
-        self.assertIn("--value openrouter:a/dear:cache --run-cap", ask["command"])
-
-    def test_the_week_s_money_reached_during_the_night_stops_the_api_key_part(self):
-        keys = tuple(("openrouter", f"a/m{n}", 0.1) for n in range(4))
-        spend = {"or-a-m0": 10.5, "or-a-m1": 0.2}
-        fake = Fake(bucharest(0, 23), fixture_site(0, 0, keys), spend=spend,
-                    outcomes={"or-a-m0": (1, {"outcome": "done"}), "or-a-m1": (5, {"outcome": "done"}),
-                              "or-a-m2": (5, {"outcome": "done"}), "or-a-m3": (5, {"outcome": "done"})})
+    def test_no_cap_on_money_every_api_key_run_starts_whatever_it_costs(self):
+        # The owner, 2026-11-26: the $10 a week and $2 a run are retired. Dear runs and dear checks are all sent.
+        keys = tuple(("openrouter", f"a/m{n}", 0.5) for n in range(8)) + (("openrouter", "a/dear", 50.0),)
+        spend = {f"or-a-m{n}": 3.0 for n in range(8)}  # $24 in one night, far past the old $10
+        fake = Fake(bucharest(0, 23), fixture_site(0, 0, keys), spend=spend)
         n = self.night(fake, only=["keys"])
-        self.assertEqual(len(self.asks("money-spent")), 1)
-        self.assertTrue(any(c == ("stop", "or-a-m1") for c in fake.calls), fake.calls)
-        self.assertTrue(n.parts["keys"]["status"].startswith("stopped"))
+        self.assertEqual(sorted(fake.started("or-a-")), sorted([f"or-a-m{i}" for i in range(8)] + ["or-a-dear"]))
+        self.assertEqual(len([c for c in fake.calls if c[0] == "window"]), 9)
+        self.assertEqual(n.parts["keys"]["status"], "done")
+        self.assertEqual([a["kind"] for a in self.asks()], [])
+        led = L.Ledger(os.path.join(self.home, "ledger"), DATE)
+        self.assertAlmostEqual(led.used(), 24.05)
+        self.assertAlmostEqual(led.night_spent(DATE), 24.05)
 
-    def test_the_provider_s_own_limit_402_stops_the_api_key_part(self):
-        keys = (("openrouter", "a/m0", 0.1), ("openrouter", "a/m1", 0.1))
+    def test_a_run_with_no_price_known_runs_all_the_same(self):
+        site = fixture_site(0, 0, (("openrouter", "a/x", 0.1),))
+        site["entries"]["openrouter/a/x"]["price_in"] = None
+        fake = Fake(bucharest(0, 23), site)
+        self.night(fake, only=["keys"])
+        self.assertIn("or-a-x", fake.started())
+        led = L.Ledger(os.path.join(self.home, "ledger"), DATE)
+        self.assertIn({"label": "or-a-x", "usd": None},
+                      [{"label": r["label"], "usd": r["usd"]} for r in led.rows if r["kind"] == "start"])
+
+    def test_the_estimate_is_written_before_the_night_starts_and_in_the_morning_report(self):
+        keys = (("openrouter", "a/a", 0.5), ("openrouter", "a/b", 1.0))
+        fake = Fake(bucharest(0, 23), fixture_site(codex=1, devin=0, keys=keys))
+        n = self.night(fake, only=["codex", "keys"])
+        want = round(P.estimate_usd(entry("openrouter", "x", price_in=0.5)) +
+                     P.estimate_usd(entry("openrouter", "x", price_in=1.0)), 4)
+        self.assertEqual(n.state["estimate"]["cache"], want)
+        first = next(i for i, line in enumerate(n.lines) if "Estimate: API keys" in line)
+        self.assertIn(f"${want:.2f} at most for 4 values", n.lines[first])  # two cache runs, two window checks
+        self.assertIn("logins: 1 values", n.lines[first])
+        led = L.Ledger(os.path.join(self.home, "ledger"), DATE)
+        kinds = [r["kind"] for r in led.rows]
+        self.assertEqual(kinds[0], "estimate")  # before any run or check
+        self.assertEqual(led.estimates()[DATE]["usd"], want)
+        report = self.report()
+        self.assertIn("- before the night: Estimate: API keys", report)
+        self.assertIn(f"- this night, API keys: ${led.night_spent(DATE):.4f}", report)
+        self.assertIn("(no cap: for the record)", report)
+        self.assertIn(f"(estimated ${want:.2f})", fake.notes[-1])
+        with open(os.path.join(self.root, "results", f"night-{DATE}", "PLAN.md")) as f:
+            self.assertIn("Estimate: API keys", f.read())
+
+    def test_a_provider_s_billing_refusal_402_stops_that_route_only(self):
+        keys = (("openrouter", "a/m0", 0.1), ("openrouter", "a/m1", 0.1), ("openai-api", "gpt-k", 0.1))
         fake = Fake(bucharest(0, 23), fixture_site(0, 0, keys),
                     outcomes={"or-a-m0": (1, {"outcome": "money", "status": 402}),
                               "or-a-m1": (None, {"outcome": "done"})})
-        self.night(fake, only=["keys"])
-        self.assertEqual(len(self.asks("money-spent")), 1)
+        n = self.night(fake, only=["keys"])
+        ask = self.asks("provider-billing")[0]
+        self.assertEqual(ask["subject"], "openrouter")
+        self.assertIn("not one of ours", ask["happened"])
         self.assertIn(("stop", "or-a-m1"), fake.calls)
+        self.assertIn("oa-gpt-k", fake.started())
+        self.assertEqual(n.routes_stopped["openrouter"], "the provider refused for billing")
 
     def test_a_night_with_nothing_to_measure_ends_early_and_never_fills_a_cap(self):
         fake = Fake(bucharest(0, 23), fixture_site(0, 0, ()))
@@ -271,8 +284,9 @@ class Caps(NightCase):
 
 
 class WindowChecks(NightCase):
-    """The owner's decision of 2026-11-22, "A": a window check is not held to the $2 a run; its worst case (answered
-    instead of refused) must fit what the week has left, newest model first; a refused one is charged $0."""
+    """Window checks, newest model first, each sent whatever its worst case (answered instead of refused); a refused
+    one is recorded at $0; an answered one ends the window list (the method is wrong for that route), never for
+    money."""
 
     def site(self, *checks):
         # A window check of 1.2 million words: its worst case is 1.2 x the input price.
@@ -284,29 +298,22 @@ class WindowChecks(NightCase):
         self.night(fake, only=["keys"], values={f"openrouter|{m}|window" for m, _, _ in checks})
         return fake, [c[1] for c in fake.calls if c[0] == "window"]
 
-    def test_a_check_of_five_dollars_is_sent_while_the_week_has_ten_left(self):
-        fake, sent = self.run_windows([("a/five", "2026-11-20", 5 / 1.2)])
-        self.assertEqual(sent, ["or-a-five-window"])
+    def test_a_check_of_five_hundred_dollars_is_sent(self):
+        fake, sent = self.run_windows([("a/dear", "2026-11-20", 500 / 1.2)])
+        self.assertEqual(sent, ["or-a-dear-window"])
         self.assertEqual(self.asks(), [])
+        led = L.Ledger(os.path.join(self.home, "ledger"), DATE)
+        self.assertEqual([(r["kind"], r["usd"]) for r in led.rows if r["kind"] != "estimate"],
+                         [("start", 500.0), ("spent", 0.0)])  # refused: recorded at $0
 
-    def test_a_check_of_twelve_dollars_is_never_sent(self):
-        fake, sent = self.run_windows([("a/twelve", "2026-11-20", 10.0)])
-        self.assertEqual(sent, [])
-        ask = self.asks("window-over-week")[0]
-        self.assertIn("worst case $12.00 does not fit the $10.00 left this week", ask["first_line"])
-        self.assertIn("--value openrouter:a/twelve:window --week-cap", ask["command"])
-        self.assertEqual(self.asks("run-over-cap"), [])
-
-    def test_six_then_five_the_first_refused_both_are_sent(self):
+    def test_both_refused_both_sent_newest_first(self):
         fake, sent = self.run_windows([("a/older", "2026-11-10", 5 / 1.2), ("a/newer", "2026-11-20", 6 / 1.2)])
         self.assertEqual(sent, ["or-a-newer-window", "or-a-older-window"])  # newest first
         self.assertEqual(self.asks(), [])
         led = L.Ledger(os.path.join(self.home, "ledger"), DATE)
-        self.assertEqual((led.used(), led.reserved()), (0.0, 0.0))
-        self.assertEqual([(r["label"], r["usd"]) for r in led.rows if r["kind"] == "spent"],
-                         [("or-a-newer-window", 0.0), ("or-a-older-window", 0.0)])  # charged $0 each
+        self.assertEqual((led.used(), led.open_starts()), (0.0, []))
 
-    def test_six_then_five_the_first_answered_at_six_the_second_is_not_sent_and_an_ask(self):
+    def test_the_first_answered_the_second_is_not_sent_and_an_ask(self):
         fake, sent = self.run_windows([("a/older", "2026-11-10", 5 / 1.2), ("a/newer", "2026-11-20", 6 / 1.2)],
                                       windows={"openrouter|a/newer|window": {"outcome": "answered", "status": 200,
                                                                              "usd": 6.0}})
@@ -314,36 +321,33 @@ class WindowChecks(NightCase):
         self.assertEqual([a["subject"] for a in self.asks("window-answered")], ["openrouter|a/newer|window"])
         self.assertAlmostEqual(L.Ledger(os.path.join(self.home, "ledger"), DATE).used(), 6.0)
 
-    def test_an_answer_without_a_cost_is_charged_its_worst_case(self):
+    def test_an_answer_without_a_cost_is_recorded_at_its_worst_case(self):
         self.run_windows([("a/five", "2026-11-20", 5 / 1.2)],
                          windows={"openrouter|a/five|window": {"outcome": "answered", "status": 200}})
         self.assertAlmostEqual(L.Ledger(os.path.join(self.home, "ledger"), DATE).used(), 5.0)
 
-    def test_a_refused_check_leaves_the_full_money_for_the_cache_runs(self):
-        site = self.site(("a/nine", "2026-11-20", 9.9 / 1.2))
-        site["entries"]["openrouter/a/cheap"] = entry("openrouter", "a/cheap", release="2026-11-01", price_in=0.1)
-        fake = Fake(bucharest(0, 23), site, outcomes={"or-a-cheap": (None, {})})  # still running at the end
-        n = self.night(fake, only=["keys"], values={"openrouter|a/nine|window", "openrouter|a/cheap|cache"})
-        self.assertIn(("window", "or-a-nine-window"), fake.calls)
-        self.assertIn("or-a-cheap", fake.started())
-        self.assertEqual(self.asks("money-spent"), [])
-        run = next(r for r in n.started_runs if r["label"] == "or-a-cheap")
-        led = L.Ledger(os.path.join(self.home, "ledger"), DATE)
-        self.assertAlmostEqual(led.used(), run["estimate"])  # stopped at the deadline: charged its worst case
-
-    def test_after_an_answered_check_the_cache_runs_reserve_from_what_is_left(self):
+    def test_a_check_answered_never_keeps_the_cache_runs_from_starting(self):
         site = self.site(("a/nine", "2026-11-20", 9.9 / 1.2))
         site["entries"]["openrouter/a/cheap"] = entry("openrouter", "a/cheap", release="2026-11-01", price_in=0.1)
         fake = Fake(bucharest(0, 23), site,
                     windows={"openrouter|a/nine|window": {"outcome": "answered", "status": 200, "usd": 9.99}})
         self.night(fake, only=["keys"], values={"openrouter|a/nine|window", "openrouter|a/cheap|cache"})
-        self.assertNotIn("or-a-cheap", fake.started())
-        self.assertEqual(len(self.asks("money-spent")), 1)
-        self.assertLessEqual(L.Ledger(os.path.join(self.home, "ledger"), DATE).used(), 10.0)
+        self.assertIn("or-a-cheap", fake.started())
 
-    def test_a_cache_run_keeps_the_two_dollar_ceiling(self):
-        self.assertEqual(L.Ledger(self.home, DATE, dry=True).admit("x", "openrouter", "m", 2.5), "over-run-cap")
-        self.assertEqual(L.Ledger(self.home, DATE, dry=True).admit("x", "openrouter", "m", 2.5, window=True), "ok")
+    def test_a_run_stopped_at_the_deadline_is_recorded_at_its_worst_case(self):
+        site = self.site(("a/nine", "2026-11-20", 9.9 / 1.2))
+        site["entries"]["openrouter/a/cheap"] = entry("openrouter", "a/cheap", release="2026-11-01", price_in=0.1)
+        fake = Fake(bucharest(0, 23), site, outcomes={"or-a-cheap": (None, {})})  # still running at the end
+        n = self.night(fake, only=["keys"], values={"openrouter|a/nine|window", "openrouter|a/cheap|cache"})
+        run = next(r for r in n.started_runs if r["label"] == "or-a-cheap")
+        led = L.Ledger(os.path.join(self.home, "ledger"), DATE)
+        self.assertAlmostEqual(led.used(), run["estimate"])
+
+    def test_a_window_check_answered_402_stops_its_route(self):
+        fake, sent = self.run_windows([("a/older", "2026-11-10", 0.1), ("a/newer", "2026-11-20", 0.1)],
+                                      windows={"openrouter|a/newer|window": {"outcome": "money", "status": 402}})
+        self.assertEqual(sent, ["or-a-newer-window"])
+        self.assertEqual([a["subject"] for a in self.asks("provider-billing")], ["openrouter"])
 
 
 class TheAsks(NightCase):
@@ -360,15 +364,14 @@ class TheAsks(NightCase):
         self.assertIn("Log in again to devin", fake.notes[0])
 
     def test_a_burst_of_asks_is_one_notification(self):
-        keys = tuple(("openrouter", f"a/dear{n}", 10.0) for n in range(3))
-        fake = Fake(bucharest(0, 23), fixture_site(0, 0, keys))
+        keys = tuple((r, f"m-{n}", 0.1) for n, r in enumerate(("openrouter", "openai-api", "anthropic-api")))
+        fake = Fake(bucharest(0, 23), fixture_site(0, 0, keys),
+                    key_status={"openrouter": 401, "openai-api": 403, "anthropic-api": 401})
         self.night(fake, only=["keys"])
-        self.assertEqual(len(self.asks("run-over-cap")), 3)
-        self.assertEqual(len(self.asks("window-over-week")), 3)
-        self.assertTrue(fake.notes[0].startswith("3 new asks; the first: "), fake.notes)  # the window checks
-        self.assertTrue(fake.notes[1].startswith("3 new asks; the first: "), fake.notes)  # the cache runs
-        self.assertEqual(len(fake.notes), 3)
-        self.assertIn("6 new", fake.notes[-1])
+        self.assertEqual(len(self.asks("key-refused")), 3)
+        self.assertTrue(fake.notes[0].startswith("3 new asks; the first: "), fake.notes)
+        self.assertEqual(len(fake.notes), 2)
+        self.assertIn("3 new", fake.notes[-1])
 
     def test_a_login_that_expires_between_two_runs(self):
         fake = Fake(bucharest(0, 23), fixture_site(codex=0, devin=3), logins={"devin": [None, "expired"]})
@@ -513,9 +516,10 @@ class Night(NightCase):
         self.assertEqual(os.listdir(self.root), [])
         text = n.state_out["dry_report"]
         self.assertIn("## codex: 6 of at most 6 cache runs", text)
-        self.assertIn("Left for later Mondays by the cap", text)
+        self.assertIn("Left for later Mondays by the login cap (6 a night)", text)
         self.assertIn("`a/cheap`", text)
-        self.assertIn("a/dear` cache: worst case $2.35, above the run ceiling", text)
+        self.assertIn("| 4 | openrouter | `a/dear` | cache | std | $2.35 |", text)  # no cap: it runs
+        self.assertIn("Estimate: API keys $2.38 at most for 4 values", text)
         self.assertIn("Nothing was sent", text)
         self.assertIn("as dv-m-1-low: starts +0:00 after the go, ends 2 h 11 after it", text)
         self.assertIn("requests to devin with every first control cold", text)
@@ -585,7 +589,8 @@ class AsksOverNights(NightCase):
                  "problems": ["x"], "left": 4.0, "fixes": ["git switch main"], "behind": 2, "why": "in the way",
                  "head": "abc1234", "github": "def5678"}
         asks = A.Asks(os.path.join(self.home, "asks"), today=DATE)
-        self.assertEqual(len(A.TABLE_ROWS), 10)
+        self.assertEqual(len(A.TABLE_ROWS), 9)
+        self.assertFalse({"money-spent", "run-over-cap", "window-over-week"} & set(A.KINDS))
         for kind in A.KINDS:
             ask = asks.open(kind, f"s-{kind}", **facts)
             self.assertTrue(ask["first_line"] and ask["command"] and ask["happened"] and ask["not_done"], kind)
@@ -612,7 +617,9 @@ class AsksOverNights(NightCase):
         self.assertIn("Log in again to devin", top)
         self.assertIn(f"open since {DATE}", top)
         third_date = "2026-12-14"
-        third = Fake(W.at(third_date, 0, dt.time(23)), site)
+        fresh = {"dataset": "fixture", "entries": {k: dict(e, release_date="2026-12-10")
+                                                   for k, e in site["entries"].items()}}  # inside its 31 days
+        third = Fake(W.at(third_date, 0, dt.time(23)), fresh)
         self.night(third, date=third_date)
         self.assertEqual(self.asks("login-expired"), [])
         closed = os.listdir(os.path.join(self.home, "asks", "closed"))
@@ -646,27 +653,30 @@ class AsksOverNights(NightCase):
 
 
 class Ledger(unittest.TestCase):
-    def test_the_ledger(self):
+    def test_the_ledger_records_and_never_refuses(self):
+        clock = iter(f"2026-11-30T21:{m:02d}:00Z" for m in range(60))  # its own clock, never today's
         with tempfile.TemporaryDirectory() as t:
-            led = L.Ledger(t, DATE, 10.0, 2.0)
+            led = L.Ledger(t, DATE, clock=lambda: next(clock))
             self.assertEqual(led.week, "2026-11-30")
             self.assertEqual(L.week_of("2026-12-03"), "2026-11-30")
-            self.assertEqual(led.admit("a", "openrouter", "m", 2.5), "over-run-cap")
-            self.assertEqual(led.admit("a", "openrouter", "m", None), "no-price")
-            self.assertEqual(led.admit("a", "openrouter", "m", 1.5), "ok")
-            self.assertAlmostEqual(led.left(), 8.5)
-            led.settle("a", "openrouter", "m", 0.4, reported=0.5)
-            self.assertAlmostEqual(led.left(), 9.5)
-            led.admit("b", "openrouter", "m", 1.0)
-            led.release("b")
-            self.assertAlmostEqual(led.left(), 9.5)
-            again = L.Ledger(t, "2026-12-02", 10.0)  # the same week, read back from its file
-            self.assertAlmostEqual(again.left(), 9.5)
+            self.assertFalse(hasattr(L, "WEEK_CAP") or hasattr(L, "RUN_CAP"))
+            led.estimate(DATE, 40.0, 25.0, 3)
+            led.start("a", "openrouter", "m", 25.0, night=DATE)  # far above the old $2 a run: recorded, started
+            led.start("n", "openrouter", "m", None, night=DATE)  # no price: recorded, started
+            self.assertEqual(sorted(led.open_starts()), ["a", "n"])
+            led.settle("a", "openrouter", "m", 20.0, reported=21.0, night=DATE)
+            led.release("n")
+            self.assertEqual(led.open_starts(), [])
+            self.assertAlmostEqual(led.used(DATE), 21.0)  # the provider's figure when higher
+            again = L.Ledger(t, "2026-12-02")  # the same week, read back from its file
+            again.settle("b", "openai-api", "g", 15.0, night="2026-12-02")
+            self.assertAlmostEqual(again.used(), 35.0)  # the week, past the old $10: a record
+            self.assertAlmostEqual(again.night_spent("2026-12-02"), 15.0)
+            self.assertEqual(again.nights(), [DATE, "2026-12-02"])
+            self.assertEqual(again.by_route(DATE), {"openrouter": 20.0})
+            self.assertEqual(again.estimates()[DATE]["usd"], 40.0)
+            self.assertEqual(led.rows[0]["at"], "2026-11-30T21:00:00Z")
             self.assertEqual(oct(os.stat(again.path).st_mode & 0o777), "0o600")
-            for i in range(4):
-                self.assertEqual(again.admit(f"c{i}", "openrouter", "m", 2.0), "ok")
-            self.assertEqual(again.admit("d", "openrouter", "m", 1.5), "ok")
-            self.assertEqual(again.admit("e", "openrouter", "m", 0.1), "over-week")
 
     def test_usage_costs_as_on_18_november(self):
         with tempfile.TemporaryDirectory() as t:

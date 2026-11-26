@@ -1,7 +1,8 @@
-"""The weekly night's two safeguards of 2026-11-25 (docs/weekly-night.md):
+"""The weekly night's safeguards (docs/weekly-night.md):
 1. the night looks at the checkout it runs from before it starts (weekly.check_checkout, Night.look_at_checkout):
    real git repositories in a temporary folder, a local bare repository standing for GitHub;
-2. values too dear for the caps are decided once in plan/not-measured.md (plan.load_decisions, the ABOVE_CAPS state).
+2. since 2026-11-26 no value is left out for what it costs: the record of values "too dear for the caps"
+   (plan/not-measured.md, 2026-11-25) is retired, and the values it held are measured.
 Nothing is sent to any vendor; no notification is shown.
 
     python3 -m unittest discover -s test -p "test_*.py"
@@ -244,121 +245,52 @@ class TheNightLooksFirst(NightCase):
         with open(path) as f:
             self.assertEqual(f.read(), before)
 
-    def test_a_broken_decisions_row_is_a_checkout_not_ready(self):
+    def test_a_leftover_not_measured_file_stops_nothing(self):
         os.makedirs(os.path.join(self.root, "plan"))
-        with open(os.path.join(self.root, P.DECISIONS), "w") as f:
+        with open(os.path.join(self.root, "plan", "not-measured.md"), "w") as f:
             f.write("| Value | Decided | By | Reason |\n|---|---|---|---|\n| gpt-6-cyber | yesterday | me | dear |\n")
         fake = CheckoutWorld(bucharest(0, 23), fixture_site(codex=1, devin=0), checkout=look())
         self.night(fake)
-        self.assertIn("not-measured.md, line 3: not a decision row", self.asks("checkout-not-ready")[0]["happened"])
-        self.assertNotIn(("site",), fake.calls)
+        self.assertEqual(self.asks("checkout-not-ready"), [])
+        self.assertIn(("site",), fake.calls)
 
 
-# --- 2. plan/not-measured.md ------------------------------------------------------------------------------------------
+# --- 2. no value left out for what it costs ---------------------------------------------------------------------------
 
 def dear_site():
-    """openai-api `dear`: a cache run of $5.22 (above $2) and a window check of $22.02 (above $10);
+    """openai-api `dear`: a cache run of $5.22 and a window check of $22.02 (both above the retired caps);
     openrouter `x/mid`: a cache run of $2.61."""
-    es = [entry("openai", "dear", price_in=20.0, context=1_000_000), entry("openrouter", "x/mid", price_in=10.0),
+    es = [entry("openai", "dear", price_in=20.0), entry("openrouter", "x/mid", price_in=10.0),
           entry("openrouter", "a/cheap", price_in=0.1)]
     return {"dataset": "fixture", "entries": {f"{e['provider']}/{e['model']}": e for e in es}}
 
 
-ROWS = ("| Value | Decided | By | Reason |\n|---|---|---|---|\n"
-        "| `openai-api:dear:window` | 2026-11-25 | the owner's caps | worst case $22.02, more than the week's $10 |\n"
-        "| `openai-api:dear:cache` | 2026-11-25 | the owner's caps | worst case $5.22, above the $2 a run |\n")
+class NoCapOnMoney(NightCase):
+    def test_the_record_of_values_too_dear_is_gone(self):
+        self.assertFalse(os.path.exists(os.path.join(ROOT, "plan", "not-measured.md")))
+        for name in ("DECISIONS", "load_decisions", "ABOVE_CAPS", "decision_line", "cap_of"):
+            self.assertFalse(hasattr(P, name), name)
 
-
-class TheRecord(NightCase):
-    def write(self, text=ROWS):
-        os.makedirs(os.path.join(self.root, "plan"), exist_ok=True)
-        with open(os.path.join(self.root, P.DECISIONS), "w") as f:
-            f.write("# Values not measured: above the caps\n\nSome words | with a bar.\n\n" + text)
-
-    def test_the_committed_record_holds_the_owner_s_four_values(self):
-        d = P.load_decisions(os.path.join(ROOT, P.DECISIONS))
-        self.assertEqual(sorted(d), ["openai-api|gpt-6-cyber|cache", "openai-api|gpt-6-cyber|window",
-                                     "openrouter|openai/gpt-6.2-astra-pro|cache", "openrouter|openai/gpt-6.2-astra|cache"])
-        for row in d.values():
-            self.assertEqual((row["date"], row["by"]), ("2026-11-25", "the owner's caps"))
-            self.assertTrue(row["reason"])
-
-    def test_a_row_that_is_not_a_decision_is_an_error_never_skipped(self):
-        for bad in ("| `nowhere:m:cache` | 2026-11-25 | the owner's caps | x |",
-                    "| `openai-api:m:speed` | 2026-11-25 | the owner's caps | x |",
-                    "| `openai-api:m:cache` | 25 Nov | the owner's caps | x |",
-                    "| openai-api:m:cache | 2026-11-25 | the owner's caps | x |"):
-            self.write("| Value | Decided | By | Reason |\n|---|---|---|---|\n" + bad + "\n")
-            with self.assertRaises(ValueError):
-                P.load_decisions(os.path.join(self.root, P.DECISIONS))
-        self.write(ROWS + ROWS.splitlines()[2] + "\n")
-        with self.assertRaisesRegex(ValueError, "decided twice"):
-            P.load_decisions(os.path.join(self.root, P.DECISIONS))
-
-    def test_a_recorded_value_is_named_not_measured_and_raises_no_ask(self):
-        self.write()
+    def test_the_values_once_too_dear_are_planned_and_sent(self):
         fake = Fake(bucharest(0, 23), dear_site())
         n = self.night(fake, only=["keys"])
-        items = {i["key"]: i for i in n.plan["items"]}
-        for q in ("cache", "window"):
-            i = items[f"openai-api|dear|{q}"]
-            self.assertEqual(i["state"], P.ABOVE_CAPS)
-            self.assertTrue(i["why"].startswith("not measured: above the caps (decided 2026-11-25)"))
-            self.assertNotIn(i, n.plan["planned"])
-        kinds = {(a["kind"], a["subject"]) for a in self.asks()}
-        self.assertNotIn(("run-over-cap", "openai-api|dear|cache"), kinds)
-        self.assertNotIn(("window-over-week", "openai-api|dear|window"), kinds)
-        self.assertNotIn(("window", "oa-dear-window"), fake.calls)
-        # The unrecorded dear value still asks, once, with the row to add.
-        ask = [a for a in self.asks("run-over-cap") if a["subject"] == "openrouter|x/mid|cache"][0]
-        self.assertIn("| `openrouter:x/mid:cache` | 2026-11-30 | the owner's caps | worst case $2.61, above the $2.00 "
-                      "a run |", ask["happened"])
+        planned = {i["key"] for i in n.plan["planned"]}
+        self.assertTrue({"openai-api|dear|cache", "openai-api|dear|window", "openrouter|x/mid|cache"} <= planned)
+        self.assertIn(("window", "oa-dear-window"), fake.calls)
+        self.assertIn("oa-dear", fake.started())
+        self.assertIn("or-x-mid", fake.started())
+        self.assertEqual(self.asks(), [])
         with open(os.path.join(self.root, "results", f"night-{DATE}", "PLAN.md")) as f:
             plan_md = f.read()
-        self.assertIn("## Not measured: above the caps (plan/not-measured.md)", plan_md)
-        self.assertIn("- openai-api `dear` window: not measured: above the caps (decided 2026-11-25): worst case "
-                      "$22.02, above the week's $10.00", plan_md)
-        self.assertIn("Not measured, decided in plan/not-measured.md (no ask): 2 values", self.report())
+        self.assertNotIn("above the caps", plan_md)
+        self.assertIn("| openai-api | `dear` | cache | new", plan_md)
 
-    def test_adding_the_row_closes_the_ask_the_next_night(self):
-        self.night(Fake(bucharest(0, 23), dear_site()), only=["keys"])
-        self.assertIn("openai-api|dear|cache", {a["subject"] for a in self.asks("run-over-cap")})
-        self.assertIn("openai-api|dear|window", {a["subject"] for a in self.asks("window-over-week")})
-        self.write()
-        later = "2026-12-07"
-        self.night(Fake(W.at(later, 0, W.dt.time(23)), dear_site()), date=later, only=["keys"])
-        self.assertNotIn("openai-api|dear|cache", {a["subject"] for a in self.asks("run-over-cap")})
-        self.assertNotIn("openai-api|dear|window", {a["subject"] for a in self.asks("window-over-week")})
-
-    def test_a_price_that_drops_under_the_caps_plans_the_value_again(self):
-        self.write()
-        site = dear_site()
-        site["entries"]["openai/dear"]["price_in"] = 0.5  # cache $0.13, window $0.55
-        plan = P.build(DATE, {}, site, root=self.root)
-        items = {i["key"]: i for i in plan["items"]}
-        for q in ("cache", "window"):
-            self.assertEqual(items[f"openai-api|dear|{q}"]["state"], P.NEW)
-            self.assertIn(items[f"openai-api|dear|{q}"], plan["planned"])
-        self.assertIn("no longer apply", P.render(plan))
-
-    def test_a_window_check_above_two_dollars_but_inside_the_week_is_not_above_the_caps(self):
-        self.write("| Value | Decided | By | Reason |\n|---|---|---|---|\n"
-                   "| `openai-api:dear:window` | 2026-11-25 | the owner's caps | x |\n")
-        site = dear_site()
-        site["entries"]["openai/dear"]["price_in"] = 3.0  # window $3.30: above $2, inside $10
-        plan = P.build(DATE, {}, site, root=self.root)
-        self.assertEqual({i["key"]: i for i in plan["items"]}["openai-api|dear|window"]["state"], P.NEW)
-
-    def test_higher_caps_given_by_hand_plan_a_recorded_value(self):
-        self.write()
-        plan = P.build(DATE, {}, dear_site(), root=self.root, caps=(10.0, 6.0))
-        self.assertEqual({i["key"]: i for i in plan["items"]}["openai-api|dear|cache"]["state"], P.NEW)
-
-    def test_a_window_ask_that_only_misses_what_is_left_gives_no_row(self):
-        asks = A.Asks(os.path.join(self.home, "asks"), today=DATE)
-        ask = asks.open("window-over-week", "k", route="openai-api", model="m", estimate=6.0, left=4.0, cap=10.0,
-                        record=None)
-        self.assertNotIn("not-measured.md", ask["happened"])
+    def test_the_old_options_are_gone(self):
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "harness", "weekly.py"), "--date", DATE, "--dry-run",
+                            "night", "--week-cap", "20"], capture_output=True, text=True,
+                           env=dict(os.environ, GROUNDTRUTH_CLIENT_HOME=self.home))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("--week-cap", r.stderr)
 
 
 if __name__ == "__main__":
