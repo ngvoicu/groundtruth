@@ -30,7 +30,7 @@ ROUTES = {
     "antigravity": "Google Antigravity login",
 }
 CLIENTS = {
-    "pi+cliproxyapi": "the pi coding agent through Provimux (CLIProxyAPI 8.0.53 before 22 November 2026): real sessions, resumed once (harness/probe.py)",
+    "pi+cliproxyapi": "the Pi coding agent through Provimux (CLIProxyAPI 8.0.53 before 22 November 2026): real sessions, resumed once (harness/probe.py until 22 November 2026; harness/agent_gateway.py from 27 November 2026, which records the account that answered)",
     "cliproxyapi": "plain HTTP requests through Provimux (CLIProxyAPI 8.0.53 before 22 November 2026) (the TypeScript probe)",
     "direct": "plain HTTP requests straight to the vendor (the TypeScript probe)",
     "codex-cli": "OpenAI's Codex CLI (harness/probe.py)",
@@ -257,6 +257,81 @@ def read_harness(path):
     }
 
 
+# harness/agent_gateway.py: a label of the gateway's account, as its publish step writes it (never a marker).
+GATEWAY_LABEL = re.compile(r"^[a-z0-9-]+-(login|apikey)-\d+$")
+
+
+def gateway_late(age_s, target_s):
+    """The TypeScript probe's rule: a check more than 30 seconds or 10 % of its age late is left out."""
+    return age_s - target_s > max(30, round(target_s * 0.1))
+
+
+def read_gateway(path):
+    """harness/agent_gateway.py, as published: one JSON object per line (kind start, request, end, ...). Only a check
+    the run counted (one model request for its priming and for itself, both answered by the same login of the intended
+    kind, by the requested model) is a check here; every other one is counted in not_counted and left out. The labels
+    of the accounts that answered the counted checks are carried into the run (answered_by)."""
+    with open(os.path.join(ROOT, path)) as f:
+        rows = [json.loads(line) for line in f if line.strip()]
+    start = rows[0]
+    if start.get("kind") != "start" or start.get("tool") != "agent_gateway":
+        raise SystemExit(f"{path}: not a file of harness/agent_gateway.py")
+    control, checks, late, not_counted, answered, accounts, ttls = [], {}, 0, 0, set(), set(), set()
+    for r in rows:
+        if r.get("kind") != "request":
+            continue
+        for q in r.get("requests") or []:
+            if q.get("account") and not GATEWAY_LABEL.match(q["account"]):
+                raise SystemExit(f"{path}: an account is not a neutral label (publish the file with "
+                                 "harness/agent_gateway.py publish): not published")
+            for u in q.get("usage_raw") or []:
+                cc = (u.get("usage") or {}).get("cache_creation") or {}
+                for key, ttl in (("ephemeral_1h_input_tokens", "1h"), ("ephemeral_5m_input_tokens", "5m")):
+                    if cc.get(key):
+                        ttls.add(ttl)
+        if r.get("role") not in ("check", "control"):
+            continue
+        if not r.get("counted"):
+            not_counted += 1
+            continue
+        if r.get("calls") != 1 or not GATEWAY_LABEL.match(r.get("account") or "") or "-login-" not in r["account"]:
+            raise SystemExit(f"{path}: a counted {r['role']} of {r.get('sample')} was not one model request answered "
+                             "by a login: the file contradicts its own count")
+        answered.add(r.get("answer_model") or start["model"])
+        accounts.add(r["account"])
+        if r["role"] == "control":
+            control.append(bool(r["warm"]))
+        elif gateway_late(r["age_s"], r["target_age_s"]):
+            late += 1
+        else:
+            checks.setdefault(round(r["target_age_s"]), []).append(bool(r["warm"]))
+    return {
+        "client": start.get("client") or "pi+cliproxyapi",
+        "date": start["t"][:10],
+        "started": start["t"],
+        "control": control,
+        "checks": checks,
+        "late": late,
+        "effort": start.get("thinking"),
+        "written_ttls": sorted(ttls),
+        "answered_models": sorted(answered),
+        "requested_model": start.get("model"),
+        "answered_by": sorted(accounts),
+        "not_counted": not_counted,
+        "gateway": True,
+    }
+
+
+def read_run(path):
+    """The raw file of a run, by its kind: the TypeScript probe (.json), harness/probe.py or harness/agent_gateway.py
+    (.jsonl)."""
+    if not path.endswith(".jsonl"):
+        return read_plain(path)
+    with open(os.path.join(ROOT, path)) as f:
+        first = json.loads(f.readline())
+    return read_gateway(path) if first.get("tool") == "agent_gateway" else read_harness(path)
+
+
 def read_plain(path):
     """Result file of the TypeScript probe."""
     j = json.load(open(os.path.join(ROOT, path)))
@@ -389,7 +464,7 @@ def build_cache(manifest):
     for run in manifest["runs"]:
         path = run["file"]
         night_of(run["id"], path)  # before the file is read: a link out of a night or into one is refused
-        data = read_harness(path) if path.endswith(".jsonl") else read_plain(path)
+        data = read_run(path)
         client = run.get("client") or data["client"]
         # The client is the raw file's: the manifest may name it again, never another one.
         if data.get("client") and run.get("client") and run["client"] != data["client"]:
@@ -460,18 +535,28 @@ def build_cache(manifest):
         }
         if written:
             entry["written_ttl"] = written
+        if data.get("gateway"):
+            entry["answered_by"] = data["answered_by"]
+            entry["not_counted"] = data["not_counted"]
         # From 14 November 2026 every evaluation starts the same way: a control (the prompt sent again at once), then
         # 2.5 minutes as its first age. A run that continues another one carries on from where that one stopped. A run
         # whose control missed has no ages by the method (it ends at the control), as cpa-8.0.53/D6 and O1 before that
         # date. The rule reads the run's own control, never a chain's: only a run whose every control missed may have no
         # ages. A mixed control (some hit) showed the cache, so the run must go on to its ages like one whose control hit.
         control_missed = bool(data["control"]) and not any(data["control"]) and not data["checks"]
-        if entry["date"] >= LADDER_SINCE and not run.get("continues") and not control_missed:
+        # A run of harness/agent_gateway.py may instead give its ages by the documented lifetimes it brackets: the
+        # manifest says so (first_ages), and the run's own youngest age is published as it is (tested from there).
+        planned = data.get("gateway") and run.get("first_ages")
+        if run.get("first_ages") and not data.get("gateway"):
+            raise SystemExit(f"{run['id']}: first_ages is only for runs of harness/agent_gateway.py")
+        if entry["date"] >= LADDER_SINCE and not run.get("continues") and not control_missed and not planned:
             first = min(data["checks"]) if data["checks"] else None
             if not data["control"] or first != 150:
                 raise SystemExit(f"{run['id']}: an evaluation must start with a control and a check at 2.5 minutes "
                                  f"(control checks: {len(data['control'])}, first age: {first} s)")
-        for key in ("requires", "lacks", "note", "continues", "removed_by_proxy"):
+        if planned and not data["control"]:
+            raise SystemExit(f"{run['id']}: first_ages needs a control like any run")
+        for key in ("requires", "lacks", "note", "continues", "removed_by_proxy", "first_ages"):
             if run.get(key):
                 entry[key] = run[key]
         entry["_started"] = data["started"]

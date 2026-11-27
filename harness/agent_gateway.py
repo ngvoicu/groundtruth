@@ -1,19 +1,37 @@
 #!/usr/bin/env python3
-"""Cache lifetimes a real coding agent (Pi) gets through Provimux, with the account that answered every request.
+"""The cache lifetime a real coding agent gets through a gateway, with the account that answered every request.
 
-The method is the one of the published `agent+cliproxyapi` runs (harness/probe.py with its Pi client, before
-2026-11-22): each sample is a new Pi session whose first message carries a block no other sample has; after its age
-the session is resumed once with a short message; the check is warm when the cache covers the prompt except at most
-half of the block. Added here: a loopback relay between Pi and Provimux, one per Pi process, that records for every
-request the `X-Provimux-Account` of the answer, the model the provider's answer names and the usage as reported, so
-that a sample counts only when the intended login answered both its priming and its check.
+Pi (the coding agent) talks to Provimux (a distribution of CLIProxyAPI) as its user's Pi does. Each sample is a new
+Pi session whose first message carries a block no other sample has; after its age the session is resumed once with a
+short message, and the check is warm when the cache covers Pi's own prompt and at least half of the block. This is
+the method of the published `pi+cliproxyapi` runs made by harness/probe.py until 22 November 2026; this file replaced
+its Pi client. What it adds: a loopback relay between Pi and the gateway, one per Pi process, that records for every
+request the gateway's `X-Provimux-Account` (an opaque marker of the account that answered), the model the provider's
+answer names and the usage as the provider reports it. A sample counts only when one login of the intended kind
+answered both its priming and its check, with one model request each; any other sample is kept and marked.
 
-    PROVIMUX_API_KEY=... python3 harness/agent_gateway.py --model claude-fable-5-2 --login claude \
-        --ages 4,6,30,55,65 --extend 120 --replicas 3 --out <scratch>/raw --scratch <scratch>
+Measure (the gateway's client key in PROVIMUX_API_KEY, never on the command line):
 
-The key comes from the environment only; it is never printed or written. Pi runs with PI_CODING_AGENT_DIR, HOME and
-TMPDIR inside --scratch, cache warming off, the SSE transport (the relay reads per-request headers), and only the
-pi-provimux extension. Every line of the output file is one request (or one decision), nothing dropped.
+    python3 harness/agent_gateway.py --model claude-fable-5-2 --login claude --ages 4,6,30,55,65 \
+        --extend 120 --lazy-extend --replicas 3 --words 1200 --scratch <a new folder> \
+        --extension <the pi-provimux package> --outfile raw/F1.jsonl \
+        --budget 3 --price-in 8 --price-cached 0.2 --price-write 16 --price-out 40
+
+Publish (the gateway's account markers become neutral labels such as claude-login-1; ids the provider gives its
+answers are dropped; the whole set of files is labelled together, so one account has one label in all of them):
+
+    python3 harness/agent_gateway.py publish --out results/<folder> raw/F1.jsonl raw/S1.jsonl ...
+
+A run first sends Pi's prompt without a block (the baseline), then the control: a sample checked after 30 seconds,
+and one more in a fresh session if that one is cold (as harness/probe.py). Every sample is primed once, up front, and
+checked once at its age. A run stops at the first answer from an API key (a paid route), at any limit or overage
+sign (a refusal that names a quota or limit, a limit header), after four failed requests in a row, or when its
+list-price budget is reached. Two runs on one login never overlap: they share a lock in --scratch.
+
+Pi runs with PI_CODING_AGENT_DIR, HOME and TMPDIR inside --scratch, cache warming off, the SSE transport (so that the
+relay sees each answer's headers), only the pi-provimux extension, no skills, prompt templates or context files, and
+on macOS under sandbox-exec with no file write under the home folder outside --scratch. GT_DRY_DIR=<folder> writes
+every model request there instead of sending it (a look at what Pi sends, at no cost).
 """
 import argparse
 import datetime as dt
@@ -32,6 +50,11 @@ import time
 import urllib.request
 import uuid
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from clients import same_model  # noqa: E402  (the probe's rule for a reported model)
+
+TOOL = "agent_gateway"
+CLIENT_ID = "pi+cliproxyapi"  # the client id of observed.json (providers.dev: agent+cliproxyapi)
 GATEWAY = ("127.0.0.1", 8317)
 DRY = os.environ.get("GT_DRY_DIR")  # a folder: model requests are written there and never sent
 MODEL_PATHS = ("/v1/messages", "/v1/responses", "/v1/chat/completions", "/v1beta/models", "/backend-api/codex/responses")
@@ -59,6 +82,16 @@ def block(salt, words):
     if line:
         out.append(" ".join(line) + ".")
     return "\n".join(out)
+
+
+def answered_by_model(reported, requested):
+    """Whether the model an answer names is the requested one: the same id, or that id with a dated snapshot or the
+    effort suffix the gateway's id carries (gemini-4-hydrogen-low answered as gemini-4-hydrogen). No name: not known,
+    which is no evidence of another model."""
+    if not reported:
+        return True
+    base = re.sub(r"-(?:none|minimal|low|medium|high|xhigh|max)$", "", requested)
+    return same_model(reported, requested) or same_model(reported, base)
 
 
 # --- the relay ----------------------------------------------------------------------------------------------------
@@ -415,9 +448,8 @@ class Run:
             if r.get("account") not in self.intended:
                 why.append(f"{name}: answered by {r.get('account')} (not the intended login)")
         for name, r in (("prime", prime), ("check", check)):
-            m = (r.get("answer_model") or "").lower()
-            if m and not (m == self.a.model.lower() or m.startswith(self.a.model.lower().rsplit("-low", 1)[0])):
-                why.append(f"{name}: the answer names another model")
+            if not answered_by_model(r.get("answer_model"), self.a.model):
+                why.append(f"{name}: the answer names another model ({r.get('answer_model')})")
         if prime.get("account") and check.get("account") and prime["account"] != check["account"]:
             why.append("prime and check answered by different accounts")
         return (not why), why
@@ -425,7 +457,7 @@ class Run:
     def main(self):
         a = self.a
         accts, self.intended = self.accounts()
-        self.log({"kind": "start", "t": now_iso(), "accounts": accts, "intended": self.intended, "ages_min": a.ages,
+        self.log({"kind": "start", "tool": TOOL, "client": CLIENT_ID, "t": now_iso(), "accounts": accts, "intended": self.intended, "ages_min": a.ages,
                   "extend_min": a.extend, "replicas": a.replicas, "words": a.words, "thinking": a.thinking,
                   "pi": subprocess.run(["pi", "--version"], capture_output=True, text=True).stdout.strip(),
                   "provimux": subprocess.run(["provimux", "-v"], capture_output=True, text=True).stdout.strip()[:120],
@@ -525,7 +557,78 @@ class Run:
         print(f"{self.a.model}: {why}", flush=True)
 
 
+# --- publishing ---------------------------------------------------------------------------------------------------
+
+MARKER = re.compile(r"\b[as]\.[a-z0-9]{20}\b")
+
+
+def account_labels(rows):
+    """One neutral label per account marker over all the rows given: <provider>-<login|apikey>-<n>, numbered per
+    provider and kind, the accounts that answered first (in order of first answer), then the others as listed."""
+    seen = []
+    for r in rows:
+        for q in r.get("requests") or []:
+            if q.get("account") and q["account"] not in seen:
+                seen.append(q["account"])
+    info = {}
+    for r in rows:
+        for x in r.get("accounts") or []:
+            info.setdefault(x["account"], x)
+            if x["account"] not in seen:
+                seen.append(x["account"])
+    labels, count = {}, {}
+    for m in seen:
+        x = info.get(m)
+        if not x:
+            raise SystemExit("an answer names an account that no account list of these files holds: not labelled")
+        provider = re.sub(r"^openai-compatible-", "", x.get("provider") or "unknown")
+        kind = "login" if x.get("kind") == "oauth" else "apikey"
+        n = count[(provider, kind)] = count.get((provider, kind), 0) + 1
+        labels[m] = f"{provider}-{kind}-{n}"
+    return labels
+
+
+def public_row(row, labels):
+    """A row with every account marker replaced by its label, and the ids a provider gives its answers (the usage
+    attribution of the Responses API, keyed by message id) dropped. Refuses a row that still holds a marker."""
+    def walk(x):
+        if isinstance(x, dict):
+            return {k: walk(v) for k, v in x.items() if k != "attribution"}
+        if isinstance(x, list):
+            return [walk(v) for v in x]
+        if isinstance(x, str):
+            return labels.get(x, x)
+        return x
+    out = walk(row)
+    if out.get("kind") == "start":
+        out.setdefault("tool", TOOL)
+        out.setdefault("client", CLIENT_ID)
+        out["accounts_note"] = "labels stand for the gateway's account markers"
+    left = MARKER.findall(json.dumps(out))
+    if left:
+        raise SystemExit(f"a row still holds {len(left)} account marker(s) after labelling: not written")
+    return out
+
+
+def publish(argv):
+    ap = argparse.ArgumentParser(prog="agent_gateway.py publish")
+    ap.add_argument("--out", required=True, help="the results folder")
+    ap.add_argument("files", nargs="+")
+    a = ap.parse_args(argv)
+    rows = {f: [json.loads(x) for x in open(f) if x.strip()] for f in a.files}
+    labels = account_labels([r for rs in rows.values() for r in rs])
+    os.makedirs(a.out, exist_ok=True)
+    for f, rs in rows.items():
+        with open(os.path.join(a.out, os.path.basename(f)), "w") as out:
+            for r in rs:
+                out.write(json.dumps(public_row(r, labels)) + "\n")
+    for m, label in sorted(labels.items(), key=lambda kv: kv[1]):
+        print(label)
+
+
 def main():
+    if sys.argv[1:2] == ["publish"]:
+        return publish(sys.argv[2:])
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--login", required=True, help="the provider of the intended login in include=accounts")

@@ -230,8 +230,9 @@ class OwnClients(unittest.TestCase):
 
     def test_proxy_client_texts_keep_the_existing_ids(self):
         expected = {
-            "pi+cliproxyapi": "the pi coding agent through Provimux (CLIProxyAPI 8.0.53 before 22 November 2026): "
-                             "real sessions, resumed once (harness/probe.py)",
+            "pi+cliproxyapi": "the Pi coding agent through Provimux (CLIProxyAPI 8.0.53 before 22 November 2026): "
+                             "real sessions, resumed once (harness/probe.py until 22 November 2026; "
+                             "harness/agent_gateway.py from 27 November 2026, which records the account that answered)",
             "cliproxyapi": "plain HTTP requests through Provimux (CLIProxyAPI 8.0.53 before 22 November 2026) "
                            "(the TypeScript probe)",
         }
