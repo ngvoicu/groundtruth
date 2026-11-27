@@ -149,6 +149,15 @@ class Reader(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "needs a control"):
             self.build(run_rows([(1500, 1500.0, True, True)], control=()), first_ages="x")
 
+    def test_the_logins_provider_part_of_a_gateway_id(self):
+        rows = run_rows([(150, 150.0, True, True)], model="devin/swe-2-1", start_extra={"login": "devin"})
+        self.assertEqual(self.build(rows, model="swe-2-1")["model"], "swe-2-1")
+        with self.assertRaisesRegex(SystemExit, "a reroute"):
+            self.build(rows, model="swe-2")
+        other = run_rows([(150, 150.0, True, True)], model="other/swe-2-1", start_extra={"login": "devin"})
+        with self.assertRaisesRegex(SystemExit, "a reroute"):
+            self.build(other, model="swe-2-1")
+
     def test_first_ages_is_only_for_this_tool(self):
         with tempfile.TemporaryDirectory() as root:
             os.makedirs(os.path.join(root, "results"))

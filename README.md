@@ -169,6 +169,9 @@ python3 harness/agent_gateway.py publish --out results/<folder> <raw>/F1.jsonl  
 A run stops at the first answer from an API key (a paid route), at any quota, limit or overage sign, and at its
 list-price budget; two runs on one login never overlap. `publish` replaces each account marker by a neutral label
 (`claude-login-1`) in every file it is given, so nothing that names an account of the gateway is published.
+Where the gateway serves a login's models under ids with the login's provider in front (`devin/swe-2-1` on the Devin
+login), the run is entered under the route's own id (`swe-2-1`); `build_observed.py` sets aside that provider part,
+and only that one, when it compares the model the answers name with the manifest's.
 
 Its limits: one gateway, one agent and one account per login, small samples; Pi runs over SSE (the relay reads each
 answer's headers), so a Codex model is not measured over the WebSocket Pi can use; and the ages are planned around

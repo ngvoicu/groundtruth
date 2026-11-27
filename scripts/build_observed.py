@@ -316,6 +316,7 @@ def read_gateway(path):
         "written_ttls": sorted(ttls),
         "answered_models": sorted(answered),
         "requested_model": start.get("model"),
+        "gateway_login": start.get("login"),
         "answered_by": sorted(accounts),
         "not_counted": not_counted,
         "gateway": True,
@@ -404,7 +405,11 @@ def check_own_route(name, client, route):
 def check_answered_model(run, data):
     """M-1: a check answered by another model than the manifest's is never published under the manifest's model."""
     same = (lambda a, m: a == m) if data.get("exact_model") else same_model
-    other = [m for m in data.get("answered_models") or [] if not same(m, run["model"])]
+    # A gateway can serve a login's models under ids with the login's provider in front (devin/swe-2-1 on the Devin
+    # login); the manifest names the model as the route does (swe-2-1). Only that one provider part is set aside.
+    login = data.get("gateway_login")
+    own = (lambda m: m[len(login) + 1:] if m.startswith(login + "/") else m) if login else (lambda m: m)
+    other = [m for m in data.get("answered_models") or [] if not same(own(m), run["model"])]
     asked = data.get("requested_model")
     if data.get("exact_model") and asked is not None and asked != run["model"]:
         raise SystemExit(f"{run['id']}: the run asked for {asked}, not the manifest's {run['model']}: not published "
