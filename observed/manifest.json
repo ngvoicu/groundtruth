@@ -1671,7 +1671,7 @@
    "options": {
     "prefix_tokens": 8000
    },
-   "note": "the run ended after its 5m checks, at the next check, on an upstream's answer (HTTP 504 \"The operation was aborted\", after a 429 of Google AI Studio (\"google/gemini-4-carbon is temporarily rate-limited upstream. Please retry shortly, or add …\")), which the probe's --stop-on-refusal read as a rate refusal and did not retry; the checks answered before it stand, later ages untested; OpenRouter's default route: 4 check(s) were answered by another upstream than the one their sample was primed on (5m-r1: primed on Google, answered by Google AI Studio: cold (0/7501 cached); 5m-r3: primed on Google, answered by Google AI Studio: cold (0/7548 cached); 2.5m-r2: primed on Google, answered by Google AI Studio: cold (0/7539 cached); 2.5m-r3~2: primed on Google, answered by Google AI Studio: cold (0/7534 cached)). Such a check was not answered by the upstream its sample was primed on: its miss is what the default route gave and does not show whether a cache at that upstream had expired; the same request with a ~2,500-token prompt (openrouter-2026-11-18/google--gemini-4-carbon) read no cached token at its control; this run with ~8,000 tokens read from cache at its control and is the measurement"
+   "note": "the run ended after its 5m checks, at the next check, on an upstream's answer (HTTP 504 \"The operation was aborted\", after a 429 of Google AI Studio (\"google/gemini-4-carbon is temporarily rate-limited upstream. Please retry shortly, or add \u2026\")), which the probe's --stop-on-refusal read as a rate refusal and did not retry; the checks answered before it stand, later ages untested; OpenRouter's default route: 4 check(s) were answered by another upstream than the one their sample was primed on (5m-r1: primed on Google, answered by Google AI Studio: cold (0/7501 cached); 5m-r3: primed on Google, answered by Google AI Studio: cold (0/7548 cached); 2.5m-r2: primed on Google, answered by Google AI Studio: cold (0/7539 cached); 2.5m-r3~2: primed on Google, answered by Google AI Studio: cold (0/7534 cached)). Such a check was not answered by the upstream its sample was primed on: its miss is what the default route gave and does not show whether a cache at that upstream had expired; the same request with a ~2,500-token prompt (openrouter-2026-11-18/google--gemini-4-carbon) read no cached token at its control; this run with ~8,000 tokens read from cache at its control and is the measurement"
   },
   {
    "id": "openrouter-2026-11-18/google--gemini-4-hydrogen-8k",
@@ -2430,6 +2430,60 @@
    "model": "gemini-4-neon",
    "base_model": "google/gemini-4-neon",
    "note": "9 of 42 timed checks warm: 1 of 3 at 2.5 minutes, 0 of 3 at 5 minutes, scattered hits through 60 minutes, all three cold from 75 minutes through 2 hours: intermittent."
+  },
+  {
+   "id": "agent-gateway-2026-11-27/F1",
+   "file": "results/agent-gateway-2026-11-27/F1.jsonl",
+   "route": "claude-subscription",
+   "client": "pi+cliproxyapi",
+   "model": "claude-fable-5-2",
+   "models_dev": null,
+   "base_model": "anthropic/claude-fable-5-2",
+   "first_ages": "4 and 6 minutes, then 30, 55 and 65: on both sides of the documented 5-minute and 1-hour lifetimes",
+   "note": "Ages planned around the documented lifetimes (5 minutes, 1 hour), not from 2.5 minutes; 2 hours not checked because every 65-minute check was cold. Every cache write was a 1-hour one (Provimux asks for it on Claude logins). Pi 1.6.0 with pi-provimux 105.0.7 over SSE, cache warming off, through Provimux 8.1.7-pmx.3; each sample its own session and block, resumed once; a check counts only when one login of the intended kind answered its priming and itself (answered_by holds the labels of the gateway's account markers)."
+  },
+  {
+   "id": "agent-gateway-2026-11-27/A1",
+   "file": "results/agent-gateway-2026-11-27/A1.jsonl",
+   "route": "codex-subscription",
+   "client": "pi+cliproxyapi",
+   "model": "gpt-6.2-astra",
+   "models_dev": null,
+   "base_model": "openai/gpt-6.2-astra",
+   "note": "The first control, cold at 30 seconds; the run ended there (the tool then had no second control) and A2 is its continuation in fresh sessions. Pi 1.6.0 with pi-provimux 105.0.7 over SSE, cache warming off, through Provimux 8.1.7-pmx.3; each sample its own session and block, resumed once; a check counts only when one login of the intended kind answered its priming and itself (answered_by holds the labels of the gateway's account markers)."
+  },
+  {
+   "id": "agent-gateway-2026-11-27/A2",
+   "file": "results/agent-gateway-2026-11-27/A2.jsonl",
+   "route": "codex-subscription",
+   "client": "pi+cliproxyapi",
+   "model": "gpt-6.2-astra",
+   "models_dev": null,
+   "base_model": "openai/gpt-6.2-astra",
+   "continues": "agent-gateway-2026-11-27/A1",
+   "note": "Continues A1, whose control was cold: its control counts here, so the chain's control is 1 of 2. Ages 25, 35, 55 and 65 minutes and 2 hours, around the documented 30 minutes; not from 2.5 minutes. Warm at random from 35 minutes on. Pi 1.6.0 with pi-provimux 105.0.7 over SSE, cache warming off, through Provimux 8.1.7-pmx.3; each sample its own session and block, resumed once; a check counts only when one login of the intended kind answered its priming and itself (answered_by holds the labels of the gateway's account markers)."
+  },
+  {
+   "id": "agent-gateway-2026-11-27/S1",
+   "file": "results/agent-gateway-2026-11-27/S1.jsonl",
+   "route": "codex-subscription",
+   "client": "pi+cliproxyapi",
+   "model": "gpt-6.2-sol",
+   "models_dev": null,
+   "base_model": "openai/gpt-6.2-sol",
+   "first_ages": "25, 35, 55 and 65 minutes: around the documented 30 minutes; the younger ages are in S2, which continues this run",
+   "note": "Cold at every age from 25 minutes; the 2-hour samples were primed and not checked (every 65-minute check was cold). Pi 1.6.0 with pi-provimux 105.0.7 over SSE, cache warming off, through Provimux 8.1.7-pmx.3; each sample its own session and block, resumed once; a check counts only when one login of the intended kind answered its priming and itself (answered_by holds the labels of the gateway's account markers)."
+  },
+  {
+   "id": "agent-gateway-2026-11-27/S2",
+   "file": "results/agent-gateway-2026-11-27/S2.jsonl",
+   "route": "codex-subscription",
+   "client": "pi+cliproxyapi",
+   "model": "gpt-6.2-sol",
+   "models_dev": null,
+   "base_model": "openai/gpt-6.2-sol",
+   "continues": "agent-gateway-2026-11-27/S1",
+   "note": "Continues S1 with 2.5, 5, 10 and 15 minutes, started after S1 was cold at 25 minutes. Not all warm even at 2.5 minutes. Pi 1.6.0 with pi-provimux 105.0.7 over SSE, cache warming off, through Provimux 8.1.7-pmx.3; each sample its own session and block, resumed once; a check counts only when one login of the intended kind answered its priming and itself (answered_by holds the labels of the gateway's account markers)."
   }
  ],
  "excluded": [
@@ -2563,7 +2617,7 @@
   },
   {
    "id": "openrouter-2026-11-18/google--gemini-4-carbon",
-   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). the control's re-send was answered by another upstream than the one primed, the control missed and there is no timed check: no lifetime measured (control: primed on Google, answered by Google AI Studio (replies Google → Google → Google AI Studio): cold (0/2384 cached)) (raw file: results/openrouter-2026-11-18/google--gemini-4-carbon-2026-11-18T08-42-45.json)"
+   "reason": "OpenRouter batch 2 (campaign-or-2, from campaign/openrouter at d78171e). the control's re-send was answered by another upstream than the one primed, the control missed and there is no timed check: no lifetime measured (control: primed on Google, answered by Google AI Studio (replies Google \u2192 Google \u2192 Google AI Studio): cold (0/2384 cached)) (raw file: results/openrouter-2026-11-18/google--gemini-4-carbon-2026-11-18T08-42-45.json)"
   },
   {
    "id": "openrouter-2026-11-18/openai--gpt-6.2-sol-pinned-openai",
@@ -2716,6 +2770,10 @@
   {
    "id": "own-clients-2026-11-24/smoke/S3b",
    "reason": "own-client night 2026-11-24, audited (own-clients-2026-11-24/AUDIT.md): smoke run of the Devin CLI (gpt-6-1-terra-low), asking whether Devin still reports no cached token for that model: every read was zero and both 30-second controls were cold (no-observable-cache), the expected answer; no lifetime (raw file: results/own-clients-2026-11-24/smoke/S3b.jsonl)"
+  },
+  {
+   "id": "agent-gateway-2026-11-27/H1",
+   "reason": "gemini-4-hydrogen-low on the Antigravity login through Provimux: the first request (Pi's baseline) was refused with HTTP 429 RESOURCE_EXHAUSTED (a quota), and the run stopped at once, by its rule; nothing was measured (raw file: results/agent-gateway-2026-11-27/H1.jsonl)"
   }
  ],
  "limits": [

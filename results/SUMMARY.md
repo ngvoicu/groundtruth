@@ -228,6 +228,13 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   GPT-6 Astra and GPT-6 Luna (`-low`), DeepSeek V4 Pro (`-high`) and `swe-2` showed no usable cache through the Devin
   CLI. These runs replace the earlier `codex-cli` and `devin-cli` runs of the same models and settings as `latest`
   (H1, H3, H7, D1c, D2c, D6c, D8c, D9c, D10c, D11c, D13c), which stay in `observed.json`. See each folder's README.
+- `agent-gateway-2026-11-27/`: Pi through Provimux 8.1.7-pmx.3 (`pi+cliproxyapi`) with `harness/agent_gateway.py`,
+  which records the account that answered every request; every counted check was answered by the intended login.
+  Ages planned around the documented lifetimes (`first_ages`). Claude Fable 5.2 on a Claude login: warm in every check
+  through 55 minutes, cold at 65 (1-hour cache writes). GPT-6.2 Astra on the Codex login: 3 of 3 at 25 minutes, then
+  at random through 2 hours; its first control was cold (A1, kept), so the chain's control is 1 of 2. GPT-6.2 Sol: 2 of
+  3 at 2.5 minutes, 1 of 3 at 5, cold from 10. Gemini 4 Hydrogen on the Antigravity login: refused for quota at the
+  first request (excluded). See the folder's README.
 
 ## The limits rows of observed.json (2026-11-17)
 

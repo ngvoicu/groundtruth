@@ -89,7 +89,9 @@ share them. `harness/probe.py` (the same evaluation through a real coding tool) 
 2.5 minutes. A run whose every control missed has no ages by the method and is accepted as it is; the rule reads the
 run's own control, so a run with a mixed control (one re-send hit, another missed) showed the cache and must go on to
 its ages like one whose control hit. A run that continues another is not held to the rule. Runs before that date keep
-the ages they were made with.
+the ages they were made with. A run of `harness/agent_gateway.py` (below) may instead have ages planned around the
+lifetimes the provider documents; its manifest entry says so in `first_ages`, and its youngest age is published as it
+is (providers.dev shows it as `tested_from_s`).
 
 Options: `--schedule std|long|quick`, `--ages 30m,65m`, `--replicas 3`, `--prefix-tokens 2500`, `--filler words|list`, `--max-output 16`,
 `--stream`, `--ttl`, `--beta`, `--header k:v`, `--body-extra '<json>'`, `--label`, `--salt`, `--out`,
@@ -146,6 +148,33 @@ CLI only; after the smoke runs, `--go <client>` (or `--go all`) starts a client'
 lock per client (`status`, `stop <client>|all`). [`docs/own-clients-RUN.md`](docs/own-clients-RUN.md) has the steps: the
 owner's one-time setup, the night, the morning.
 
+### A real coding agent through a gateway
+
+What a coding agent gets through a gateway is often not what the provider's own client gets: the gateway adds its
+own prompt, asks for its own cache lifetime, and may hand a conversation to another account when one is overloaded.
+`harness/agent_gateway.py` measures that lifetime the way a real agent meets it, Pi through Provimux, and proves for
+every request **which account answered**: Provimux names it in a reply header (`X-Provimux-Account`, an opaque
+marker), and a sample counts only when one login of the intended kind answered both its priming and its check. Every
+other sample is kept in the file and marked, never dropped. It replaced the Pi client that `harness/probe.py` had
+until 22 November 2026, with the same method (a new session per sample, resumed once after its age).
+
+```bash
+export PROVIMUX_API_KEY=...       # the gateway's client key: read from the environment, never printed or written
+python3 harness/agent_gateway.py --model claude-fable-5-2 --login claude --ages 4,6,30,55,65 \
+  --scratch <new folder> --extension <pi-provimux package> --outfile <raw>/F1.jsonl \
+  --budget 3 --price-in 8 --price-cached 0.2 --price-write 16 --price-out 40
+python3 harness/agent_gateway.py publish --out results/<folder> <raw>/F1.jsonl   # markers become labels
+```
+
+A run stops at the first answer from an API key (a paid route), at any quota, limit or overage sign, and at its
+list-price budget; two runs on one login never overlap. `publish` replaces each account marker by a neutral label
+(`claude-login-1`) in every file it is given, so nothing that names an account of the gateway is published.
+
+Its limits: one gateway, one agent and one account per login, small samples; Pi runs over SSE (the relay reads each
+answer's headers), so a Codex model is not measured over the WebSocket Pi can use; and the ages are planned around
+the documented lifetimes, not from 2.5 minutes, so a run says nothing about the ages it did not check. The first
+runs are in [`results/agent-gateway-2026-11-27/`](results/agent-gateway-2026-11-27/README.md).
+
 ## observed.json
 
 Everything measured so far, in one file: [`observed.json`](observed.json). providers.dev reads it once a day and
@@ -190,6 +219,10 @@ subscription routes that have no public API (a ChatGPT plan through Codex, Devin
   received, so such a field is not in `options` and asks for nothing; the run's `note` must give the proof (the
   proxy's source, and requests showing it). `build_observed.py` accepts a recorded field only when it is in
   `options` or here with the same value, and refuses this key without a note.
+- `answered_by` and `not_counted` (runs of `harness/agent_gateway.py`, from 2026-11-27): the labels of the accounts
+  that answered the run's counted checks (`claude-login-1`: a label standing for the gateway's account marker, never
+  the marker), and how many checks the run did not count (answered by another account, more than one model request,
+  or no answer). `first_ages` says why such a run's ages do not start at 2.5 minutes.
 - `requires` / `lacks` name a CLIProxyAPI change the run had or did not have yet (for OpenRouter, the cache markers
   and session id of router-for-me/CLIProxyAPI#7284). A reader on a build with that change should skip `lacks` runs.
 - `models_dev` is the matching entry in models.dev (`provider/model`) when that route exists there, and
