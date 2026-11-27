@@ -2484,6 +2484,16 @@
    "base_model": "openai/gpt-6.2-sol",
    "continues": "agent-gateway-2026-11-27/S1",
    "note": "Continues S1 with 2.5, 5, 10 and 15 minutes, started after S1 was cold at 25 minutes. Not all warm even at 2.5 minutes. Pi 1.6.0 with pi-provimux 105.0.7 over SSE, cache warming off, through Provimux 8.1.7-pmx.3; each sample its own session and block, resumed once; a check counts only when one login of the intended kind answered its priming and itself (answered_by holds the labels of the gateway's account markers)."
+  },
+  {
+   "id": "devin-swe-2-1-2026-11-27/W1",
+   "file": "results/devin-swe-2-1-2026-11-27/W1.jsonl",
+   "route": "devin",
+   "client": "pi+cliproxyapi",
+   "model": "swe-2-1",
+   "models_dev": null,
+   "base_model": null,
+   "note": "Served by the gateway as devin/swe-2-1, on the Devin login only; Devin's answers name devin/swe-2-1. Warm at random at 2.5 and 5 minutes (1 of 3 each), cold at every age from 10 minutes; 2 hours not checked because no 60-minute check was warm. Sent while the login's weekly quota was used up (other Devin models were refused): SWE-2.1 was answered. Pi 1.6.0 with pi-provimux 105.0.7 over SSE, cache warming off, through Provimux 8.1.7-pmx.4; each sample its own session and block, resumed once; a check counts only when one login of the intended kind answered its priming and itself (answered_by holds the labels of the gateway's account markers)."
   }
  ],
  "excluded": [
@@ -3427,6 +3437,34 @@
     {
      "row_model": "devin/swe-2",
      "read": 300499,
+     "words": [
+      "APRICOT",
+      "WALNUT"
+     ]
+    }
+   ]
+  },
+  {
+   "route": "devin",
+   "client": "cliproxyapi",
+   "model": "swe-2-1",
+   "models_dev": null,
+   "input_accepted": 282338,
+   "input_read": 282338,
+   "file": "results/devin-swe-2-1-2026-11-27/swe-2-1-limits.jsonl",
+   "note": "no edge found: Devin lists 262,144 and the one request sent above it (282,220 tokens) was accepted; a both-ends request of the same filler (one code word before it, one after it) came back with both words at 282,338 tokens, so the model read that input to the end. No larger request was sent: the walk of results/limits-2026-11-16/devin_walk.py stops at an accepted request above the listed window",
+   "evidence": [
+    {
+     "row_model": "devin/swe-2-1",
+     "accepted": 282220
+    },
+    {
+     "row_model": "devin/swe-2-1",
+     "accepted": 282338
+    },
+    {
+     "row_model": "devin/swe-2-1",
+     "read": 282338,
      "words": [
       "APRICOT",
       "WALNUT"

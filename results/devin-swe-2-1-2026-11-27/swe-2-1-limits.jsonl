@@ -1,0 +1,2 @@
+{"kind": "context", "model": "devin/swe-2-1", "n": 282144, "status": 200, "seconds": 22.7, "promptTokens": 282220, "message": null, "at": "2026-11-27T21:32:28"}
+{"kind": "recall", "model": "devin/swe-2-1", "n": 282144, "status": 200, "seconds": 20.5, "promptTokens": 282338, "reply": "APRICOT WALNUT", "message": null, "maxOutput": 256, "responseStatus": "completed", "incomplete": null, "outputTypes": ["reasoning", "message"], "outputTokens": 74, "at": "2026-11-27T21:33:00"}

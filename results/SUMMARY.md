@@ -235,6 +235,11 @@ real OpenRouter model ids through an `openai-compatibility` entry. Files in `cpa
   at random through 2 hours; its first control was cold (A1, kept), so the chain's control is 1 of 2. GPT-6.2 Sol: 2 of
   3 at 2.5 minutes, 1 of 3 at 5, cold from 10. Gemini 4 Hydrogen on the Antigravity login: refused for quota at the
   first request (excluded). See the folder's README.
+- `devin-swe-2-1-2026-11-27/`: SWE-2.1 (`swe-2-1`) on the Devin login, through Pi and Provimux 8.1.7-pmx.4 with
+  `harness/agent_gateway.py`, answered while the login's weekly quota was used up; every request answered by the Devin
+  login. Control warm, 1 of 3 at 2.5 and at 5 minutes, cold at 10, 30 and 60: no dependable lifetime. Input window: no
+  edge; a request above the listed 262,144 tokens was accepted, and both ends of a 282,338-token input were read. See
+  the folder's README.
 
 ## The limits rows of observed.json (2026-11-17)
 
